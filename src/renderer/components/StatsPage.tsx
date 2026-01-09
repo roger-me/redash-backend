@@ -258,6 +258,15 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
     return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
   };
 
+  const handleToggleEnabled = async (profileId: string, currentlyEnabled: boolean) => {
+    try {
+      await window.electronAPI?.updateProfile(profileId, { isEnabled: !currentlyEnabled });
+      await handleRefresh();
+    } catch (err) {
+      console.error('Failed to toggle enabled status:', err);
+    }
+  };
+
   const calculateStats = () => {
     const stats: UserStats[] = users.map(user => {
       // Get profiles for this user
@@ -297,8 +306,8 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
           working: groupProfiles.filter(p => p.status === 'working').length,
           banned: groupProfiles.filter(p => p.status === 'banned').length,
           error: groupProfiles.filter(p => p.status === 'error').length,
-          enabled: groupProfiles.filter(p => p.isEnabled !== false).length,
-          disabled: groupProfiles.filter(p => p.isEnabled === false).length,
+          enabled: groupProfiles.filter(p => p.isEnabled === true).length,
+          disabled: groupProfiles.filter(p => p.isEnabled !== true).length,
           totalKarma: karma,
           postsToday,
           commentsToday,
@@ -459,7 +468,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                       <div
                         className="grid text-xs font-medium py-4 px-5"
                         style={{
-                          gridTemplateColumns: '1fr repeat(5, 90px) 50px',
+                          gridTemplateColumns: '1fr repeat(6, 90px) 50px',
                           color: 'var(--text-tertiary)',
                           borderBottom: '1px solid var(--border)',
                         }}
@@ -470,6 +479,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                         <div className="text-center">Comments Today</div>
                         <div className="text-center">Total Karma</div>
                         <div className="text-center">Status</div>
+                        <div className="text-center">Renew</div>
                         <div></div>
                       </div>
 
@@ -484,7 +494,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                             <div
                               className="grid py-4 px-5 items-center cursor-pointer hover:bg-white/5 transition-colors"
                               style={{
-                                gridTemplateColumns: '1fr repeat(5, 90px) 50px',
+                                gridTemplateColumns: '1fr repeat(6, 90px) 50px',
                                 borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none',
                               }}
                               onClick={() => toggleModelExpand(modelKey)}
@@ -527,6 +537,11 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                                 {stat.working}/{stat.total}
                               </div>
 
+                              {/* Renew */}
+                              <div className="text-center text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                                {stat.enabled}/{stat.total}
+                              </div>
+
                               {/* Empty for action column */}
                               <div></div>
                             </div>
@@ -546,7 +561,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                                       key={profile.id}
                                       className="grid py-3 px-5 pl-12 items-center"
                                       style={{
-                                        gridTemplateColumns: '1fr repeat(5, 90px) 50px',
+                                        gridTemplateColumns: '1fr repeat(6, 90px) 50px',
                                         borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none',
                                       }}
                                     >
@@ -606,6 +621,23 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                                         )}
                                       </div>
 
+                                      {/* Renew */}
+                                      <div className="flex justify-center">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleEnabled(profile.id, profile.isEnabled === true);
+                                          }}
+                                          className="text-xs px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+                                          style={{
+                                            background: profile.isEnabled === true ? 'rgba(59, 130, 246, 0.15)' : 'rgba(128, 128, 128, 0.15)',
+                                            color: profile.isEnabled === true ? '#3B82F6' : 'var(--text-tertiary)'
+                                          }}
+                                        >
+                                          {profile.isEnabled === true ? 'On' : 'Off'}
+                                        </button>
+                                      </div>
+
                                       {/* Delete Button */}
                                       <div className="flex justify-center">
                                         <button
@@ -634,7 +666,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                         <div
                           className="grid py-4 px-5 items-center"
                           style={{
-                            gridTemplateColumns: '1fr repeat(5, 90px) 50px',
+                            gridTemplateColumns: '1fr repeat(6, 90px) 50px',
                             background: 'rgba(128, 128, 128, 0.04)',
                             borderTop: '1px solid var(--border)',
                           }}
@@ -656,6 +688,9 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                           </div>
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--text-tertiary)' }}>
                             {modelStats.reduce((sum, m) => sum + m.working, 0)}/{modelStats.reduce((sum, m) => sum + m.total, 0)}
+                          </div>
+                          <div className="text-center text-sm font-bold" style={{ color: 'var(--text-tertiary)' }}>
+                            {modelStats.reduce((sum, m) => sum + m.enabled, 0)}/{modelStats.reduce((sum, m) => sum + m.total, 0)}
                           </div>
                           <div></div>
                         </div>
