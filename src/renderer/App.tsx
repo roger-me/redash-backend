@@ -38,8 +38,7 @@ function App() {
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
-  const [showFabMenu, setShowFabMenu] = useState(false);
-    const [editingModel, setEditingModel] = useState<Model | null>(null);
+      const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [createInModelId, setCreateInModelId] = useState<string | undefined>(undefined);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [lastSyncLabel, setLastSyncLabel] = useState<string>('');
@@ -47,8 +46,7 @@ function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
   });
-  const fabMenuRef = useRef<HTMLDivElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+    const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Apply theme to document
   useEffect(() => {
@@ -168,11 +166,8 @@ function App() {
       setActiveBrowsers(prev => prev.filter(id => id !== profileId));
     });
 
-    // Close FAB menu and user menu when clicking outside
+    // Close user menu when clicking outside
     const handleClickOutside = (e: MouseEvent) => {
-      if (fabMenuRef.current && !fabMenuRef.current.contains(e.target as Node)) {
-        setShowFabMenu(false);
-      }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setShowUserMenu(false);
       }
@@ -666,7 +661,7 @@ function App() {
                 Accounts
               </h1>
               {/* Toolbar buttons */}
-              <div className="ml-auto flex items-center gap-2" ref={fabMenuRef}>
+              <div className="ml-auto flex items-center gap-2">
                 {/* Refresh button */}
                 <button
                   onClick={() => syncRedditKarma(true)}
@@ -691,63 +686,6 @@ function App() {
                     <span className="text-sm font-medium">{lastSyncLabel}</span>
                   )}
                 </button>
-
-                {/* New button */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowFabMenu(!showFabMenu)}
-                    className="h-9 px-4 flex items-center justify-center gap-2 text-sm font-medium transition-colors"
-                    style={{
-                      background: 'var(--btn-primary-bg)',
-                      borderRadius: '100px',
-                      color: 'var(--btn-primary-color)',
-                    }}
-                  >
-                    <Plus
-                      size={14}
-                      weight="bold"
-                      style={{
-                        transform: showFabMenu ? 'rotate(45deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s',
-                      }}
-                    />
-                    New
-                  </button>
-
-                  {/* New menu dropdown */}
-                  {showFabMenu && (
-                    <div
-                      className="absolute top-full right-0 mt-2 min-w-[160px] z-50 overflow-hidden"
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-                        borderRadius: '12px',
-                      }}
-                    >
-                      {/* Basic users need assigned models to create browsers */}
-                      {user?.role === 'admin' || availableModels.length > 0 ? (
-                        <button
-                          onClick={() => {
-                            setShowFabMenu(false);
-                            setShowCreateModal(true);
-                          }}
-                          className="w-full px-3 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors"
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          <User size={16} weight="bold" />
-                          New Browser
-                        </button>
-                      ) : (
-                        <div
-                          className="px-3 py-2.5 text-sm"
-                          style={{ color: 'var(--text-tertiary)' }}
-                        >
-                          No models assigned
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
 
