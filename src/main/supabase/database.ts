@@ -1,4 +1,15 @@
-import { getSupabaseClient } from './client';
+import { getSupabaseClient, authStore } from './client';
+
+// Get current user ID from custom auth
+function getCurrentUserId(): string | null {
+  const userId = authStore.get('userId') as string | null;
+  console.log('getCurrentUserId - authStore contents:', {
+    userId: authStore.get('userId'),
+    username: authStore.get('username'),
+    role: authStore.get('role'),
+  });
+  return userId;
+}
 
 // Helper to convert camelCase to snake_case
 function toSnakeCase(obj: Record<string, any>): Record<string, any> {
@@ -34,13 +45,13 @@ export async function listProfiles() {
 
 export async function createProfile(profile: Record<string, any>) {
   const supabase = getSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const userId = getCurrentUserId();
 
-  if (!user) throw new Error('Not authenticated');
+  if (!userId) throw new Error('Not authenticated');
 
   const dbProfile = {
     ...toSnakeCase(profile),
-    user_id: user.id,
+    user_id: userId,
   };
 
   const { data, error } = await supabase
@@ -93,13 +104,13 @@ export async function listModels() {
 
 export async function createModel(model: Record<string, any>) {
   const supabase = getSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const userId = getCurrentUserId();
 
-  if (!user) throw new Error('Not authenticated');
+  if (!userId) throw new Error('Not authenticated');
 
   const dbModel = {
     ...toSnakeCase(model),
-    user_id: user.id,
+    user_id: userId,
   };
 
   const { data, error } = await supabase

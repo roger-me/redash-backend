@@ -1,6 +1,21 @@
-import { useState, useEffect } from 'react';
-import { User, Plus, Trash, PencilSimple, Shield, ShieldCheck, X, Check, CaretDown, CaretRight } from '@phosphor-icons/react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User } from '@phosphor-icons/react';
 import { Model } from '../../shared/types';
+
+// Generate a consistent color based on string
+const avatarColors = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+  '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
+  '#F8B500', '#FF8C00', '#00CED1', '#9370DB', '#3CB371',
+];
+
+const getAvatarColor = (name: string): string => {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+};
 
 interface AppUser {
   id: string;
@@ -12,9 +27,12 @@ interface AppUser {
 interface AdminPageProps {
   models: Model[];
   currentUserId: string;
+  onCreateModel: (name: string, profilePicture?: string) => Promise<void>;
+  onUpdateModel: (id: string, name: string, profilePicture?: string) => Promise<void>;
+  onDeleteModel: (id: string) => Promise<void>;
 }
 
-export default function AdminPage({ models, currentUserId }: AdminPageProps) {
+export default function AdminPage({ models, currentUserId, onCreateModel, onUpdateModel, onDeleteModel }: AdminPageProps) {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -26,6 +44,14 @@ export default function AdminPage({ models, currentUserId }: AdminPageProps) {
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'basic'>('basic');
   const [createError, setCreateError] = useState('');
+
+  // Model management state
+  const [showModelModal, setShowModelModal] = useState(false);
+  const [editingModel, setEditingModel] = useState<Model | null>(null);
+  const [newModelName, setNewModelName] = useState('');
+  const [modelProfilePicture, setModelProfilePicture] = useState('');
+  const [modelError, setModelError] = useState('');
+  const modelFileInputRef = useRef<HTMLInputElement>(null);
 
   const [editUsername, setEditUsername] = useState('');
   const [editPassword, setEditPassword] = useState('');
@@ -139,16 +165,20 @@ export default function AdminPage({ models, currentUserId }: AdminPageProps) {
   };
 
   const handleToggleModelAssignment = async (userId: string, modelId: string) => {
+    console.log('Toggle model assignment:', { userId, modelId });
     const current = userAssignments[userId] || [];
     const newAssignments = current.includes(modelId)
       ? current.filter(id => id !== modelId)
       : [...current, modelId];
+    console.log('Current assignments:', current, 'New assignments:', newAssignments);
 
     try {
-      await window.electronAPI?.adminSetUserModelAssignments(userId, newAssignments);
+      const result = await window.electronAPI?.adminSetUserModelAssignments(userId, newAssignments);
+      console.log('Assignment result:', result);
       setUserAssignments(prev => ({ ...prev, [userId]: newAssignments }));
     } catch (err) {
       console.error('Failed to update assignments:', err);
+      alert('Failed to update assignments: ' + (err as Error).message);
     }
   };
 
@@ -158,6 +188,97 @@ export default function AdminPage({ models, currentUserId }: AdminPageProps) {
     setEditPassword('');
     setEditRole(user.role);
     setEditError('');
+  };
+
+  // Model handlers
+  // Image upload handler for model profile picture
+  const handleModelImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      // Compress using canvas
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxSize = 150;
+        let { width, height } = img;
+
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = Math.round((height / width) * maxSize);
+            width = maxSize;
+          } else {
+            width = Math.round((width / height) * maxSize);
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          setModelProfilePicture(canvas.toDataURL('image/jpeg', 0.7));
+        } else {
+          setModelProfilePicture(result);
+        }
+      };
+      img.onerror = () => setModelProfilePicture(result);
+      img.src = result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCreateModel = async () => {
+    if (!newModelName.trim()) {
+      setModelError('Model name is required');
+      return;
+    }
+    try {
+      await onCreateModel(newModelName.trim(), modelProfilePicture || undefined);
+      setShowModelModal(false);
+      setNewModelName('');
+      setModelProfilePicture('');
+      setModelError('');
+    } catch (err: any) {
+      setModelError(err.message || 'Failed to create model');
+    }
+  };
+
+  const handleUpdateModel = async () => {
+    if (!editingModel) return;
+    if (!newModelName.trim()) {
+      setModelError('Model name is required');
+      return;
+    }
+    try {
+      await onUpdateModel(editingModel.id, newModelName.trim(), modelProfilePicture || undefined);
+      setEditingModel(null);
+      setNewModelName('');
+      setModelProfilePicture('');
+      setModelError('');
+    } catch (err: any) {
+      setModelError(err.message || 'Failed to update model');
+    }
+  };
+
+  const handleDeleteModel = async (modelId: string) => {
+    if (!confirm('Are you sure you want to delete this model? All browsers in this model will become unassigned.')) return;
+    try {
+      await onDeleteModel(modelId);
+    } catch (err) {
+      console.error('Failed to delete model:', err);
+    }
+  };
+
+  const openModelEditModal = (model: Model) => {
+    setEditingModel(model);
+    setNewModelName(model.name);
+    setModelProfilePicture(model.profilePicture || '');
+    setModelError('');
   };
 
   if (loading) {
@@ -207,14 +328,10 @@ export default function AdminPage({ models, currentUserId }: AdminPageProps) {
                 </button>
 
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center"
-                  style={{ background: user.role === 'admin' ? 'var(--accent-blue)' : 'var(--chip-bg)' }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
+                  style={{ background: getAvatarColor(user.username) }}
                 >
-                  {user.role === 'admin' ? (
-                    <ShieldCheck size={20} weight="bold" color="white" />
-                  ) : (
-                    <User size={20} weight="bold" style={{ color: 'var(--text-secondary)' }} />
-                  )}
+                  {user.username.charAt(0).toUpperCase()}
                 </div>
 
                 <div className="flex-1">
@@ -296,6 +413,88 @@ export default function AdminPage({ models, currentUserId }: AdminPageProps) {
             </div>
           ))
         )}
+      </div>
+
+      {/* Models Section */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            Models
+          </h2>
+          <button
+            onClick={() => {
+              setShowModelModal(true);
+              setNewModelName('');
+              setModelError('');
+            }}
+            className="h-9 px-4 flex items-center gap-2 text-sm font-medium transition-colors"
+            style={{
+              background: 'var(--btn-primary-bg)',
+              borderRadius: '100px',
+              color: 'var(--btn-primary-color)',
+            }}
+          >
+            <Plus size={14} weight="bold" />
+            New Model
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {models.length === 0 ? (
+            <div className="rounded-xl p-8 text-center" style={{ background: 'var(--bg-secondary)' }}>
+              <FolderSimple size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
+              <p style={{ color: 'var(--text-tertiary)' }}>No models yet</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
+                Create models to organize browsers and assign to users
+              </p>
+            </div>
+          ) : (
+            models.map(model => (
+              <div
+                key={model.id}
+                className="flex items-center gap-3 p-4 rounded-xl"
+                style={{ background: 'var(--bg-secondary)' }}
+              >
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden"
+                  style={{ background: 'var(--chip-bg)' }}
+                >
+                  {model.profilePicture ? (
+                    <img src={model.profilePicture} alt={model.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <FolderSimple size={20} weight="bold" style={{ color: 'var(--text-secondary)' }} />
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {model.name}
+                  </span>
+                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                    Created {new Date(model.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => openModelEditModal(model)}
+                    className="p-2 rounded-lg hover:bg-black/10"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
+                    <PencilSimple size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteModel(model.id)}
+                    className="p-2 rounded-lg hover:bg-black/10"
+                    style={{ color: 'var(--accent-red)' }}
+                  >
+                    <Trash size={18} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {showCreateModal && (
@@ -448,6 +647,100 @@ export default function AdminPage({ models, currentUserId }: AdminPageProps) {
                 style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}
               >
                 Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Model Modal */}
+      {(showModelModal || editingModel) && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: 'var(--bg-secondary)' }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {editingModel ? 'Edit Model' : 'Create Model'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowModelModal(false);
+                  setEditingModel(null);
+                  setNewModelName('');
+                  setModelProfilePicture('');
+                  setModelError('');
+                }}
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Profile Picture */}
+              <div
+                className="flex items-center gap-4 cursor-pointer"
+                onClick={() => modelFileInputRef.current?.click()}
+              >
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden relative group"
+                  style={{ background: 'var(--bg-tertiary)' }}
+                >
+                  {modelProfilePicture ? (
+                    <img
+                      src={modelProfilePicture}
+                      alt="Model"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User size={28} weight="bold" color="var(--text-tertiary)" />
+                  )}
+                  <div
+                    className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full"
+                    style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+                  >
+                    <Camera size={20} weight="bold" color="white" />
+                  </div>
+                </div>
+                <input
+                  ref={modelFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleModelImageUpload}
+                  className="hidden"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                    Profile Picture
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    Click to upload
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Model Name
+                </label>
+                <input
+                  type="text"
+                  value={newModelName}
+                  onChange={(e) => setNewModelName(e.target.value)}
+                  className="w-full h-10 px-3 rounded-lg text-sm"
+                  style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                  placeholder="Enter model name"
+                  autoFocus
+                />
+              </div>
+
+              {modelError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{modelError}</p>}
+
+              <button
+                onClick={editingModel ? handleUpdateModel : handleCreateModel}
+                className="w-full h-10 rounded-lg text-sm font-medium"
+                style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}
+              >
+                {editingModel ? 'Save Changes' : 'Create Model'}
               </button>
             </div>
           </div>

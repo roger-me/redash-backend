@@ -693,6 +693,15 @@ ipcMain.handle('admin:setUserModelAssignments', async (_, userId: string, modelI
   return admin.setUserModelAssignments(userId, modelIds);
 });
 
+ipcMain.handle('admin:getAllProfilesForStats', async () => {
+  try {
+    return await admin.getAllProfilesForStats();
+  } catch (error) {
+    console.error('Failed to get profiles for stats:', error);
+    return [];
+  }
+});
+
 // Fetch Reddit karma for a username
 ipcMain.handle('reddit:fetchKarma', async (_, username: string) => {
   return new Promise((resolve) => {

@@ -5,6 +5,7 @@ import { Desktop, CaretDown, FolderSimple, MinusCircle } from '@phosphor-icons/r
 interface CreateProfileModalProps {
   models: Model[];
   initialModelId?: string;
+  requireModel?: boolean;
   onClose: () => void;
   onCreate: (profile: Omit<Profile, 'id' | 'createdAt'>) => void;
 }
@@ -57,7 +58,7 @@ const countries = [
   { code: 'EG', name: 'Egypt', flag: '🇪🇬' },
 ];
 
-function CreateProfileModal({ models, initialModelId, onClose, onCreate }: CreateProfileModalProps) {
+function CreateProfileModal({ models, initialModelId, requireModel, onClose, onCreate }: CreateProfileModalProps) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -104,6 +105,11 @@ function CreateProfileModal({ models, initialModelId, onClose, onCreate }: Creat
 
     if (!country) {
       alert('Please select a country');
+      return;
+    }
+
+    if (requireModel && !modelId) {
+      alert('Please select a model');
       return;
     }
 
@@ -296,15 +302,17 @@ function CreateProfileModal({ models, initialModelId, onClose, onCreate }: Creat
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => { setModelId(undefined); setShowModelMenu(false); }}
-                    className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
-                    style={{ color: !modelId ? 'var(--accent-blue)' : 'var(--text-primary)' }}
-                  >
-                    <MinusCircle size={14} weight="bold" />
-                    <span>No model</span>
-                  </button>
+                  {!requireModel && (
+                    <button
+                      type="button"
+                      onClick={() => { setModelId(undefined); setShowModelMenu(false); }}
+                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                      style={{ color: !modelId ? 'var(--accent-blue)' : 'var(--text-primary)' }}
+                    >
+                      <MinusCircle size={14} weight="bold" />
+                      <span>No model</span>
+                    </button>
+                  )}
                   {models.map(m => (
                     <button
                       key={m.id}

@@ -8,12 +8,13 @@ import FlipperPage from './components/FlipperPage';
 import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
+import StatsPage from './components/StatsPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Plus, User, FolderSimple, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear, ShieldCheck } from '@phosphor-icons/react';
+import { ArrowsClockwise, Plus, User, FolderSimple, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear, ShieldCheck, ChartBar } from '@phosphor-icons/react';
 import AIPage from './components/AIPage';
 import SettingsPage from './components/SettingsPage';
 
-type Page = 'accounts' | 'flipper' | 'ai' | 'settings' | 'admin';
+type Page = 'accounts' | 'flipper' | 'ai' | 'settings' | 'admin' | 'stats';
 
 interface AuthUser {
   id: string;
@@ -31,6 +32,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>('accounts');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [models, setModels] = useState<Model[]>([]);
+  const [assignedModelIds, setAssignedModelIds] = useState<string[]>([]);
   const [activeBrowsers, setActiveBrowsers] = useState<string[]>([]);
   const [activeBrowserProfile, setActiveBrowserProfile] = useState<Profile | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -103,6 +105,33 @@ function App() {
       }
     });
   }, []);
+
+  // Load assigned model IDs for basic users
+  const loadAssignedModels = async () => {
+    if (!user || user.role === 'admin') {
+      setAssignedModelIds([]);
+      return;
+    }
+    try {
+      const assignments = await window.electronAPI?.adminGetUserModelAssignments(user.id);
+      setAssignedModelIds(assignments || []);
+    } catch (err) {
+      console.error('Failed to load assigned models:', err);
+      setAssignedModelIds([]);
+    }
+  };
+
+  // Compute available models based on user role
+  const availableModels = user?.role === 'admin'
+    ? models
+    : models.filter(m => assignedModelIds.includes(m.id));
+
+  // Load assigned models when user changes
+  useEffect(() => {
+    if (user) {
+      loadAssignedModels();
+    }
+  }, [user?.id, user?.role]);
 
   // Load data when authenticated
   useEffect(() => {
@@ -407,6 +436,17 @@ function App() {
     }
   };
 
+  // Admin page model handlers (simpler interface)
+  const handleAdminCreateModel = async (name: string, profilePicture?: string) => {
+    await window.electronAPI?.createModel({ name, isExpanded: true, profilePicture });
+    await loadModels();
+  };
+
+  const handleAdminUpdateModel = async (id: string, name: string, profilePicture?: string) => {
+    await window.electronAPI?.updateModel(id, { name, profilePicture });
+    await loadModels();
+  };
+
   const handleToggleModelExpand = async (modelId: string) => {
     try {
       const model = models.find(m => m.id === modelId);
@@ -511,6 +551,33 @@ function App() {
             <span className="text-sm font-medium">AI</span>
           </button>
 
+          {user?.role === 'admin' && (
+            <>
+              <button
+                onClick={() => setCurrentPage('admin')}
+                className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
+                style={{
+                  background: currentPage === 'admin' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  color: currentPage === 'admin' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                }}
+              >
+                <ShieldCheck size={20} weight={currentPage === 'admin' ? 'fill' : 'regular'} />
+                <span className="text-sm font-medium">Admin</span>
+              </button>
+              <button
+                onClick={() => setCurrentPage('stats')}
+                className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
+                style={{
+                  background: currentPage === 'stats' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                  color: currentPage === 'stats' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                }}
+              >
+                <ChartBar size={20} weight={currentPage === 'stats' ? 'fill' : 'regular'} />
+                <span className="text-sm font-medium">Stats</span>
+              </button>
+            </>
+          )}
+
           <button
             onClick={() => setCurrentPage('settings')}
             className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
@@ -522,20 +589,6 @@ function App() {
             <Gear size={20} weight={currentPage === 'settings' ? 'fill' : 'regular'} />
             <span className="text-sm font-medium">Settings</span>
           </button>
-
-          {user?.role === 'admin' && (
-            <button
-              onClick={() => setCurrentPage('admin')}
-              className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
-              style={{
-                background: currentPage === 'admin' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                color: currentPage === 'admin' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              }}
-            >
-              <ShieldCheck size={20} weight={currentPage === 'admin' ? 'fill' : 'regular'} />
-              <span className="text-sm font-medium">Admin</span>
-            </button>
-          )}
 
           {/* Theme toggle, User & Version at bottom */}
           <div className="mt-auto pt-4 px-1">
@@ -662,17 +715,27 @@ function App() {
                         borderRadius: '12px',
                       }}
                     >
-                      <button
-                        onClick={() => {
-                          setShowFabMenu(false);
-                          setShowCreateModal(true);
-                        }}
-                        className="w-full px-3 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors"
-                        style={{ color: 'var(--text-primary)' }}
-                      >
-                        <User size={16} weight="bold" />
-                        New Account
-                      </button>
+                      {/* Basic users need assigned models to create browsers */}
+                      {user?.role === 'admin' || availableModels.length > 0 ? (
+                        <button
+                          onClick={() => {
+                            setShowFabMenu(false);
+                            setShowCreateModal(true);
+                          }}
+                          className="w-full px-3 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          <User size={16} weight="bold" />
+                          New Browser
+                        </button>
+                      ) : (
+                        <div
+                          className="px-3 py-2.5 text-sm"
+                          style={{ color: 'var(--text-tertiary)' }}
+                        >
+                          No models assigned
+                        </div>
+                      )}
                       {user?.role === 'admin' && (
                         <button
                           onClick={() => {
@@ -710,7 +773,7 @@ function App() {
             ) : (
               <ProfileList
                 profiles={desktopProfiles}
-                models={models}
+                models={availableModels}
                 activeBrowsers={activeBrowsers}
                 onLaunch={handleLaunchBrowser}
                 onClose={handleCloseBrowser}
@@ -734,7 +797,16 @@ function App() {
         {currentPage === 'ai' && <AIPage />}
         {currentPage === 'settings' && <SettingsPage />}
         {currentPage === 'admin' && user?.role === 'admin' && (
-          <AdminPage models={models} currentUserId={user.id} />
+          <AdminPage
+            models={models}
+            currentUserId={user.id}
+            onCreateModel={handleAdminCreateModel}
+            onUpdateModel={handleAdminUpdateModel}
+            onDeleteModel={handleDeleteModel}
+          />
+        )}
+        {currentPage === 'stats' && user?.role === 'admin' && (
+          <StatsPage models={models} />
         )}
       </div>
 
@@ -757,8 +829,9 @@ function App() {
       {/* Create Modal */}
       {showCreateModal && (
         <CreateProfileModal
-          models={models}
+          models={availableModels}
           initialModelId={createInModelId}
+          requireModel={user?.role !== 'admin'}
           onClose={() => {
             setShowCreateModal(false);
             setCreateInModelId(undefined);
@@ -771,7 +844,7 @@ function App() {
       {editingProfile && (
         <EditProfileModal
           profile={editingProfile}
-          models={models}
+          models={availableModels}
           onClose={() => setEditingProfile(null)}
           onSave={handleUpdateProfile}
         />

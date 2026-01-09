@@ -61,6 +61,18 @@ export interface AppUser {
   created_at: string;
 }
 
+export interface ProfileForStats {
+  id: string;
+  name: string;
+  modelId?: string;
+  status?: string;
+  isEnabled?: boolean;
+  commentKarma: number;
+  postKarma: number;
+  userId?: string;
+  createdAt: string;
+}
+
 export interface ElectronAPI {
   // Auth
   getSession: () => Promise<AuthResult>;
@@ -100,6 +112,7 @@ export interface ElectronAPI {
   adminDeleteUser: (userId: string) => Promise<boolean>;
   adminGetUserModelAssignments: (userId: string) => Promise<string[]>;
   adminSetUserModelAssignments: (userId: string, modelIds: string[]) => Promise<boolean>;
+  adminGetAllProfilesForStats: () => Promise<ProfileForStats[]>;
 
   // Updater
   checkForUpdates: () => Promise<{ success: boolean; updateInfo?: any; error?: string }>;

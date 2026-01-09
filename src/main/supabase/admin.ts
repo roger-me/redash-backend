@@ -180,3 +180,28 @@ export async function getModelUsers(modelId: string): Promise<string[]> {
   if (error) throw new Error(error.message);
   return (data || []).map((d: any) => d.user_id);
 }
+
+// Get all profiles for stats (admin only)
+export async function getAllProfilesForStats(): Promise<any[]> {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name, model_id, status, is_enabled, comment_karma, post_karma, user_id, created_at')
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  // Convert snake_case to camelCase
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    modelId: p.model_id,
+    status: p.status,
+    isEnabled: p.is_enabled,
+    commentKarma: p.comment_karma || 0,
+    postKarma: p.post_karma || 0,
+    userId: p.user_id,
+    createdAt: p.created_at,
+  }));
+}
