@@ -1,6 +1,59 @@
 import { useState, useEffect } from 'react';
-import { CaretDown, CaretRight, FolderSimple, CheckCircle, XCircle, Warning, CircleNotch, User, CalendarCheck, ChartLineUp } from '@phosphor-icons/react';
+import { FolderSimple, CheckCircle, CircleNotch, User, CaretDown, CaretRight } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats } from '../../shared/types';
+
+// Flag PNG imports
+import flagUS from '../assets/flags/US.png';
+import flagGB from '../assets/flags/GB.png';
+import flagDE from '../assets/flags/DE.png';
+import flagFR from '../assets/flags/FR.png';
+import flagES from '../assets/flags/ES.png';
+import flagBE from '../assets/flags/BE.png';
+import flagPT from '../assets/flags/PT.png';
+import flagPL from '../assets/flags/PL.png';
+import flagRU from '../assets/flags/RU.png';
+import flagUA from '../assets/flags/UA.png';
+import flagCA from '../assets/flags/CA.png';
+import flagAU from '../assets/flags/AU.png';
+import flagJP from '../assets/flags/JP.png';
+import flagKR from '../assets/flags/KR.png';
+import flagCN from '../assets/flags/CN.png';
+import flagIN from '../assets/flags/IN.png';
+import flagBR from '../assets/flags/BR.png';
+import flagMX from '../assets/flags/MX.png';
+import flagAR from '../assets/flags/AR.png';
+import flagCL from '../assets/flags/CL.png';
+import flagCO from '../assets/flags/CO.png';
+import flagSE from '../assets/flags/SE.png';
+import flagNO from '../assets/flags/NO.png';
+import flagDK from '../assets/flags/DK.png';
+import flagFI from '../assets/flags/FI.png';
+import flagAT from '../assets/flags/AT.png';
+import flagSG from '../assets/flags/SG.png';
+import flagHK from '../assets/flags/HK.png';
+import flagTW from '../assets/flags/TW.png';
+import flagTH from '../assets/flags/TH.png';
+import flagVN from '../assets/flags/VN.png';
+import flagID from '../assets/flags/ID.png';
+import flagMY from '../assets/flags/MY.png';
+import flagPH from '../assets/flags/PH.png';
+import flagTR from '../assets/flags/TR.png';
+import flagAE from '../assets/flags/AE.png';
+import flagIL from '../assets/flags/IL.png';
+import flagZA from '../assets/flags/ZA.png';
+import flagEG from '../assets/flags/EG.png';
+
+// PNG flag images
+const countryFlagImages: Record<string, string> = {
+  'US': flagUS, 'GB': flagGB, 'DE': flagDE, 'FR': flagFR, 'ES': flagES,
+  'BE': flagBE, 'PT': flagPT, 'PL': flagPL, 'RU': flagRU, 'UA': flagUA,
+  'CA': flagCA, 'AU': flagAU, 'JP': flagJP, 'KR': flagKR, 'CN': flagCN,
+  'IN': flagIN, 'BR': flagBR, 'MX': flagMX, 'AR': flagAR, 'CL': flagCL,
+  'CO': flagCO, 'SE': flagSE, 'NO': flagNO, 'DK': flagDK, 'FI': flagFI,
+  'AT': flagAT, 'SG': flagSG, 'HK': flagHK, 'TW': flagTW, 'TH': flagTH,
+  'VN': flagVN, 'ID': flagID, 'MY': flagMY, 'PH': flagPH, 'TR': flagTR,
+  'AE': flagAE, 'IL': flagIL, 'ZA': flagZA, 'EG': flagEG,
+};
 
 // Generate a consistent color based on string
 const avatarColors = [
@@ -48,8 +101,24 @@ export default function StatsPage({ models }: StatsPageProps) {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [profiles, setProfiles] = useState<ProfileForStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [userStats, setUserStats] = useState<UserStats[]>([]);
+  const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
+
+  const toggleModelExpand = (modelKey: string) => {
+    setExpandedModels(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(modelKey)) {
+        newSet.delete(modelKey);
+      } else {
+        newSet.add(modelKey);
+      }
+      return newSet;
+    });
+  };
+
+  const getProfilesForModel = (userId: string, modelId: string | null) => {
+    return profiles.filter(p => p.userId === userId && (modelId ? p.modelId === modelId : !p.modelId));
+  };
 
   useEffect(() => {
     loadData();
@@ -172,17 +241,10 @@ export default function StatsPage({ models }: StatsPageProps) {
             <p style={{ color: 'var(--text-tertiary)' }}>No data yet</p>
           </div>
         ) : (
-          userStats.map(({ user, modelStats, totalProfiles, totalFarmedToday }) => (
+          userStats.map(({ user, modelStats, totalProfiles }) => (
             <div key={user.id} className="overflow-hidden" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
-              {/* User Row */}
-              <div
-                className="flex items-center gap-3 p-4 cursor-pointer hover:bg-black/5 transition-colors"
-                onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
-              >
-                <div style={{ color: 'var(--text-tertiary)' }}>
-                  {expandedUser === user.id ? <CaretDown size={16} /> : <CaretRight size={16} />}
-                </div>
-
+              {/* User Header */}
+              <div className="flex items-center gap-3 p-4">
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
                   style={{ background: getAvatarColor(user.username) }}
@@ -204,106 +266,217 @@ export default function StatsPage({ models }: StatsPageProps) {
                   </span>
                 </div>
 
-                {/* Summary chips */}
-                <div className="flex items-center gap-2">
-                  {totalProfiles > 0 && (
-                    <>
-                      {totalFarmedToday > 0 && (
-                        <span className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
-                          <CalendarCheck size={12} weight="bold" />
-                          {totalFarmedToday} today
-                        </span>
-                      )}
-                      <span className="text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
-                        {modelStats.reduce((sum, m) => sum + m.working, 0)} working
-                      </span>
-                      {modelStats.reduce((sum, m) => sum + m.banned, 0) > 0 && (
-                        <span className="text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
-                          {modelStats.reduce((sum, m) => sum + m.banned, 0)} banned
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
               </div>
 
-              {/* Expanded Model Stats */}
-              {expandedUser === user.id && (
-                <div className="px-4 pb-4 space-y-3">
-                  {modelStats.length === 0 ? (
-                    <p className="text-sm py-2" style={{ color: 'var(--text-tertiary)' }}>
-                      No browsers created yet
-                    </p>
-                  ) : (
-                    modelStats.map(stat => (
+              {/* Model Stats Table */}
+              {modelStats.length > 0 && (
+                <div className="px-4 pb-4">
+                  <div style={{ background: 'rgba(128, 128, 128, 0.06)', borderRadius: '20px', overflow: 'hidden' }}>
+                      {/* Table Header */}
                       <div
-                        key={stat.modelId || 'no-model'}
-                        className="p-4"
-                        style={{ background: 'var(--bg-tertiary)', borderRadius: '20px' }}
+                        className="grid text-xs font-medium py-4 px-5"
+                        style={{
+                          gridTemplateColumns: '1fr repeat(6, 90px)',
+                          color: 'var(--text-tertiary)',
+                          borderBottom: '1px solid var(--border)',
+                        }}
                       >
-                        {/* Model Header */}
-                        <div className="flex items-center gap-2 mb-3">
-                          <FolderSimple size={18} weight="bold" style={{ color: 'var(--text-secondary)' }} />
-                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                            {stat.modelName}
-                          </span>
-                        </div>
-
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-4 gap-2 mb-3">
-                          <div className="p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '14px' }}>
-                            <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>Total</p>
-                            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{stat.total}</p>
-                          </div>
-                          <div className="p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '14px' }}>
-                            <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: 'var(--text-tertiary)' }}>
-                              <CalendarCheck size={10} weight="bold" style={{ color: 'var(--accent-green)' }} />
-                              Farmed Today
-                            </p>
-                            <p className="text-lg font-bold" style={{ color: 'var(--accent-green)' }}>{stat.farmedToday}</p>
-                          </div>
-                          <div className="p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '14px' }}>
-                            <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: 'var(--text-tertiary)' }}>
-                              <ChartLineUp size={10} weight="bold" style={{ color: 'var(--accent-blue)' }} />
-                              Karma
-                            </p>
-                            <p className="text-lg font-bold" style={{ color: 'var(--accent-blue)' }}>{stat.totalKarma.toLocaleString()}</p>
-                          </div>
-                          <div className="p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '14px' }}>
-                            <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>Enabled</p>
-                            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{stat.enabled}</p>
-                          </div>
-                        </div>
-
-                        {/* Status Chips */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {stat.working > 0 && (
-                            <span className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
-                              <CheckCircle size={12} weight="bold" />
-                              {stat.working} working
-                            </span>
-                          )}
-                          {stat.banned > 0 && (
-                            <span className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
-                              <XCircle size={12} weight="bold" />
-                              {stat.banned} banned
-                            </span>
-                          )}
-                          {stat.error > 0 && (
-                            <span className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(255, 152, 0, 0.15)', color: '#FF9800' }}>
-                              <Warning size={12} weight="bold" />
-                              {stat.error} error
-                            </span>
-                          )}
-                          {stat.disabled > 0 && (
-                            <span className="text-xs px-3 py-1.5 rounded-full" style={{ background: 'var(--chip-bg)', color: 'var(--text-tertiary)' }}>
-                              {stat.disabled} disabled
-                            </span>
-                          )}
-                        </div>
+                        <div>Model</div>
+                        <div className="text-center">Browsers</div>
+                        <div className="text-center">Farmed Today</div>
+                        <div className="text-center">Karma Today</div>
+                        <div className="text-center">Total Karma</div>
+                        <div className="text-center">Working</div>
+                        <div className="text-center">Status</div>
                       </div>
-                    ))
-                  )}
+
+                      {/* Table Rows */}
+                      {modelStats.map((stat, index) => {
+                        const modelKey = `${user.id}-${stat.modelId || 'no-model'}`;
+                        const isExpanded = expandedModels.has(modelKey);
+                        const modelProfiles = getProfilesForModel(user.id, stat.modelId);
+                        const today = getTodayDate();
+
+                        return (
+                          <div key={stat.modelId || 'no-model'}>
+                            <div
+                              className="grid py-4 px-5 items-center cursor-pointer hover:bg-white/5 transition-colors"
+                              style={{
+                                gridTemplateColumns: '1fr repeat(6, 90px)',
+                                borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none',
+                              }}
+                              onClick={() => toggleModelExpand(modelKey)}
+                            >
+                              {/* Model Name */}
+                              <div className="flex items-center gap-2">
+                                {isExpanded ? (
+                                  <CaretDown size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
+                                ) : (
+                                  <CaretRight size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
+                                )}
+                                <FolderSimple size={16} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
+                                <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                                  {stat.modelName}
+                                </span>
+                              </div>
+
+                              {/* Browsers */}
+                              <div className="text-center text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                {stat.total}
+                              </div>
+
+                              {/* Farmed Today */}
+                              <div className="text-center text-sm font-medium" style={{ color: stat.farmedToday > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                                {stat.farmedToday}
+                              </div>
+
+                              {/* Karma Today - placeholder, needs DB tracking */}
+                              <div className="text-center text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                                -
+                              </div>
+
+                              {/* Total Karma */}
+                              <div className="text-center text-sm font-medium" style={{ color: stat.totalKarma > 0 ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>
+                                {stat.totalKarma > 0 ? stat.totalKarma.toLocaleString() : '-'}
+                              </div>
+
+                              {/* Working */}
+                              <div className="text-center text-sm font-medium" style={{ color: stat.working > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                                {stat.working}/{stat.enabled}
+                              </div>
+
+                              {/* Status */}
+                              <div className="flex justify-center gap-1">
+                                {stat.banned > 0 && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
+                                    {stat.banned}
+                                  </span>
+                                )}
+                                {stat.error > 0 && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255, 152, 0, 0.15)', color: '#FF9800' }}>
+                                    {stat.error}
+                                  </span>
+                                )}
+                                {stat.banned === 0 && stat.error === 0 && (
+                                  <CheckCircle size={16} weight="fill" style={{ color: 'var(--accent-green)' }} />
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Expanded Profiles List */}
+                            {isExpanded && (
+                              <div
+                                style={{
+                                  borderBottom: index < modelStats.length - 1 ? '1px solid var(--border)' : 'none',
+                                }}
+                              >
+                                {modelProfiles.map((profile, pIndex) => {
+                                  const karma = (profile.commentKarma || 0) + (profile.postKarma || 0);
+                                  const farmedToday = profile.lastCompletedDate === today;
+
+                                  return (
+                                    <div
+                                      key={profile.id}
+                                      className="grid py-3 px-5 pl-12 items-center"
+                                      style={{
+                                        gridTemplateColumns: '1fr repeat(6, 90px)',
+                                        borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none',
+                                      }}
+                                    >
+                                      {/* Profile Name with Flag */}
+                                      <div className="flex items-center gap-2">
+                                        {profile.country && countryFlagImages[profile.country] && (
+                                          <img
+                                            src={countryFlagImages[profile.country]}
+                                            alt={profile.country}
+                                            className="w-4 h-4 object-contain rounded-sm"
+                                          />
+                                        )}
+                                        <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                          {profile.name}
+                                        </span>
+                                      </div>
+
+                                      {/* Empty for Browsers column */}
+                                      <div></div>
+
+                                      {/* Farmed Today */}
+                                      <div className="text-center text-sm" style={{ color: farmedToday ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                                        {farmedToday ? '✓' : '-'}
+                                      </div>
+
+                                      {/* Karma Today */}
+                                      <div className="text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                                        -
+                                      </div>
+
+                                      {/* Total Karma */}
+                                      <div className="text-center text-sm" style={{ color: karma > 0 ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>
+                                        {karma > 0 ? karma.toLocaleString() : '-'}
+                                      </div>
+
+                                      {/* Status */}
+                                      <div className="text-center text-sm" style={{ color: profile.status === 'working' ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                                        {profile.isEnabled !== false ? (profile.status === 'working' ? 'Active' : '-') : 'Disabled'}
+                                      </div>
+
+                                      {/* Status Badge */}
+                                      <div className="flex justify-center">
+                                        {profile.status === 'banned' && (
+                                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
+                                            Banned
+                                          </span>
+                                        )}
+                                        {profile.status === 'error' && (
+                                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255, 152, 0, 0.15)', color: '#FF9800' }}>
+                                            Error
+                                          </span>
+                                        )}
+                                        {profile.status === 'working' && (
+                                          <CheckCircle size={14} weight="fill" style={{ color: 'var(--accent-green)' }} />
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Totals Row */}
+                      {modelStats.length > 1 && (
+                        <div
+                          className="grid py-4 px-5 items-center"
+                          style={{
+                            gridTemplateColumns: '1fr repeat(6, 90px)',
+                            background: 'rgba(128, 128, 128, 0.04)',
+                            borderTop: '1px solid var(--border)',
+                          }}
+                        >
+                          <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+                            Total
+                          </div>
+                          <div className="text-center text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                            {modelStats.reduce((sum, m) => sum + m.total, 0)}
+                          </div>
+                          <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-green)' }}>
+                            {modelStats.reduce((sum, m) => sum + m.farmedToday, 0)}
+                          </div>
+                          <div className="text-center text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                            -
+                          </div>
+                          <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-blue)' }}>
+                            {modelStats.reduce((sum, m) => sum + m.totalKarma, 0).toLocaleString()}
+                          </div>
+                          <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-green)' }}>
+                            {modelStats.reduce((sum, m) => sum + m.working, 0)}/{modelStats.reduce((sum, m) => sum + m.enabled, 0)}
+                          </div>
+                          <div></div>
+                        </div>
+                      )}
+                  </div>
                 </div>
               )}
             </div>

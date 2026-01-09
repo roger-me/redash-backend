@@ -187,7 +187,7 @@ export async function getAllProfilesForStats(): Promise<any[]> {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, name, model_id, status, is_enabled, comment_karma, post_karma, user_id, created_at')
+    .select('*')
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -203,5 +203,7 @@ export async function getAllProfilesForStats(): Promise<any[]> {
     postKarma: p.post_karma || 0,
     userId: p.user_id,
     createdAt: p.created_at,
+    country: p.country,
+    lastCompletedDate: p.last_completed_date,
   }));
 }

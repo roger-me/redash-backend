@@ -71,6 +71,8 @@ export interface ProfileForStats {
   postKarma: number;
   userId?: string;
   createdAt: string;
+  country?: string;
+  lastCompletedDate?: string;
 }
 
 export interface ElectronAPI {
