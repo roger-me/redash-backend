@@ -36,6 +36,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateModel: (id: string, updates: any) => ipcRenderer.invoke('models:update', id, updates),
   deleteModel: (id: string) => ipcRenderer.invoke('models:delete', id),
 
+  // Admin
+  adminListUsers: () => ipcRenderer.invoke('admin:listUsers'),
+  adminCreateUser: (username: string, password: string, role: 'admin' | 'basic') =>
+    ipcRenderer.invoke('admin:createUser', username, password, role),
+  adminUpdateUser: (userId: string, updates: { username?: string; password?: string; role?: 'admin' | 'basic' }) =>
+    ipcRenderer.invoke('admin:updateUser', userId, updates),
+  adminDeleteUser: (userId: string) => ipcRenderer.invoke('admin:deleteUser', userId),
+  adminGetUserModelAssignments: (userId: string) => ipcRenderer.invoke('admin:getUserModelAssignments', userId),
+  adminSetUserModelAssignments: (userId: string, modelIds: string[]) =>
+    ipcRenderer.invoke('admin:setUserModelAssignments', userId, modelIds),
+
   // Events
   onBrowserClosed: (callback: (profileId: string) => void) => {
     ipcRenderer.on('browser:closed', (_, profileId) => callback(profileId));

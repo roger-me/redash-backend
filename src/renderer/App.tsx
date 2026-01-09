@@ -7,16 +7,19 @@ import ModelModal from './components/ModelModal';
 import FlipperPage from './components/FlipperPage';
 import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
+import AdminPage from './components/AdminPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Plus, User, FolderSimple, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear } from '@phosphor-icons/react';
+import { ArrowsClockwise, Plus, User, FolderSimple, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear, ShieldCheck } from '@phosphor-icons/react';
 import AIPage from './components/AIPage';
 import SettingsPage from './components/SettingsPage';
 
-type Page = 'accounts' | 'flipper' | 'ai' | 'settings';
+type Page = 'accounts' | 'flipper' | 'ai' | 'settings' | 'admin';
 
 interface AuthUser {
   id: string;
+  username?: string;
   email?: string;
+  role: 'admin' | 'basic';
 }
 
 function App() {
@@ -174,8 +177,18 @@ function App() {
 
   const loadModels = async () => {
     try {
-      const data = await window.electronAPI?.listModels();
-      setModels(data || []);
+      const allModels = await window.electronAPI?.listModels();
+
+      // For basic users, filter to only assigned models
+      if (user?.role === 'basic' && user?.id) {
+        const assignedModelIds = await window.electronAPI?.adminGetUserModelAssignments(user.id);
+        const filteredModels = (allModels || []).filter((m: Model) =>
+          (assignedModelIds || []).includes(m.id)
+        );
+        setModels(filteredModels);
+      } else {
+        setModels(allModels || []);
+      }
     } catch (err) {
       console.error('Failed to load models:', err);
     }
@@ -510,6 +523,20 @@ function App() {
             <span className="text-sm font-medium">Settings</span>
           </button>
 
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => setCurrentPage('admin')}
+              className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
+              style={{
+                background: currentPage === 'admin' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                color: currentPage === 'admin' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              }}
+            >
+              <ShieldCheck size={20} weight={currentPage === 'admin' ? 'fill' : 'regular'} />
+              <span className="text-sm font-medium">Admin</span>
+            </button>
+          )}
+
           {/* Theme toggle, User & Version at bottom */}
           <div className="mt-auto pt-4 px-1">
             <div className="flex items-center justify-between">
@@ -526,14 +553,14 @@ function App() {
                   onClick={() => setShowUserMenu(!showUserMenu)}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:opacity-80"
                   style={{ background: 'var(--accent-blue)' }}
-                  title={user?.email || 'Account'}
+                  title={user?.username || 'Account'}
                 >
                   <User size={16} weight="bold" color="white" />
                 </button>
                 {showUserMenu && (
                   <div className="absolute bottom-10 right-0 w-48 py-2 rounded-xl shadow-lg z-50" style={{ background: 'var(--bg-tertiary)' }}>
                     <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
-                      <p className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>{user?.email || 'User'}</p>
+                      <p className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>{user?.username || 'User'}</p>
                     </div>
                     <button onClick={handleSignOut} className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-black/5" style={{ color: 'var(--accent-red)' }}>
                       <SignOut size={16} /> Sign Out
@@ -646,17 +673,19 @@ function App() {
                         <User size={16} weight="bold" />
                         New Account
                       </button>
-                      <button
-                        onClick={() => {
-                          setShowFabMenu(false);
-                          setShowModelModal(true);
-                        }}
-                        className="w-full px-3 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors"
-                        style={{ color: 'var(--text-primary)' }}
-                      >
-                        <FolderSimple size={16} weight="bold" />
-                        New Model
-                      </button>
+                      {user?.role === 'admin' && (
+                        <button
+                          onClick={() => {
+                            setShowFabMenu(false);
+                            setShowModelModal(true);
+                          }}
+                          className="w-full px-3 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          <FolderSimple size={16} weight="bold" />
+                          New Model
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -704,6 +733,9 @@ function App() {
         {currentPage === 'flipper' && <FlipperPage />}
         {currentPage === 'ai' && <AIPage />}
         {currentPage === 'settings' && <SettingsPage />}
+        {currentPage === 'admin' && user?.role === 'admin' && (
+          <AdminPage models={models} currentUserId={user.id} />
+        )}
       </div>
 
       {/* Browser Panel - Right side */}

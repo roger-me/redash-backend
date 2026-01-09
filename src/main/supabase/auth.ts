@@ -1,7 +1,7 @@
 import { getSupabaseClient, authStore } from './client';
 
 export interface AuthResult {
-  user: { id: string; username: string } | null;
+  user: { id: string; username: string; role: 'admin' | 'basic' } | null;
   error?: string;
 }
 
@@ -21,9 +21,10 @@ export async function getSession(): Promise<AuthResult> {
   try {
     const userId = authStore.get('userId') as string | undefined;
     const username = authStore.get('username') as string | undefined;
+    const role = (authStore.get('role') as 'admin' | 'basic') || 'basic';
 
     if (userId && username) {
-      return { user: { id: userId, username } };
+      return { user: { id: userId, username, role } };
     }
 
     return { user: null };
@@ -40,7 +41,7 @@ export async function signInWithEmail(username: string, password: string): Promi
 
     const { data, error } = await supabase
       .from('app_users')
-      .select('id, username, password')
+      .select('id, username, password, role')
       .eq('username', username.toLowerCase().trim())
       .single();
 
@@ -52,20 +53,23 @@ export async function signInWithEmail(username: string, password: string): Promi
       return { user: null, error: 'Invalid username or password' };
     }
 
+    const role = (data.role as 'admin' | 'basic') || 'basic';
+
     // Store session locally
     authStore.set('userId', data.id);
     authStore.set('username', data.username);
+    authStore.set('role', role);
 
     return {
-      user: { id: data.id, username: data.username },
+      user: { id: data.id, username: data.username, role },
     };
   } catch (err) {
     return { user: null, error: (err as Error).message };
   }
 }
 
-// Sign up - not used, users created manually
-export async function signUp(username: string, password: string): Promise<AuthResult> {
+// Sign up - not used, users created by admin
+export async function signUp(username: string, password: string, role: 'admin' | 'basic' = 'basic'): Promise<AuthResult> {
   try {
     const supabase = getSupabaseClient();
     const hashedPassword = hashPassword(password);
@@ -75,6 +79,7 @@ export async function signUp(username: string, password: string): Promise<AuthRe
       .insert({
         username: username.toLowerCase().trim(),
         password: hashedPassword,
+        role,
       })
       .select()
       .single();
@@ -86,12 +91,8 @@ export async function signUp(username: string, password: string): Promise<AuthRe
       return { user: null, error: error.message };
     }
 
-    // Store session locally
-    authStore.set('userId', data.id);
-    authStore.set('username', data.username);
-
     return {
-      user: { id: data.id, username: data.username },
+      user: { id: data.id, username: data.username, role: data.role || 'basic' },
     };
   } catch (err) {
     return { user: null, error: (err as Error).message };
@@ -103,6 +104,7 @@ export async function signOut(): Promise<{ error?: string }> {
   try {
     authStore.delete('userId');
     authStore.delete('username');
+    authStore.delete('role');
     return {};
   } catch (err) {
     return { error: (err as Error).message };
@@ -125,8 +127,8 @@ export function onAuthStateChange(_callback: (event: string, session: any) => vo
 }
 
 // Helper to create a user (for admin use)
-export async function createUser(username: string, password: string): Promise<AuthResult> {
-  return signUp(username, password);
+export async function createUser(username: string, password: string, role: 'admin' | 'basic' = 'basic'): Promise<AuthResult> {
+  return signUp(username, password, role);
 }
 
 // Helper to hash password (export for creating users)

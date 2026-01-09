@@ -9,6 +9,7 @@ import { processFiles, isValidFlipperFile } from './flipper';
 // Supabase imports
 import { getSession, signInWithEmail, signUp, signOut, resetPassword, signInWithGoogle, onAuthStateChange } from './supabase/auth';
 import * as db from './supabase/database';
+import * as admin from './supabase/admin';
 
 // Updater
 import { initUpdater } from './updater';
@@ -660,6 +661,36 @@ ipcMain.handle('models:update', async (_, modelId: string, updates: Partial<Mode
 
 ipcMain.handle('models:delete', async (_, modelId: string) => {
   return db.deleteModel(modelId);
+});
+
+// Admin IPC Handlers
+ipcMain.handle('admin:listUsers', async () => {
+  try {
+    return await admin.listUsers();
+  } catch (error) {
+    console.error('Failed to list users:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('admin:createUser', async (_, username: string, password: string, role: 'admin' | 'basic') => {
+  return admin.createAppUser(username, password, role);
+});
+
+ipcMain.handle('admin:updateUser', async (_, userId: string, updates: { username?: string; password?: string; role?: 'admin' | 'basic' }) => {
+  return admin.updateAppUser(userId, updates);
+});
+
+ipcMain.handle('admin:deleteUser', async (_, userId: string) => {
+  return admin.deleteAppUser(userId);
+});
+
+ipcMain.handle('admin:getUserModelAssignments', async (_, userId: string) => {
+  return admin.getUserModelAssignments(userId);
+});
+
+ipcMain.handle('admin:setUserModelAssignments', async (_, userId: string, modelIds: string[]) => {
+  return admin.setUserModelAssignments(userId, modelIds);
 });
 
 // Fetch Reddit karma for a username

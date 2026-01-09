@@ -44,13 +44,21 @@ export interface Profile {
 
 export interface AuthUser {
   id: string;
+  username?: string;
   email?: string;
+  role: 'admin' | 'basic';
 }
 
 export interface AuthResult {
   user: AuthUser | null;
-  session: any;
   error?: string;
+}
+
+export interface AppUser {
+  id: string;
+  username: string;
+  role: 'admin' | 'basic';
+  created_at: string;
 }
 
 export interface ElectronAPI {
@@ -84,6 +92,14 @@ export interface ElectronAPI {
   createModel: (model: Omit<Model, 'id' | 'createdAt'>) => Promise<Model>;
   updateModel: (id: string, updates: Partial<Model>) => Promise<Model>;
   deleteModel: (id: string) => Promise<boolean>;
+
+  // Admin
+  adminListUsers: () => Promise<AppUser[]>;
+  adminCreateUser: (username: string, password: string, role: 'admin' | 'basic') => Promise<AppUser>;
+  adminUpdateUser: (userId: string, updates: { username?: string; password?: string; role?: 'admin' | 'basic' }) => Promise<AppUser>;
+  adminDeleteUser: (userId: string) => Promise<boolean>;
+  adminGetUserModelAssignments: (userId: string) => Promise<string[]>;
+  adminSetUserModelAssignments: (userId: string, modelIds: string[]) => Promise<boolean>;
 
   // Updater
   checkForUpdates: () => Promise<{ success: boolean; updateInfo?: any; error?: string }>;
