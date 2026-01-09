@@ -123,6 +123,8 @@ export interface ElectronAPI {
   adminGetUserModelAssignments: (userId: string) => Promise<string[]>;
   adminSetUserModelAssignments: (userId: string, modelIds: string[]) => Promise<boolean>;
   adminGetAllProfilesForStats: () => Promise<ProfileForStats[]>;
+  adminGetAllModels: () => Promise<Model[]>;
+  adminGetAllProfiles: () => Promise<Profile[]>;
 
   // Updater
   checkForUpdates: () => Promise<{ success: boolean; updateInfo?: any; error?: string }>;

@@ -596,12 +596,13 @@ export default function AdminPage({
       <div className="flex items-center justify-between mb-6">
         <div
           className="inline-flex p-1 gap-1"
-          style={{ background: 'var(--chip-bg)', borderRadius: '12px' }}
+          style={{ background: 'var(--chip-bg)', borderRadius: '100px' }}
         >
           <button
             onClick={() => setActiveTab('stats')}
-            className="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
+            className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
+              borderRadius: '100px',
               background: activeTab === 'stats' ? 'var(--bg-secondary)' : 'transparent',
               color: activeTab === 'stats' ? 'var(--text-primary)' : 'var(--text-tertiary)',
               boxShadow: activeTab === 'stats' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
@@ -612,8 +613,9 @@ export default function AdminPage({
           </button>
           <button
             onClick={() => setActiveTab('users')}
-            className="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
+            className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
+              borderRadius: '100px',
               background: activeTab === 'users' ? 'var(--bg-secondary)' : 'transparent',
               color: activeTab === 'users' ? 'var(--text-primary)' : 'var(--text-tertiary)',
               boxShadow: activeTab === 'users' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
@@ -624,8 +626,9 @@ export default function AdminPage({
           </button>
           <button
             onClick={() => setActiveTab('models')}
-            className="px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors"
+            className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
+              borderRadius: '100px',
               background: activeTab === 'models' ? 'var(--bg-secondary)' : 'transparent',
               color: activeTab === 'models' ? 'var(--text-primary)' : 'var(--text-tertiary)',
               boxShadow: activeTab === 'models' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
@@ -953,7 +956,23 @@ export default function AdminPage({
 
                 {expandedUser === user.id && user.role === 'admin' && (
                   <div className="px-4 pb-4 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Administrators have access to all models and can manage users.</p>
+                    <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Full Access to All Models</p>
+                    {models.length === 0 ? (
+                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No models created yet.</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {models.map(model => (
+                          <div
+                            key={model.id}
+                            className="h-9 px-4 rounded-full text-sm font-medium flex items-center gap-2"
+                            style={{ background: 'var(--accent-blue)', color: 'white' }}
+                          >
+                            {model.name}
+                            <Check size={14} weight="bold" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

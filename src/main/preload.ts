@@ -51,6 +51,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   adminSetUserModelAssignments: (userId: string, modelIds: string[]) =>
     ipcRenderer.invoke('admin:setUserModelAssignments', userId, modelIds),
   adminGetAllProfilesForStats: () => ipcRenderer.invoke('admin:getAllProfilesForStats'),
+  adminGetAllModels: () => ipcRenderer.invoke('admin:getAllModels'),
+  adminGetAllProfiles: () => ipcRenderer.invoke('admin:getAllProfiles'),
 
   // Events
   onBrowserClosed: (callback: (profileId: string) => void) => {

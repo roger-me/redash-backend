@@ -724,6 +724,24 @@ ipcMain.handle('admin:getAllProfilesForStats', async () => {
   }
 });
 
+ipcMain.handle('admin:getAllModels', async () => {
+  try {
+    return await admin.getAllModels();
+  } catch (error) {
+    console.error('Failed to get all models:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('admin:getAllProfiles', async () => {
+  try {
+    return await admin.getAllProfiles();
+  } catch (error) {
+    console.error('Failed to get all profiles:', error);
+    return [];
+  }
+});
+
 // Fetch Reddit karma for a username
 ipcMain.handle('reddit:fetchKarma', async (_, username: string) => {
   return new Promise((resolve) => {

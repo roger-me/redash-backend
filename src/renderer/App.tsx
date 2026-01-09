@@ -9,7 +9,7 @@ import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Plus, User, FolderSimple, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear, ShieldCheck } from '@phosphor-icons/react';
+import { ArrowsClockwise, Plus, User, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear, ShieldCheck } from '@phosphor-icons/react';
 import AIPage from './components/AIPage';
 import SettingsPage from './components/SettingsPage';
 
@@ -39,8 +39,7 @@ function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [showFabMenu, setShowFabMenu] = useState(false);
-  const [showModelModal, setShowModelModal] = useState(false);
-  const [editingModel, setEditingModel] = useState<Model | null>(null);
+    const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [createInModelId, setCreateInModelId] = useState<string | undefined>(undefined);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [lastSyncLabel, setLastSyncLabel] = useState<string>('');
@@ -133,13 +132,31 @@ function App() {
     }
   }, [user?.id, user?.role]);
 
-  // Load data when authenticated
+  // Load data when authenticated and user role is known
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user) return;
 
     const init = async () => {
-      await loadProfiles();
-      await loadModels();
+      // Admin users get all data, basic users get filtered data
+      if (user.role === 'admin') {
+        const [profilesData, modelsData] = await Promise.all([
+          window.electronAPI?.adminGetAllProfiles(),
+          window.electronAPI?.adminGetAllModels(),
+        ]);
+        setProfiles(profilesData || []);
+        setModels(modelsData || []);
+      } else {
+        const [profilesData, modelsData, assignedIds] = await Promise.all([
+          window.electronAPI?.listProfiles(),
+          window.electronAPI?.listModels(),
+          window.electronAPI?.adminGetUserModelAssignments(user.id),
+        ]);
+        setProfiles(profilesData || []);
+        const filteredModels = (modelsData || []).filter((m: Model) =>
+          (assignedIds || []).includes(m.id)
+        );
+        setModels(filteredModels);
+      }
       await loadActiveBrowsers();
       await syncRedditKarma();
     };
@@ -160,7 +177,7 @@ function App() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.role]);
 
   // Update relative time label periodically
   useEffect(() => {
@@ -197,7 +214,10 @@ function App() {
 
   const loadProfiles = async () => {
     try {
-      const data = await window.electronAPI?.listProfiles();
+      // Admin users get ALL profiles
+      const data = user?.role === 'admin'
+        ? await window.electronAPI?.adminGetAllProfiles()
+        : await window.electronAPI?.listProfiles();
       setProfiles(data || []);
     } catch (err) {
       console.error('Failed to load profiles:', err);
@@ -206,16 +226,19 @@ function App() {
 
   const loadModels = async () => {
     try {
-      const allModels = await window.electronAPI?.listModels();
-
-      // For basic users, filter to only assigned models
-      if (user?.role === 'basic' && user?.id) {
+      // Admin users get ALL models, basic users get filtered list
+      if (user?.role === 'admin') {
+        const allModels = await window.electronAPI?.adminGetAllModels();
+        setModels(allModels || []);
+      } else if (user?.role === 'basic' && user?.id) {
+        const allModels = await window.electronAPI?.listModels();
         const assignedModelIds = await window.electronAPI?.adminGetUserModelAssignments(user.id);
         const filteredModels = (allModels || []).filter((m: Model) =>
           (assignedModelIds || []).includes(m.id)
         );
         setModels(filteredModels);
       } else {
+        const allModels = await window.electronAPI?.listModels();
         setModels(allModels || []);
       }
     } catch (err) {
@@ -403,16 +426,6 @@ function App() {
     }
   };
 
-  const handleCreateModel = async (name: string, profilePicture?: string) => {
-    try {
-      await window.electronAPI?.createModel({ name, isExpanded: true, profilePicture });
-      await loadModels();
-      setShowModelModal(false);
-    } catch (err) {
-      console.error('Failed to create model:', err);
-    }
-  };
-
   const handleUpdateModel = async (name: string, profilePicture?: string) => {
     if (!editingModel) return;
     try {
@@ -462,7 +475,7 @@ function App() {
     }
   };
 
-  const desktopProfiles = profiles.filter(p => p.type === 'desktop');
+  const desktopProfiles = profiles.filter(p => !p.type || p.type === 'desktop');
 
   // Loading state
   if (isAuthenticated === null) {
@@ -726,19 +739,6 @@ function App() {
                           No models assigned
                         </div>
                       )}
-                      {user?.role === 'admin' && (
-                        <button
-                          onClick={() => {
-                            setShowFabMenu(false);
-                            setShowModelModal(true);
-                          }}
-                          className="w-full px-3 py-2.5 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors"
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          <FolderSimple size={16} weight="bold" />
-                          New Model
-                        </button>
-                      )}
                     </div>
                   )}
                 </div>
@@ -840,15 +840,6 @@ function App() {
           models={availableModels}
           onClose={() => setEditingProfile(null)}
           onSave={handleUpdateProfile}
-        />
-      )}
-
-      {/* Create Model Modal */}
-      {showModelModal && (
-        <ModelModal
-          mode="create"
-          onClose={() => setShowModelModal(false)}
-          onSave={handleCreateModel}
         />
       )}
 

@@ -209,3 +209,51 @@ export async function getAllProfilesForStats(): Promise<any[]> {
     expiresAt: p.expires_at,
   }));
 }
+
+export async function getAllModels(): Promise<any[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('models')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map((m: any) => ({
+    id: m.id,
+    name: m.name,
+    isExpanded: m.is_expanded !== false,
+    profilePicture: m.profile_picture,
+    createdAt: m.created_at,
+    userId: m.user_id,
+  }));
+}
+
+export async function getAllProfiles(): Promise<any[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type || 'desktop',
+    modelId: p.model_id,
+    status: p.status,
+    isEnabled: p.is_enabled,
+    commentKarma: p.comment_karma || 0,
+    postKarma: p.post_karma || 0,
+    userId: p.user_id,
+    createdAt: p.created_at,
+    country: p.country,
+    proxy: p.proxy,
+    credentials: p.credentials,
+    accountName: p.account_name,
+    purchaseDate: p.purchase_date,
+    lastCompletedDate: p.last_completed_date,
+    postsToday: p.posts_today || 0,
+    commentsToday: p.comments_today || 0,
+    expiresAt: p.expires_at,
+  }));
+}
