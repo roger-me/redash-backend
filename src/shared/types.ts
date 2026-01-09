@@ -40,6 +40,7 @@ export interface Profile {
   lastCompletedDate?: string;
   profilePicture?: string;
   createdAt: string;
+  deletedAt?: string;
 }
 
 export interface AuthUser {
@@ -91,6 +92,9 @@ export interface ElectronAPI {
   createProfile: (profile: Omit<Profile, 'id' | 'createdAt'>) => Promise<Profile>;
   updateProfile: (id: string, updates: Partial<Profile>) => Promise<Profile>;
   deleteProfile: (id: string) => Promise<boolean>;
+  listDeletedProfiles: () => Promise<Profile[]>;
+  restoreProfile: (id: string) => Promise<boolean>;
+  permanentDeleteProfile: (id: string) => Promise<boolean>;
 
   // Browser
   launchBrowser: (profileId: string) => Promise<{ success: boolean }>;

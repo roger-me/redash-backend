@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { FolderSimple, CircleNotch, User, CaretDown, CaretRight, ArrowsClockwise, Plus } from '@phosphor-icons/react';
-import { Model, AppUser, ProfileForStats } from '../../shared/types';
+import { FolderSimple, CircleNotch, User, CaretDown, CaretRight, ArrowsClockwise, Plus, Trash, ArrowCounterClockwise, X } from '@phosphor-icons/react';
+import { Model, AppUser, ProfileForStats, Profile } from '../../shared/types';
 
 // Flag PNG imports
 import flagUS from '../assets/flags/US.png';
@@ -109,6 +109,8 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
   const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const [lastRefreshLabel, setLastRefreshLabel] = useState<string>('');
+  const [showTrash, setShowTrash] = useState(false);
+  const [deletedProfiles, setDeletedProfiles] = useState<Profile[]>([]);
 
   // Helper to format relative time
   const getRelativeTime = (date: Date): string => {
@@ -201,6 +203,59 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const loadDeletedProfiles = async () => {
+    try {
+      const deleted = await window.electronAPI?.listDeletedProfiles();
+      setDeletedProfiles(deleted || []);
+    } catch (err) {
+      console.error('Failed to load deleted profiles:', err);
+    }
+  };
+
+  const handleOpenTrash = async () => {
+    await loadDeletedProfiles();
+    setShowTrash(true);
+  };
+
+  const handleDeleteProfile = async (profileId: string) => {
+    if (!confirm('Move this account to trash?')) return;
+    try {
+      await window.electronAPI?.deleteProfile(profileId);
+      await handleRefresh();
+    } catch (err) {
+      console.error('Failed to delete profile:', err);
+    }
+  };
+
+  const handleRestoreProfile = async (profileId: string) => {
+    try {
+      await window.electronAPI?.restoreProfile(profileId);
+      await loadDeletedProfiles();
+      await handleRefresh();
+    } catch (err) {
+      console.error('Failed to restore profile:', err);
+    }
+  };
+
+  const handlePermanentDelete = async (profileId: string) => {
+    if (!confirm('Permanently delete this account? This cannot be undone.')) return;
+    try {
+      await window.electronAPI?.permanentDeleteProfile(profileId);
+      await loadDeletedProfiles();
+    } catch (err) {
+      console.error('Failed to permanently delete profile:', err);
+    }
+  };
+
+  const getDaysRemaining = (deletedAt: string): number => {
+    const deleted = new Date(deletedAt);
+    const expiry = new Date(deleted);
+    expiry.setDate(expiry.getDate() + 30);
+    const now = new Date();
+    const diffMs = expiry.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
   };
 
   const calculateStats = () => {
@@ -299,29 +354,46 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           Statistics
         </h1>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="h-9 px-3 flex items-center gap-2 transition-colors"
-          style={{
-            background: 'var(--chip-bg)',
-            borderRadius: '100px',
-            color: 'var(--text-primary)',
-            opacity: refreshing ? 0.5 : 1,
-          }}
-          title="Refresh stats"
-        >
-          <ArrowsClockwise
-            size={16}
-            weight="bold"
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleOpenTrash}
+            className="h-9 px-3 flex items-center gap-2 transition-colors"
             style={{
-              animation: refreshing ? 'spin 1s linear infinite' : 'none',
+              background: 'var(--chip-bg)',
+              borderRadius: '100px',
+              color: 'var(--text-primary)',
             }}
-          />
-          {lastRefreshLabel && (
-            <span className="text-sm font-medium">{lastRefreshLabel}</span>
-          )}
-        </button>
+            title="View trash"
+          >
+            <Trash size={16} weight="bold" />
+            {deletedProfiles.length > 0 && (
+              <span className="text-sm font-medium">{deletedProfiles.length}</span>
+            )}
+          </button>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="h-9 px-3 flex items-center gap-2 transition-colors"
+            style={{
+              background: 'var(--chip-bg)',
+              borderRadius: '100px',
+              color: 'var(--text-primary)',
+              opacity: refreshing ? 0.5 : 1,
+            }}
+            title="Refresh stats"
+          >
+            <ArrowsClockwise
+              size={16}
+              weight="bold"
+              style={{
+                animation: refreshing ? 'spin 1s linear infinite' : 'none',
+              }}
+            />
+            {lastRefreshLabel && (
+              <span className="text-sm font-medium">{lastRefreshLabel}</span>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -387,7 +459,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                       <div
                         className="grid text-xs font-medium py-4 px-5"
                         style={{
-                          gridTemplateColumns: '1fr repeat(5, 90px)',
+                          gridTemplateColumns: '1fr repeat(5, 90px) 50px',
                           color: 'var(--text-tertiary)',
                           borderBottom: '1px solid var(--border)',
                         }}
@@ -398,6 +470,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                         <div className="text-center">Comments Today</div>
                         <div className="text-center">Total Karma</div>
                         <div className="text-center">Status</div>
+                        <div></div>
                       </div>
 
                       {/* Table Rows */}
@@ -411,7 +484,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                             <div
                               className="grid py-4 px-5 items-center cursor-pointer hover:bg-white/5 transition-colors"
                               style={{
-                                gridTemplateColumns: '1fr repeat(5, 90px)',
+                                gridTemplateColumns: '1fr repeat(5, 90px) 50px',
                                 borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none',
                               }}
                               onClick={() => toggleModelExpand(modelKey)}
@@ -450,23 +523,12 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                               </div>
 
                               {/* Status */}
-                              <div className="flex justify-center gap-1">
-                                {stat.working > 0 && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
-                                    {stat.working}
-                                  </span>
-                                )}
-                                {stat.banned > 0 && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
-                                    {stat.banned}
-                                  </span>
-                                )}
-                                {stat.error > 0 && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255, 152, 0, 0.15)', color: '#FF9800' }}>
-                                    {stat.error}
-                                  </span>
-                                )}
+                              <div className="text-center text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                                {stat.working}/{stat.total}
                               </div>
+
+                              {/* Empty for action column */}
+                              <div></div>
                             </div>
 
                             {/* Expanded Profiles List */}
@@ -484,7 +546,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                                       key={profile.id}
                                       className="grid py-3 px-5 pl-12 items-center"
                                       style={{
-                                        gridTemplateColumns: '1fr repeat(5, 90px)',
+                                        gridTemplateColumns: '1fr repeat(5, 90px) 50px',
                                         borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none',
                                       }}
                                     >
@@ -543,6 +605,21 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                                           </span>
                                         )}
                                       </div>
+
+                                      {/* Delete Button */}
+                                      <div className="flex justify-center">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteProfile(profile.id);
+                                          }}
+                                          className="p-1 rounded hover:bg-white/10 transition-colors"
+                                          style={{ color: 'var(--text-tertiary)' }}
+                                          title="Delete"
+                                        >
+                                          <Trash size={14} />
+                                        </button>
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -557,7 +634,7 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                         <div
                           className="grid py-4 px-5 items-center"
                           style={{
-                            gridTemplateColumns: '1fr repeat(5, 90px)',
+                            gridTemplateColumns: '1fr repeat(5, 90px) 50px',
                             background: 'rgba(128, 128, 128, 0.04)',
                             borderTop: '1px solid var(--border)',
                           }}
@@ -577,6 +654,9 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-blue)' }}>
                             {modelStats.reduce((sum, m) => sum + m.totalKarma, 0).toLocaleString()}
                           </div>
+                          <div className="text-center text-sm font-bold" style={{ color: 'var(--text-tertiary)' }}>
+                            {modelStats.reduce((sum, m) => sum + m.working, 0)}/{modelStats.reduce((sum, m) => sum + m.total, 0)}
+                          </div>
                           <div></div>
                         </div>
                       )}
@@ -587,6 +667,86 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
           ))
         )}
       </div>
+
+      {/* Trash Modal */}
+      {showTrash && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-2xl max-h-[80vh] flex flex-col" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+            <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-3">
+                <Trash size={24} weight="bold" style={{ color: 'var(--text-primary)' }} />
+                <div>
+                  <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Trash</h2>
+                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                    Items are permanently deleted after 30 days
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowTrash(false)} style={{ color: 'var(--text-tertiary)' }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6">
+              {deletedProfiles.length === 0 ? (
+                <div className="text-center py-12">
+                  <Trash size={48} weight="light" style={{ color: 'var(--text-tertiary)' }} className="mx-auto mb-3" />
+                  <p style={{ color: 'var(--text-tertiary)' }}>Trash is empty</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {deletedProfiles.map(profile => {
+                    const daysLeft = getDaysRemaining(profile.deletedAt || '');
+                    return (
+                      <div
+                        key={profile.id}
+                        className="flex items-center gap-3 p-4"
+                        style={{ background: 'var(--bg-tertiary)', borderRadius: '16px' }}
+                      >
+                        {profile.country && countryFlagImages[profile.country] && (
+                          <img
+                            src={countryFlagImages[profile.country]}
+                            alt={profile.country}
+                            className="w-5 h-5 object-contain rounded-sm"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {profile.name}
+                          </span>
+                          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                            {daysLeft} days remaining
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleRestoreProfile(profile.id)}
+                            className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors"
+                            style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}
+                            title="Restore"
+                          >
+                            <ArrowCounterClockwise size={14} weight="bold" />
+                            Restore
+                          </button>
+                          <button
+                            onClick={() => handlePermanentDelete(profile.id)}
+                            className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors"
+                            style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}
+                            title="Delete permanently"
+                          >
+                            <Trash size={14} weight="bold" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

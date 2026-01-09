@@ -196,12 +196,25 @@ ipcMain.handle('profiles:update', async (_, profileId: string, updates: any) => 
 });
 
 ipcMain.handle('profiles:delete', async (_, profileId: string) => {
-  // Clean up local browser data
+  // Soft delete - don't remove local files yet
+  return db.deleteProfile(profileId);
+});
+
+ipcMain.handle('profiles:listDeleted', async () => {
+  return db.listDeletedProfiles();
+});
+
+ipcMain.handle('profiles:restore', async (_, profileId: string) => {
+  return db.restoreProfile(profileId);
+});
+
+ipcMain.handle('profiles:permanentDelete', async (_, profileId: string) => {
+  // Clean up local browser data on permanent delete
   const profileDataPath = path.join(getDataPath(), 'profiles', profileId);
   if (fs.existsSync(profileDataPath)) {
     fs.rmSync(profileDataPath, { recursive: true });
   }
-  return db.deleteProfile(profileId);
+  return db.permanentDeleteProfile(profileId);
 });
 
 // Embedded browser state
