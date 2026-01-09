@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CaretDown, CaretRight, FolderSimple, CheckCircle, XCircle, Warning, CircleNotch, User } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, FolderSimple, CheckCircle, XCircle, Warning, CircleNotch, User, CalendarCheck, ChartLineUp } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats } from '../../shared/types';
 
 // Generate a consistent color based on string
@@ -17,6 +17,8 @@ const getAvatarColor = (name: string): string => {
   return avatarColors[Math.abs(hash) % avatarColors.length];
 };
 
+const getTodayDate = () => new Date().toISOString().split('T')[0];
+
 interface StatsPageProps {
   models: Model[];
 }
@@ -31,12 +33,15 @@ interface ModelStats {
   enabled: number;
   disabled: number;
   totalKarma: number;
+  farmedToday: number;
 }
 
 interface UserStats {
   user: AppUser;
   modelStats: ModelStats[];
   totalProfiles: number;
+  totalFarmedToday: number;
+  totalKarma: number;
 }
 
 export default function StatsPage({ models }: StatsPageProps) {
@@ -72,13 +77,15 @@ export default function StatsPage({ models }: StatsPageProps) {
   };
 
   const calculateStats = () => {
+    const today = getTodayDate();
+
     const stats: UserStats[] = users.map(user => {
       // Get profiles for this user
       const userProfiles = profiles.filter(p => p.userId === user.id);
 
       // Group by model
       const modelGroups = new Map<string | null, ProfileForStats[]>();
-      
+
       userProfiles.forEach(profile => {
         const key = profile.modelId || null;
         if (!modelGroups.has(key)) {
@@ -89,9 +96,17 @@ export default function StatsPage({ models }: StatsPageProps) {
 
       // Calculate stats per model
       const modelStats: ModelStats[] = [];
-      
+      let totalFarmedToday = 0;
+      let totalKarma = 0;
+
       modelGroups.forEach((groupProfiles, modelId) => {
         const model = models.find(m => m.id === modelId);
+        const farmedToday = groupProfiles.filter(p => p.lastCompletedDate === today).length;
+        const karma = groupProfiles.reduce((sum, p) => sum + (p.commentKarma || 0) + (p.postKarma || 0), 0);
+
+        totalFarmedToday += farmedToday;
+        totalKarma += karma;
+
         modelStats.push({
           modelId,
           modelName: model?.name || 'No Model',
@@ -101,7 +116,8 @@ export default function StatsPage({ models }: StatsPageProps) {
           error: groupProfiles.filter(p => p.status === 'error').length,
           enabled: groupProfiles.filter(p => p.isEnabled !== false).length,
           disabled: groupProfiles.filter(p => p.isEnabled === false).length,
-          totalKarma: groupProfiles.reduce((sum, p) => sum + (p.commentKarma || 0) + (p.postKarma || 0), 0),
+          totalKarma: karma,
+          farmedToday,
         });
       });
 
@@ -112,12 +128,22 @@ export default function StatsPage({ models }: StatsPageProps) {
         user,
         modelStats,
         totalProfiles: userProfiles.length,
+        totalFarmedToday,
+        totalKarma,
       };
     });
 
     // Sort by total profiles desc
     stats.sort((a, b) => b.totalProfiles - a.totalProfiles);
     setUserStats(stats);
+  };
+
+  // Calculate global stats
+  const globalStats = {
+    totalBrowsers: profiles.length,
+    totalFarmedToday: profiles.filter(p => p.lastCompletedDate === getTodayDate()).length,
+    totalKarma: profiles.reduce((sum, p) => sum + (p.commentKarma || 0) + (p.postKarma || 0), 0),
+    totalWorking: profiles.filter(p => p.status === 'working').length,
   };
 
   if (loading) {
@@ -139,18 +165,18 @@ export default function StatsPage({ models }: StatsPageProps) {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {userStats.length === 0 ? (
           <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <User size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
             <p style={{ color: 'var(--text-tertiary)' }}>No data yet</p>
           </div>
         ) : (
-          userStats.map(({ user, modelStats, totalProfiles }) => (
+          userStats.map(({ user, modelStats, totalProfiles, totalFarmedToday }) => (
             <div key={user.id} className="overflow-hidden" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
               {/* User Row */}
               <div
-                className="flex items-center gap-3 p-4 cursor-pointer hover:bg-black/5"
+                className="flex items-center gap-3 p-4 cursor-pointer hover:bg-black/5 transition-colors"
                 onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
               >
                 <div style={{ color: 'var(--text-tertiary)' }}>
@@ -182,11 +208,17 @@ export default function StatsPage({ models }: StatsPageProps) {
                 <div className="flex items-center gap-2">
                   {totalProfiles > 0 && (
                     <>
-                      <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.2)', color: '#4CAF50' }}>
+                      {totalFarmedToday > 0 && (
+                        <span className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
+                          <CalendarCheck size={12} weight="bold" />
+                          {totalFarmedToday} today
+                        </span>
+                      )}
+                      <span className="text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
                         {modelStats.reduce((sum, m) => sum + m.working, 0)} working
                       </span>
                       {modelStats.reduce((sum, m) => sum + m.banned, 0) > 0 && (
-                        <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.2)', color: '#F44336' }}>
+                        <span className="text-xs px-3 py-1.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
                           {modelStats.reduce((sum, m) => sum + m.banned, 0)} banned
                         </span>
                       )}
@@ -197,7 +229,7 @@ export default function StatsPage({ models }: StatsPageProps) {
 
               {/* Expanded Model Stats */}
               {expandedUser === user.id && (
-                <div className="px-4 pb-4 space-y-2">
+                <div className="px-4 pb-4 space-y-3">
                   {modelStats.length === 0 ? (
                     <p className="text-sm py-2" style={{ color: 'var(--text-tertiary)' }}>
                       No browsers created yet
@@ -206,58 +238,66 @@ export default function StatsPage({ models }: StatsPageProps) {
                     modelStats.map(stat => (
                       <div
                         key={stat.modelId || 'no-model'}
-                        className="flex items-center gap-3 p-3 rounded-lg"
-                        style={{ background: 'var(--bg-tertiary)' }}
+                        className="p-4"
+                        style={{ background: 'var(--bg-tertiary)', borderRadius: '20px' }}
                       >
-                        <FolderSimple size={18} style={{ color: 'var(--text-tertiary)' }} />
-                        <span className="font-medium text-sm min-w-[120px]" style={{ color: 'var(--text-primary)' }}>
-                          {stat.modelName}
-                        </span>
-
-                        <div className="flex items-center gap-2 flex-wrap flex-1">
-                          {/* Total */}
-                          <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'var(--chip-bg)', color: 'var(--text-secondary)' }}>
-                            {stat.total} total
+                        {/* Model Header */}
+                        <div className="flex items-center gap-2 mb-3">
+                          <FolderSimple size={18} weight="bold" style={{ color: 'var(--text-secondary)' }} />
+                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            {stat.modelName}
                           </span>
+                        </div>
 
-                          {/* Working */}
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-4 gap-2 mb-3">
+                          <div className="p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '14px' }}>
+                            <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>Total</p>
+                            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{stat.total}</p>
+                          </div>
+                          <div className="p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '14px' }}>
+                            <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: 'var(--text-tertiary)' }}>
+                              <CalendarCheck size={10} weight="bold" style={{ color: 'var(--accent-green)' }} />
+                              Farmed Today
+                            </p>
+                            <p className="text-lg font-bold" style={{ color: 'var(--accent-green)' }}>{stat.farmedToday}</p>
+                          </div>
+                          <div className="p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '14px' }}>
+                            <p className="text-xs mb-0.5 flex items-center gap-1" style={{ color: 'var(--text-tertiary)' }}>
+                              <ChartLineUp size={10} weight="bold" style={{ color: 'var(--accent-blue)' }} />
+                              Karma
+                            </p>
+                            <p className="text-lg font-bold" style={{ color: 'var(--accent-blue)' }}>{stat.totalKarma.toLocaleString()}</p>
+                          </div>
+                          <div className="p-3" style={{ background: 'var(--bg-secondary)', borderRadius: '14px' }}>
+                            <p className="text-xs mb-0.5" style={{ color: 'var(--text-tertiary)' }}>Enabled</p>
+                            <p className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{stat.enabled}</p>
+                          </div>
+                        </div>
+
+                        {/* Status Chips */}
+                        <div className="flex items-center gap-2 flex-wrap">
                           {stat.working > 0 && (
-                            <span className="text-xs px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(76, 175, 80, 0.2)', color: '#4CAF50' }}>
+                            <span className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
                               <CheckCircle size={12} weight="bold" />
-                              {stat.working}
+                              {stat.working} working
                             </span>
                           )}
-
-                          {/* Banned */}
                           {stat.banned > 0 && (
-                            <span className="text-xs px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(244, 67, 54, 0.2)', color: '#F44336' }}>
+                            <span className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
                               <XCircle size={12} weight="bold" />
-                              {stat.banned}
+                              {stat.banned} banned
                             </span>
                           )}
-
-                          {/* Error */}
                           {stat.error > 0 && (
-                            <span className="text-xs px-2 py-1 rounded-full flex items-center gap-1" style={{ background: 'rgba(255, 152, 0, 0.2)', color: '#FF9800' }}>
+                            <span className="text-xs px-3 py-1.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(255, 152, 0, 0.15)', color: '#FF9800' }}>
                               <Warning size={12} weight="bold" />
-                              {stat.error}
+                              {stat.error} error
                             </span>
                           )}
-
-                          {/* Enabled/Disabled */}
-                          <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(33, 150, 243, 0.2)', color: '#2196F3' }}>
-                            {stat.enabled} enabled
-                          </span>
                           {stat.disabled > 0 && (
-                            <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'var(--chip-bg)', color: 'var(--text-tertiary)' }}>
+                            <span className="text-xs px-3 py-1.5 rounded-full" style={{ background: 'var(--chip-bg)', color: 'var(--text-tertiary)' }}>
                               {stat.disabled} disabled
-                            </span>
-                          )}
-
-                          {/* Karma */}
-                          {stat.totalKarma > 0 && (
-                            <span className="text-xs px-2 py-1 rounded-full" style={{ background: 'rgba(156, 39, 176, 0.2)', color: '#9C27B0' }}>
-                              {stat.totalKarma.toLocaleString()} karma
                             </span>
                           )}
                         </div>
