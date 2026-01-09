@@ -72,7 +72,8 @@ export interface ProfileForStats {
   userId?: string;
   createdAt: string;
   country?: string;
-  lastCompletedDate?: string;
+  postsToday?: number;
+  commentsToday?: number;
 }
 
 export interface ElectronAPI {

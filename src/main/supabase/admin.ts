@@ -204,6 +204,7 @@ export async function getAllProfilesForStats(): Promise<any[]> {
     userId: p.user_id,
     createdAt: p.created_at,
     country: p.country,
-    lastCompletedDate: p.last_completed_date,
+    postsToday: p.posts_today || 0,
+    commentsToday: p.comments_today || 0,
   }));
 }

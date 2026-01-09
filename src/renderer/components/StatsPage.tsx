@@ -86,14 +86,16 @@ interface ModelStats {
   enabled: number;
   disabled: number;
   totalKarma: number;
-  farmedToday: number;
+  postsToday: number;
+  commentsToday: number;
 }
 
 interface UserStats {
   user: AppUser;
   modelStats: ModelStats[];
   totalProfiles: number;
-  totalFarmedToday: number;
+  totalPostsToday: number;
+  totalCommentsToday: number;
   totalKarma: number;
 }
 
@@ -146,8 +148,6 @@ export default function StatsPage({ models }: StatsPageProps) {
   };
 
   const calculateStats = () => {
-    const today = getTodayDate();
-
     const stats: UserStats[] = users.map(user => {
       // Get profiles for this user
       const userProfiles = profiles.filter(p => p.userId === user.id);
@@ -165,15 +165,18 @@ export default function StatsPage({ models }: StatsPageProps) {
 
       // Calculate stats per model
       const modelStats: ModelStats[] = [];
-      let totalFarmedToday = 0;
+      let totalPostsToday = 0;
+      let totalCommentsToday = 0;
       let totalKarma = 0;
 
       modelGroups.forEach((groupProfiles, modelId) => {
         const model = models.find(m => m.id === modelId);
-        const farmedToday = groupProfiles.filter(p => p.lastCompletedDate === today).length;
+        const postsToday = groupProfiles.reduce((sum, p) => sum + (p.postsToday || 0), 0);
+        const commentsToday = groupProfiles.reduce((sum, p) => sum + (p.commentsToday || 0), 0);
         const karma = groupProfiles.reduce((sum, p) => sum + (p.commentKarma || 0) + (p.postKarma || 0), 0);
 
-        totalFarmedToday += farmedToday;
+        totalPostsToday += postsToday;
+        totalCommentsToday += commentsToday;
         totalKarma += karma;
 
         modelStats.push({
@@ -186,7 +189,8 @@ export default function StatsPage({ models }: StatsPageProps) {
           enabled: groupProfiles.filter(p => p.isEnabled !== false).length,
           disabled: groupProfiles.filter(p => p.isEnabled === false).length,
           totalKarma: karma,
-          farmedToday,
+          postsToday,
+          commentsToday,
         });
       });
 
@@ -197,7 +201,8 @@ export default function StatsPage({ models }: StatsPageProps) {
         user,
         modelStats,
         totalProfiles: userProfiles.length,
-        totalFarmedToday,
+        totalPostsToday,
+        totalCommentsToday,
         totalKarma,
       };
     });
@@ -205,6 +210,15 @@ export default function StatsPage({ models }: StatsPageProps) {
     // Sort by total profiles desc
     stats.sort((a, b) => b.totalProfiles - a.totalProfiles);
     setUserStats(stats);
+
+    // Expand all models by default
+    const allModelKeys = new Set<string>();
+    stats.forEach(({ user, modelStats }) => {
+      modelStats.forEach(stat => {
+        allModelKeys.add(`${user.id}-${stat.modelId || 'no-model'}`);
+      });
+    });
+    setExpandedModels(allModelKeys);
   };
 
   // Calculate global stats
@@ -283,8 +297,8 @@ export default function StatsPage({ models }: StatsPageProps) {
                       >
                         <div>Model</div>
                         <div className="text-center">Browsers</div>
-                        <div className="text-center">Farmed Today</div>
-                        <div className="text-center">Karma Today</div>
+                        <div className="text-center">Posts Today</div>
+                        <div className="text-center">Comments Today</div>
                         <div className="text-center">Total Karma</div>
                         <div className="text-center">Working</div>
                         <div className="text-center">Status</div>
@@ -295,7 +309,6 @@ export default function StatsPage({ models }: StatsPageProps) {
                         const modelKey = `${user.id}-${stat.modelId || 'no-model'}`;
                         const isExpanded = expandedModels.has(modelKey);
                         const modelProfiles = getProfilesForModel(user.id, stat.modelId);
-                        const today = getTodayDate();
 
                         return (
                           <div key={stat.modelId || 'no-model'}>
@@ -325,14 +338,14 @@ export default function StatsPage({ models }: StatsPageProps) {
                                 {stat.total}
                               </div>
 
-                              {/* Farmed Today */}
-                              <div className="text-center text-sm font-medium" style={{ color: stat.farmedToday > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
-                                {stat.farmedToday}
+                              {/* Posts Today */}
+                              <div className="text-center text-sm font-medium" style={{ color: stat.postsToday > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                                {stat.postsToday}
                               </div>
 
-                              {/* Karma Today - placeholder, needs DB tracking */}
-                              <div className="text-center text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                                -
+                              {/* Comments Today */}
+                              <div className="text-center text-sm font-medium" style={{ color: stat.commentsToday > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                                {stat.commentsToday}
                               </div>
 
                               {/* Total Karma */}
@@ -372,7 +385,6 @@ export default function StatsPage({ models }: StatsPageProps) {
                               >
                                 {modelProfiles.map((profile, pIndex) => {
                                   const karma = (profile.commentKarma || 0) + (profile.postKarma || 0);
-                                  const farmedToday = profile.lastCompletedDate === today;
 
                                   return (
                                     <div
@@ -400,14 +412,14 @@ export default function StatsPage({ models }: StatsPageProps) {
                                       {/* Empty for Browsers column */}
                                       <div></div>
 
-                                      {/* Farmed Today */}
-                                      <div className="text-center text-sm" style={{ color: farmedToday ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
-                                        {farmedToday ? '✓' : '-'}
+                                      {/* Posts Today */}
+                                      <div className="text-center text-sm" style={{ color: (profile.postsToday || 0) > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                                        {profile.postsToday || 0}
                                       </div>
 
-                                      {/* Karma Today */}
-                                      <div className="text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                                        -
+                                      {/* Comments Today */}
+                                      <div className="text-center text-sm" style={{ color: (profile.commentsToday || 0) > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                                        {profile.commentsToday || 0}
                                       </div>
 
                                       {/* Total Karma */}
@@ -462,10 +474,10 @@ export default function StatsPage({ models }: StatsPageProps) {
                             {modelStats.reduce((sum, m) => sum + m.total, 0)}
                           </div>
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-green)' }}>
-                            {modelStats.reduce((sum, m) => sum + m.farmedToday, 0)}
+                            {modelStats.reduce((sum, m) => sum + m.postsToday, 0)}
                           </div>
-                          <div className="text-center text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                            -
+                          <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-green)' }}>
+                            {modelStats.reduce((sum, m) => sum + m.commentsToday, 0)}
                           </div>
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-blue)' }}>
                             {modelStats.reduce((sum, m) => sum + m.totalKarma, 0).toLocaleString()}
