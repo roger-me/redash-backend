@@ -8,13 +8,12 @@ import FlipperPage from './components/FlipperPage';
 import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
-import StatsPage from './components/StatsPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Plus, User, FolderSimple, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear, ShieldCheck, ChartBar } from '@phosphor-icons/react';
+import { ArrowsClockwise, Plus, User, FolderSimple, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear, ShieldCheck } from '@phosphor-icons/react';
 import AIPage from './components/AIPage';
 import SettingsPage from './components/SettingsPage';
 
-type Page = 'accounts' | 'flipper' | 'ai' | 'settings' | 'admin' | 'stats';
+type Page = 'accounts' | 'flipper' | 'ai' | 'settings' | 'admin';
 
 interface AuthUser {
   id: string;
@@ -556,30 +555,17 @@ function App() {
           </button>
 
           {user?.role === 'admin' && (
-            <>
-              <button
-                onClick={() => setCurrentPage('admin')}
-                className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
-                style={{
-                  background: currentPage === 'admin' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  color: currentPage === 'admin' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                }}
-              >
-                <ShieldCheck size={20} weight={currentPage === 'admin' ? 'fill' : 'regular'} />
-                <span className="text-sm font-medium">Admin</span>
-              </button>
-              <button
-                onClick={() => setCurrentPage('stats')}
-                className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
-                style={{
-                  background: currentPage === 'stats' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                  color: currentPage === 'stats' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                }}
-              >
-                <ChartBar size={20} weight={currentPage === 'stats' ? 'fill' : 'regular'} />
-                <span className="text-sm font-medium">Stats</span>
-              </button>
-            </>
+            <button
+              onClick={() => setCurrentPage('admin')}
+              className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
+              style={{
+                background: currentPage === 'admin' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                color: currentPage === 'admin' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              }}
+            >
+              <ShieldCheck size={20} weight={currentPage === 'admin' ? 'fill' : 'regular'} />
+              <span className="text-sm font-medium">Admin</span>
+            </button>
           )}
 
           <button
@@ -807,11 +793,6 @@ function App() {
             onCreateModel={handleAdminCreateModel}
             onUpdateModel={handleAdminUpdateModel}
             onDeleteModel={handleDeleteModel}
-          />
-        )}
-        {currentPage === 'stats' && user?.role === 'admin' && (
-          <StatsPage
-            models={models}
             onCreateBrowser={() => setShowCreateModal(true)}
             onEditProfile={async (profileId) => {
               const profile = await window.electronAPI?.getProfileById(profileId);
