@@ -206,5 +206,6 @@ export async function getAllProfilesForStats(): Promise<any[]> {
     country: p.country,
     postsToday: p.posts_today || 0,
     commentsToday: p.comments_today || 0,
+    expiresAt: p.expires_at,
   }));
 }

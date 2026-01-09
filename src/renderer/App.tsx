@@ -45,6 +45,7 @@ function App() {
   const [createInModelId, setCreateInModelId] = useState<string | undefined>(undefined);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [lastSyncLabel, setLastSyncLabel] = useState<string>('');
+  const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
   });
@@ -307,11 +308,13 @@ function App() {
     }
   };
 
-  const handleUpdateProfile = async (id: string, updates: { name: string; description?: string; proxy?: any; status?: string; modelId?: string; credentials?: any; country?: string; accountName?: string; purchaseDate?: string; isEnabled?: boolean }) => {
+  const handleUpdateProfile = async (id: string, updates: Partial<Profile>) => {
     try {
       await window.electronAPI?.updateProfile(id, updates);
       await loadProfiles();
       setEditingProfile(null);
+      // Trigger Stats page refresh
+      setStatsRefreshTrigger(prev => prev + 1);
     } catch (err) {
       console.error('Failed to update profile:', err);
     }
@@ -810,6 +813,11 @@ function App() {
           <StatsPage
             models={models}
             onCreateBrowser={() => setShowCreateModal(true)}
+            onEditProfile={async (profileId) => {
+              const profile = await window.electronAPI?.getProfileById(profileId);
+              if (profile) setEditingProfile(profile);
+            }}
+            refreshTrigger={statsRefreshTrigger}
           />
         )}
       </div>

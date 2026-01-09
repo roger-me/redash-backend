@@ -66,7 +66,9 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
   const [status, setStatus] = useState<'working' | 'banned' | 'error'>(
     profile.status === 'banned' ? 'banned' : profile.status === 'error' ? 'error' : 'working'
   );
-  const [isEnabled, setIsEnabled] = useState(profile.isEnabled !== false);
+  const [expiresAt, setExpiresAt] = useState<string>(
+    profile.expiresAt ? new Date(profile.expiresAt).toISOString().split('T')[0] : ''
+  );
   const [purchaseDate, setPurchaseDate] = useState(profile.purchaseDate || '');
   const [orderNumber, setOrderNumber] = useState(profile.orderNumber || '');
   const [proxyString, setProxyString] = useState(
@@ -95,9 +97,7 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
 
   const selectedCountry = countries.find(c => c.code === country);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleSubmit = () => {
     if (!username.trim()) {
       alert('Please enter a username');
       return;
@@ -150,7 +150,8 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
       country,
       purchaseDate: purchaseDate || undefined,
       orderNumber: orderNumber.trim(),
-      isEnabled,
+      isEnabled: !!expiresAt,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
     });
   };
 
@@ -188,7 +189,7 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
         </div>
 
         {/* Form - Scrollable */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+        <div className="p-5 space-y-4 overflow-y-auto flex-1">
           {/* Account Credentials */}
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -344,33 +345,36 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
             </div>
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Enabled
+                Renew {expiresAt && (() => {
+                  const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  return <span style={{ color: days <= 0 ? '#F44336' : 'var(--accent-blue)' }}>
+                    ({days <= 0 ? 'Expired' : `${days} days`})
+                  </span>;
+                })()}
               </label>
-              <button
-                type="button"
-                onClick={() => setIsEnabled(!isEnabled)}
-                className="w-full px-3 py-2 text-sm flex items-center justify-between"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '8px',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                <span>{isEnabled ? 'On' : 'Off'}</span>
-                <div
-                  className="w-10 h-6 rounded-full relative transition-colors"
-                  style={{ background: isEnabled ? 'var(--accent-green)' : 'var(--bg-primary)' }}
-                >
-                  <div
-                    className="w-5 h-5 rounded-full absolute top-0.5 transition-all"
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  className="flex-1"
+                  style={{ colorScheme: 'dark' }}
+                />
+                {expiresAt && (
+                  <button
+                    type="button"
+                    onClick={() => setExpiresAt('')}
+                    className="px-3 py-2 text-sm font-medium"
                     style={{
-                      background: '#fff',
-                      left: isEnabled ? '18px' : '2px',
+                      background: 'rgba(244, 67, 54, 0.15)',
+                      color: '#F44336',
+                      borderRadius: '8px',
                     }}
-                  />
-                </div>
-              </button>
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -430,18 +434,19 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
               Cancel
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit}
               className="flex-1 py-2.5 text-sm font-medium"
               style={{
-                background: '#fff',
-                color: '#000',
+                background: 'var(--text-primary)',
+                color: 'var(--bg-primary)',
                 borderRadius: '100px',
               }}
             >
               Save Changes
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Profiles
   listProfiles: () => ipcRenderer.invoke('profiles:list'),
+  getProfileById: (id: string) => ipcRenderer.invoke('profiles:getById', id),
   createProfile: (profile: any) => ipcRenderer.invoke('profiles:create', profile),
   updateProfile: (id: string, updates: any) => ipcRenderer.invoke('profiles:update', id, updates),
   deleteProfile: (id: string) => ipcRenderer.invoke('profiles:delete', id),

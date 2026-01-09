@@ -41,6 +41,7 @@ export interface Profile {
   profilePicture?: string;
   createdAt: string;
   deletedAt?: string;
+  expiresAt?: string;
 }
 
 export interface AuthUser {
@@ -75,6 +76,7 @@ export interface ProfileForStats {
   country?: string;
   postsToday?: number;
   commentsToday?: number;
+  expiresAt?: string;
 }
 
 export interface ElectronAPI {
@@ -89,6 +91,7 @@ export interface ElectronAPI {
 
   // Profiles
   listProfiles: () => Promise<Profile[]>;
+  getProfileById: (id: string) => Promise<Profile | null>;
   createProfile: (profile: Omit<Profile, 'id' | 'createdAt'>) => Promise<Profile>;
   updateProfile: (id: string, updates: Partial<Profile>) => Promise<Profile>;
   deleteProfile: (id: string) => Promise<boolean>;

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { FolderSimple, CircleNotch, User, CaretDown, CaretRight, ArrowsClockwise, Plus, Trash, ArrowCounterClockwise, X } from '@phosphor-icons/react';
+import { useState, useEffect, useRef } from 'react';
+import { FolderSimple, CircleNotch, User, CaretDown, CaretRight, ArrowsClockwise, Plus, Trash, ArrowCounterClockwise, X, DotsThree, PencilSimple } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile } from '../../shared/types';
 
 // Flag PNG imports
@@ -75,6 +75,8 @@ const getTodayDate = () => new Date().toISOString().split('T')[0];
 interface StatsPageProps {
   models: Model[];
   onCreateBrowser: () => void;
+  onEditProfile: (profileId: string) => void;
+  refreshTrigger?: number;
 }
 
 interface ModelStats {
@@ -100,7 +102,7 @@ interface UserStats {
   totalKarma: number;
 }
 
-export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
+export default function StatsPage({ models, onCreateBrowser, onEditProfile, refreshTrigger }: StatsPageProps) {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [profiles, setProfiles] = useState<ProfileForStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +113,20 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
   const [lastRefreshLabel, setLastRefreshLabel] = useState<string>('');
   const [showTrash, setShowTrash] = useState(false);
   const [deletedProfiles, setDeletedProfiles] = useState<Profile[]>([]);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      // Don't close if clicking inside menu
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-menu="true"]')) return;
+      if (openMenuId) setOpenMenuId(null);
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openMenuId]);
 
   // Helper to format relative time
   const getRelativeTime = (date: Date): string => {
@@ -165,6 +181,13 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Watch for external refresh trigger (e.g., after profile edit)
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      handleRefresh();
+    }
+  }, [refreshTrigger]);
 
   useEffect(() => {
     if (users.length > 0 && profiles.length >= 0) {
@@ -258,14 +281,6 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
     return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
   };
 
-  const handleToggleEnabled = async (profileId: string, currentlyEnabled: boolean) => {
-    try {
-      await window.electronAPI?.updateProfile(profileId, { isEnabled: !currentlyEnabled });
-      await handleRefresh();
-    } catch (err) {
-      console.error('Failed to toggle enabled status:', err);
-    }
-  };
 
   const calculateStats = () => {
     const stats: UserStats[] = users.map(user => {
@@ -622,35 +637,89 @@ export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
                                       </div>
 
                                       {/* Renew */}
-                                      <div className="flex justify-center">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleToggleEnabled(profile.id, profile.isEnabled === true);
-                                          }}
-                                          className="text-xs px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
-                                          style={{
-                                            background: profile.isEnabled === true ? 'rgba(59, 130, 246, 0.15)' : 'rgba(128, 128, 128, 0.15)',
-                                            color: profile.isEnabled === true ? '#3B82F6' : 'var(--text-tertiary)'
-                                          }}
-                                        >
-                                          {profile.isEnabled === true ? 'On' : 'Off'}
-                                        </button>
+                                      <div className="flex justify-center items-center">
+                                        {profile.expiresAt ? (
+                                          <span
+                                            className="text-xs px-2 py-0.5 rounded-full"
+                                            style={{
+                                              background: (() => {
+                                                const days = Math.ceil((new Date(profile.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                                if (days <= 0) return 'rgba(244, 67, 54, 0.15)';
+                                                if (days <= 7) return 'rgba(255, 152, 0, 0.15)';
+                                                return 'rgba(59, 130, 246, 0.15)';
+                                              })(),
+                                              color: (() => {
+                                                const days = Math.ceil((new Date(profile.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                                if (days <= 0) return '#F44336';
+                                                if (days <= 7) return '#FF9800';
+                                                return '#3B82F6';
+                                              })()
+                                            }}
+                                          >
+                                            {(() => {
+                                              const days = Math.ceil((new Date(profile.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                              if (days <= 0) return 'Expired';
+                                              return `${days}d`;
+                                            })()}
+                                          </span>
+                                        ) : (
+                                          <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>-</span>
+                                        )}
                                       </div>
 
-                                      {/* Delete Button */}
+                                      {/* Actions Menu */}
                                       <div className="flex justify-center">
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            handleDeleteProfile(profile.id);
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setMenuPosition({ x: rect.right - 120, y: rect.bottom + 4 });
+                                            setOpenMenuId(openMenuId === profile.id ? null : profile.id);
                                           }}
                                           className="p-1 rounded hover:bg-white/10 transition-colors"
                                           style={{ color: 'var(--text-tertiary)' }}
-                                          title="Delete"
                                         >
-                                          <Trash size={14} />
+                                          <DotsThree size={18} weight="bold" />
                                         </button>
+                                        {openMenuId === profile.id && (
+                                          <div
+                                            data-menu="true"
+                                            className="fixed py-1 z-[9999]"
+                                            style={{
+                                              left: menuPosition.x,
+                                              top: menuPosition.y,
+                                              background: 'var(--bg-secondary)',
+                                              borderRadius: '12px',
+                                              boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                                              minWidth: '120px',
+                                            }}
+                                          >
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenMenuId(null);
+                                                onEditProfile(profile.id);
+                                              }}
+                                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+                                              style={{ color: 'var(--text-primary)' }}
+                                            >
+                                              <PencilSimple size={14} />
+                                              Edit
+                                            </button>
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenMenuId(null);
+                                                handleDeleteProfile(profile.id);
+                                              }}
+                                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+                                              style={{ color: '#F44336' }}
+                                            >
+                                              <Trash size={14} />
+                                              Delete
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   );

@@ -32,6 +32,18 @@ function toCamelCase(obj: Record<string, any>): Record<string, any> {
 }
 
 // Profile operations
+export async function getProfileById(id: string) {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return toCamelCase(data);
+}
+
 export async function listProfiles() {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase

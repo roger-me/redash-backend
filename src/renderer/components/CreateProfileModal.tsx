@@ -65,7 +65,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
   const [country, setCountry] = useState('');
   const [modelId, setModelId] = useState<string | undefined>(initialModelId);
   const [status, setStatus] = useState<'working' | 'banned' | 'error'>('working');
-  const [isEnabled, setIsEnabled] = useState(true);
+  const [expiresAt, setExpiresAt] = useState<string>('');
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [orderNumber, setOrderNumber] = useState('');
   const [proxyString, setProxyString] = useState('');
@@ -152,7 +152,8 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
       country,
       purchaseDate,
       orderNumber: orderNumber.trim(),
-      isEnabled,
+      isEnabled: !!expiresAt,
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
     });
   };
 
@@ -349,33 +350,36 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
             </div>
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Enabled
+                Renew {expiresAt && (() => {
+                  const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                  return <span style={{ color: days <= 0 ? '#F44336' : 'var(--accent-blue)' }}>
+                    ({days <= 0 ? 'Expired' : `${days} days`})
+                  </span>;
+                })()}
               </label>
-              <button
-                type="button"
-                onClick={() => setIsEnabled(!isEnabled)}
-                className="w-full px-3 py-2 text-sm flex items-center justify-between"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '8px',
-                  color: 'var(--text-primary)',
-                }}
-              >
-                <span>{isEnabled ? 'On' : 'Off'}</span>
-                <div
-                  className="w-10 h-6 rounded-full relative transition-colors"
-                  style={{ background: isEnabled ? 'var(--accent-green)' : 'var(--bg-primary)' }}
-                >
-                  <div
-                    className="w-5 h-5 rounded-full absolute top-0.5 transition-all"
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  className="flex-1"
+                  style={{ colorScheme: 'dark' }}
+                />
+                {expiresAt && (
+                  <button
+                    type="button"
+                    onClick={() => setExpiresAt('')}
+                    className="px-3 py-2 text-sm font-medium"
                     style={{
-                      background: '#fff',
-                      left: isEnabled ? '18px' : '2px',
+                      background: 'rgba(244, 67, 54, 0.15)',
+                      color: '#F44336',
+                      borderRadius: '8px',
                     }}
-                  />
-                </div>
-              </button>
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

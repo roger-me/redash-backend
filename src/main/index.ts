@@ -187,6 +187,15 @@ ipcMain.handle('profiles:list', async () => {
   }
 });
 
+ipcMain.handle('profiles:getById', async (_, profileId: string) => {
+  try {
+    return await db.getProfileById(profileId);
+  } catch (error) {
+    console.error('Failed to get profile:', error);
+    return null;
+  }
+});
+
 ipcMain.handle('profiles:create', async (_, profile: Omit<Profile, 'id' | 'createdAt'>) => {
   return db.createProfile(profile);
 });

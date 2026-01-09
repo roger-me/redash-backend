@@ -79,4 +79,24 @@ export function clearAuthStorage(): void {
   authStore.clear();
 }
 
+// Run database migrations
+export async function runMigrations(): Promise<void> {
+  const supabase = getSupabaseClient();
+
+  try {
+    // Try to add expires_at column if it doesn't exist
+    const { error } = await supabase.rpc('run_migration', {
+      sql_query: `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP WITH TIME ZONE;`
+    });
+
+    if (error) {
+      console.log('Migration via RPC not available, column may need to be added manually');
+    } else {
+      console.log('Migration completed successfully');
+    }
+  } catch (err) {
+    console.log('Migration skipped:', err);
+  }
+}
+
 export { authStore };
