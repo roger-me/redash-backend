@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FolderSimple, CheckCircle, CircleNotch, User, CaretDown, CaretRight } from '@phosphor-icons/react';
+import { FolderSimple, CircleNotch, User, CaretDown, CaretRight, ArrowsClockwise, Plus } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats } from '../../shared/types';
 
 // Flag PNG imports
@@ -74,6 +74,7 @@ const getTodayDate = () => new Date().toISOString().split('T')[0];
 
 interface StatsPageProps {
   models: Model[];
+  onCreateBrowser: () => void;
 }
 
 interface ModelStats {
@@ -99,12 +100,42 @@ interface UserStats {
   totalKarma: number;
 }
 
-export default function StatsPage({ models }: StatsPageProps) {
+export default function StatsPage({ models, onCreateBrowser }: StatsPageProps) {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [profiles, setProfiles] = useState<ProfileForStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userStats, setUserStats] = useState<UserStats[]>([]);
   const [expandedModels, setExpandedModels] = useState<Set<string>>(new Set());
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [lastRefreshLabel, setLastRefreshLabel] = useState<string>('');
+
+  // Helper to format relative time
+  const getRelativeTime = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 30) return 'now';
+    if (diffSec < 60) return '30s ago';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffHour < 24) return `${diffHour}h ago`;
+    return `${diffDay}d ago`;
+  };
+
+  // Update relative time label periodically
+  useEffect(() => {
+    if (!lastRefreshTime) return;
+
+    const updateLabel = () => setLastRefreshLabel(getRelativeTime(lastRefreshTime));
+    updateLabel();
+
+    const interval = setInterval(updateLabel, 10000);
+    return () => clearInterval(interval);
+  }, [lastRefreshTime]);
 
   const toggleModelExpand = (modelKey: string) => {
     setExpandedModels(prev => {
@@ -119,7 +150,14 @@ export default function StatsPage({ models }: StatsPageProps) {
   };
 
   const getProfilesForModel = (userId: string, modelId: string | null) => {
-    return profiles.filter(p => p.userId === userId && (modelId ? p.modelId === modelId : !p.modelId));
+    const filtered = profiles.filter(p => p.userId === userId && (modelId ? p.modelId === modelId : !p.modelId));
+    // Sort: working first, then error, then banned at bottom
+    return filtered.sort((a, b) => {
+      const order = { working: 0, error: 1, banned: 2, unknown: 1 };
+      const aOrder = order[a.status as keyof typeof order] ?? 1;
+      const bOrder = order[b.status as keyof typeof order] ?? 1;
+      return aOrder - bOrder;
+    });
   };
 
   useEffect(() => {
@@ -140,10 +178,28 @@ export default function StatsPage({ models }: StatsPageProps) {
       ]);
       setUsers(usersData || []);
       setProfiles(profilesData || []);
+      setLastRefreshTime(new Date());
     } catch (err) {
       console.error('Failed to load stats data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const [usersData, profilesData] = await Promise.all([
+        window.electronAPI?.adminListUsers(),
+        window.electronAPI?.adminGetAllProfilesForStats(),
+      ]);
+      setUsers(usersData || []);
+      setProfiles(profilesData || []);
+      setLastRefreshTime(new Date());
+    } catch (err) {
+      console.error('Failed to refresh stats data:', err);
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -243,9 +299,29 @@ export default function StatsPage({ models }: StatsPageProps) {
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           Statistics
         </h1>
-        <div className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-          {profiles.length} total browsers
-        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="h-9 px-3 flex items-center gap-2 transition-colors"
+          style={{
+            background: 'var(--chip-bg)',
+            borderRadius: '100px',
+            color: 'var(--text-primary)',
+            opacity: refreshing ? 0.5 : 1,
+          }}
+          title="Refresh stats"
+        >
+          <ArrowsClockwise
+            size={16}
+            weight="bold"
+            style={{
+              animation: refreshing ? 'spin 1s linear infinite' : 'none',
+            }}
+          />
+          {lastRefreshLabel && (
+            <span className="text-sm font-medium">{lastRefreshLabel}</span>
+          )}
+        </button>
       </div>
 
       <div className="space-y-3">
@@ -256,7 +332,7 @@ export default function StatsPage({ models }: StatsPageProps) {
           </div>
         ) : (
           userStats.map(({ user, modelStats, totalProfiles }) => (
-            <div key={user.id} className="overflow-hidden" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+            <div key={user.id} style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
               {/* User Header */}
               <div className="flex items-center gap-3 p-4">
                 <div
@@ -271,7 +347,15 @@ export default function StatsPage({ models }: StatsPageProps) {
                     <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
                       {user.username}
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--chip-bg)', color: 'var(--text-secondary)' }}>
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                      style={{
+                        background: user.role === 'admin'
+                          ? 'rgba(147, 112, 219, 0.2)'
+                          : 'var(--chip-bg)',
+                        color: user.role === 'admin' ? '#A78BFA' : 'var(--text-secondary)'
+                      }}
+                    >
                       {user.role}
                     </span>
                   </div>
@@ -280,6 +364,19 @@ export default function StatsPage({ models }: StatsPageProps) {
                   </span>
                 </div>
 
+                {/* Add Browser Button */}
+                <button
+                  onClick={onCreateBrowser}
+                  className="h-9 px-3 flex items-center gap-2 transition-colors"
+                  style={{
+                    background: 'var(--chip-bg)',
+                    borderRadius: '100px',
+                    color: 'var(--text-primary)',
+                  }}
+                  title="New Browser"
+                >
+                  <Plus size={16} weight="bold" />
+                </button>
               </div>
 
               {/* Model Stats Table */}
@@ -290,7 +387,7 @@ export default function StatsPage({ models }: StatsPageProps) {
                       <div
                         className="grid text-xs font-medium py-4 px-5"
                         style={{
-                          gridTemplateColumns: '1fr repeat(6, 90px)',
+                          gridTemplateColumns: '1fr repeat(5, 90px)',
                           color: 'var(--text-tertiary)',
                           borderBottom: '1px solid var(--border)',
                         }}
@@ -300,7 +397,6 @@ export default function StatsPage({ models }: StatsPageProps) {
                         <div className="text-center">Posts Today</div>
                         <div className="text-center">Comments Today</div>
                         <div className="text-center">Total Karma</div>
-                        <div className="text-center">Working</div>
                         <div className="text-center">Status</div>
                       </div>
 
@@ -315,7 +411,7 @@ export default function StatsPage({ models }: StatsPageProps) {
                             <div
                               className="grid py-4 px-5 items-center cursor-pointer hover:bg-white/5 transition-colors"
                               style={{
-                                gridTemplateColumns: '1fr repeat(6, 90px)',
+                                gridTemplateColumns: '1fr repeat(5, 90px)',
                                 borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none',
                               }}
                               onClick={() => toggleModelExpand(modelKey)}
@@ -353,13 +449,13 @@ export default function StatsPage({ models }: StatsPageProps) {
                                 {stat.totalKarma > 0 ? stat.totalKarma.toLocaleString() : '-'}
                               </div>
 
-                              {/* Working */}
-                              <div className="text-center text-sm font-medium" style={{ color: stat.working > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
-                                {stat.working}/{stat.enabled}
-                              </div>
-
                               {/* Status */}
                               <div className="flex justify-center gap-1">
+                                {stat.working > 0 && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
+                                    {stat.working}
+                                  </span>
+                                )}
                                 {stat.banned > 0 && (
                                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
                                     {stat.banned}
@@ -369,9 +465,6 @@ export default function StatsPage({ models }: StatsPageProps) {
                                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255, 152, 0, 0.15)', color: '#FF9800' }}>
                                     {stat.error}
                                   </span>
-                                )}
-                                {stat.banned === 0 && stat.error === 0 && (
-                                  <CheckCircle size={16} weight="fill" style={{ color: 'var(--accent-green)' }} />
                                 )}
                               </div>
                             </div>
@@ -391,7 +484,7 @@ export default function StatsPage({ models }: StatsPageProps) {
                                       key={profile.id}
                                       className="grid py-3 px-5 pl-12 items-center"
                                       style={{
-                                        gridTemplateColumns: '1fr repeat(6, 90px)',
+                                        gridTemplateColumns: '1fr repeat(5, 90px)',
                                         borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none',
                                       }}
                                     >
@@ -427,13 +520,13 @@ export default function StatsPage({ models }: StatsPageProps) {
                                         {karma > 0 ? karma.toLocaleString() : '-'}
                                       </div>
 
-                                      {/* Status */}
-                                      <div className="text-center text-sm" style={{ color: profile.status === 'working' ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
-                                        {profile.isEnabled !== false ? (profile.status === 'working' ? 'Active' : '-') : 'Disabled'}
-                                      </div>
-
                                       {/* Status Badge */}
                                       <div className="flex justify-center">
+                                        {profile.status === 'working' && (
+                                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
+                                            Working
+                                          </span>
+                                        )}
                                         {profile.status === 'banned' && (
                                           <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>
                                             Banned
@@ -444,8 +537,10 @@ export default function StatsPage({ models }: StatsPageProps) {
                                             Error
                                           </span>
                                         )}
-                                        {profile.status === 'working' && (
-                                          <CheckCircle size={14} weight="fill" style={{ color: 'var(--accent-green)' }} />
+                                        {(!profile.status || profile.status === 'unknown') && (
+                                          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--chip-bg)', color: 'var(--text-tertiary)' }}>
+                                            Unknown
+                                          </span>
                                         )}
                                       </div>
                                     </div>
@@ -462,7 +557,7 @@ export default function StatsPage({ models }: StatsPageProps) {
                         <div
                           className="grid py-4 px-5 items-center"
                           style={{
-                            gridTemplateColumns: '1fr repeat(6, 90px)',
+                            gridTemplateColumns: '1fr repeat(5, 90px)',
                             background: 'rgba(128, 128, 128, 0.04)',
                             borderTop: '1px solid var(--border)',
                           }}
@@ -481,9 +576,6 @@ export default function StatsPage({ models }: StatsPageProps) {
                           </div>
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-blue)' }}>
                             {modelStats.reduce((sum, m) => sum + m.totalKarma, 0).toLocaleString()}
-                          </div>
-                          <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-green)' }}>
-                            {modelStats.reduce((sum, m) => sum + m.working, 0)}/{modelStats.reduce((sum, m) => sum + m.enabled, 0)}
                           </div>
                           <div></div>
                         </div>

@@ -255,19 +255,19 @@ function App() {
 
           const karma = await window.electronAPI?.fetchRedditKarma(redditUsername);
           if (karma) {
-            // Update karma and reset error status to working
-            const updates: any = {
+            // Update karma and set status to working
+            await window.electronAPI?.updateProfile(profile.id, {
               commentKarma: karma.commentKarma,
               postKarma: karma.postKarma,
-            };
-            if (profile.status === 'error') {
-              updates.status = 'working';
-            }
-            await window.electronAPI?.updateProfile(profile.id, updates);
+              status: 'working',
+            });
             syncedCount++;
+          } else {
+            // Account not found - mark as banned
+            await window.electronAPI?.updateProfile(profile.id, {
+              status: 'banned',
+            });
           }
-          // Don't auto-set to error - could be rate limiting or temporary network issue
-          // User can manually mark accounts as error/banned if needed
         }
       }
       // Reload profiles to show updated karma
@@ -807,7 +807,10 @@ function App() {
           />
         )}
         {currentPage === 'stats' && user?.role === 'admin' && (
-          <StatsPage models={models} />
+          <StatsPage
+            models={models}
+            onCreateBrowser={() => setShowCreateModal(true)}
+          />
         )}
       </div>
 

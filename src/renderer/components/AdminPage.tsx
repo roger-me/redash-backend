@@ -523,7 +523,7 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Password</label>
                 <input
-                  type="password"
+                  type="text"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full h-10 px-3 rounded-lg text-sm"
@@ -599,7 +599,7 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
                   New Password (leave blank to keep current)
                 </label>
                 <input
-                  type="password"
+                  type="text"
                   value={editPassword}
                   onChange={(e) => setEditPassword(e.target.value)}
                   className="w-full h-10 px-3 rounded-lg text-sm"
