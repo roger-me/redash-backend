@@ -74,7 +74,7 @@ function ModelModal({ mode, initialName = '', initialProfilePicture = '', onClos
         className="w-full max-w-sm p-5"
         style={{
           background: 'var(--bg-secondary)',
-          borderRadius: '24px',
+          borderRadius: '28px',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
         }}
       >

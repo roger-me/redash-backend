@@ -137,7 +137,7 @@ export default function SettingsPage() {
 
       <div className="max-w-xl">
         {/* Updates Section */}
-        <div className="rounded-2xl p-5" style={{ background: 'var(--bg-secondary)' }}>
+        <div className="p-5" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
           <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             Updates
           </h2>
@@ -219,7 +219,7 @@ export default function SettingsPage() {
         </div>
 
         {/* About Section */}
-        <div className="rounded-2xl p-5 mt-4" style={{ background: 'var(--bg-secondary)' }}>
+        <div className="p-5 mt-4" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
           <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
             About
           </h2>

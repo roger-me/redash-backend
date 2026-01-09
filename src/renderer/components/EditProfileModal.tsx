@@ -118,6 +118,11 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
       return;
     }
 
+    if (!proxyString.trim()) {
+      alert('Please enter a proxy');
+      return;
+    }
+
     // Parse proxy string
     let proxy = undefined;
     if (proxyString.trim()) {
@@ -159,7 +164,7 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
         className="w-full max-w-md overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
         style={{
           background: 'var(--bg-secondary)',
-          borderRadius: '24px',
+          borderRadius: '28px',
         }}
       >
         {/* Header */}
@@ -398,8 +403,7 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
           {/* Proxy */}
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Proxy
-              <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> (optional)</span>
+              Proxy <span style={{ color: 'var(--accent-red)' }}>*</span>
             </label>
             <input
               type="text"

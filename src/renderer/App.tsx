@@ -301,8 +301,9 @@ function App() {
       await window.electronAPI?.createProfile(profile);
       await loadProfiles();
       setShowCreateModal(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to create profile:', err);
+      alert('Failed to create profile: ' + (err.message || err));
     }
   };
 

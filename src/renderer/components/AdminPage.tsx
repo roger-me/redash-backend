@@ -311,13 +311,13 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
 
       <div className="space-y-2">
         {users.length === 0 ? (
-          <div className="rounded-xl p-12 text-center" style={{ background: 'var(--bg-secondary)' }}>
+          <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <User size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
             <p style={{ color: 'var(--text-tertiary)' }}>No users yet</p>
           </div>
         ) : (
           users.map(user => (
-            <div key={user.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-secondary)' }}>
+            <div key={user.id} className="overflow-hidden" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
               <div className="flex items-center gap-3 p-4">
                 <button
                   onClick={() => handleToggleExpand(user.id)}
@@ -387,14 +387,14 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
                           <button
                             key={model.id}
                             onClick={() => handleToggleModelAssignment(user.id, model.id)}
-                            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                            className="h-9 px-4 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
                             style={{
                               background: isAssigned ? 'var(--accent-blue)' : 'var(--chip-bg)',
                               color: isAssigned ? 'white' : 'var(--text-secondary)',
                             }}
                           >
-                            {isAssigned && <Check size={14} weight="bold" />}
                             {model.name}
+                            {isAssigned && <Check size={14} weight="bold" />}
                           </button>
                         );
                       })}
@@ -441,7 +441,7 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
 
         <div className="space-y-2">
           {models.length === 0 ? (
-            <div className="rounded-xl p-8 text-center" style={{ background: 'var(--bg-secondary)' }}>
+            <div className="p-8 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
               <FolderSimple size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
               <p style={{ color: 'var(--text-tertiary)' }}>No models yet</p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
@@ -452,8 +452,8 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
             models.map(model => (
               <div
                 key={model.id}
-                className="flex items-center gap-3 p-4 rounded-xl"
-                style={{ background: 'var(--bg-secondary)' }}
+                className="flex items-center gap-3 p-4"
+                style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}
               >
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden"
@@ -499,7 +499,7 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
 
       {showCreateModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: 'var(--bg-secondary)' }}>
+          <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Create User</h2>
               <button onClick={() => setShowCreateModal(false)} style={{ color: 'var(--text-tertiary)' }}>
@@ -574,7 +574,7 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
 
       {editingUser && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: 'var(--bg-secondary)' }}>
+          <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Edit User</h2>
               <button onClick={() => setEditingUser(null)} style={{ color: 'var(--text-tertiary)' }}>
@@ -656,7 +656,7 @@ export default function AdminPage({ models, currentUserId, onCreateModel, onUpda
       {/* Create/Edit Model Modal */}
       {(showModelModal || editingModel) && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="w-full max-w-md rounded-2xl p-6" style={{ background: 'var(--bg-secondary)' }}>
+          <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {editingModel ? 'Edit Model' : 'Create Model'}

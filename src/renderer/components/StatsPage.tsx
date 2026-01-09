@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CaretDown, CaretRight, FolderSimple, CheckCircle, XCircle, Warning, CircleNotch } from '@phosphor-icons/react';
+import { CaretDown, CaretRight, FolderSimple, CheckCircle, XCircle, Warning, CircleNotch, User } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats } from '../../shared/types';
 
 // Generate a consistent color based on string
@@ -141,13 +141,13 @@ export default function StatsPage({ models }: StatsPageProps) {
 
       <div className="space-y-2">
         {userStats.length === 0 ? (
-          <div className="rounded-xl p-12 text-center" style={{ background: 'var(--bg-secondary)' }}>
+          <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <User size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
             <p style={{ color: 'var(--text-tertiary)' }}>No data yet</p>
           </div>
         ) : (
           userStats.map(({ user, modelStats, totalProfiles }) => (
-            <div key={user.id} className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-secondary)' }}>
+            <div key={user.id} className="overflow-hidden" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
               {/* User Row */}
               <div
                 className="flex items-center gap-3 p-4 cursor-pointer hover:bg-black/5"
