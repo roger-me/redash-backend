@@ -232,7 +232,6 @@ export async function getAllProfiles(): Promise<any[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .is('deleted_at', null)
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data || []).map((p: any) => ({

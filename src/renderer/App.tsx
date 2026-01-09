@@ -140,10 +140,12 @@ function App() {
       // Admin users get all data, basic users get filtered data
       if (user.role === 'admin') {
         const [profilesData, modelsData] = await Promise.all([
-          window.electronAPI?.adminGetAllProfiles(),
+          window.electronAPI?.adminGetAllProfilesForStats(),
           window.electronAPI?.adminGetAllModels(),
         ]);
-        setProfiles(profilesData || []);
+        // Add type field for profiles that don't have it
+        const profilesWithType = (profilesData || []).map((p: any) => ({ ...p, type: p.type || 'desktop' }));
+        setProfiles(profilesWithType);
         setModels(modelsData || []);
       } else {
         const [profilesData, modelsData, assignedIds] = await Promise.all([
@@ -215,10 +217,14 @@ function App() {
   const loadProfiles = async () => {
     try {
       // Admin users get ALL profiles
-      const data = user?.role === 'admin'
-        ? await window.electronAPI?.adminGetAllProfiles()
-        : await window.electronAPI?.listProfiles();
-      setProfiles(data || []);
+      if (user?.role === 'admin') {
+        const data = await window.electronAPI?.adminGetAllProfilesForStats();
+        const profilesWithType = (data || []).map((p: any) => ({ ...p, type: p.type || 'desktop' }));
+        setProfiles(profilesWithType);
+      } else {
+        const data = await window.electronAPI?.listProfiles();
+        setProfiles(data || []);
+      }
     } catch (err) {
       console.error('Failed to load profiles:', err);
     }

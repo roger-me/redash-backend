@@ -49,7 +49,6 @@ export async function listProfiles() {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -91,49 +90,27 @@ export async function updateProfile(id: string, updates: Record<string, any>) {
   return toCamelCase(data);
 }
 
-// Soft delete - moves to trash
+// Hard delete profile
 export async function deleteProfile(id: string) {
   const supabase = getSupabaseClient();
 
   const { error } = await supabase
     .from('profiles')
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq('id', id);
 
   if (error) throw new Error(error.message);
   return true;
 }
 
-// List deleted profiles (trash) - admin only
+// List deleted profiles (trash) - not implemented (no deleted_at column)
 export async function listDeletedProfiles() {
-  const supabase = getSupabaseClient();
-
-  // Get profiles deleted in the last 30 days
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .not('deleted_at', 'is', null)
-    .gte('deleted_at', thirtyDaysAgo.toISOString())
-    .order('deleted_at', { ascending: false });
-
-  if (error) throw new Error(error.message);
-  return (data || []).map(toCamelCase);
+  return [];
 }
 
-// Restore a deleted profile
+// Restore a deleted profile - not implemented
 export async function restoreProfile(id: string) {
-  const supabase = getSupabaseClient();
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({ deleted_at: null })
-    .eq('id', id);
-
-  if (error) throw new Error(error.message);
-  return true;
+  return false;
 }
 
 // Permanently delete a profile
