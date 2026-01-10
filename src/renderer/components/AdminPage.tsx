@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Cube } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, GenderFemale } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile } from '../../shared/types';
 
 // Flag PNG imports
@@ -634,7 +634,7 @@ export default function AdminPage({
               boxShadow: activeTab === 'models' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
             }}
           >
-            <Cube size={16} weight="bold" />
+            <GenderFemale size={16} weight="bold" />
             Models
           </button>
         </div>
@@ -733,13 +733,12 @@ export default function AdminPage({
                     <div style={{ background: 'rgba(128, 128, 128, 0.06)', borderRadius: '20px', overflow: 'hidden' }}>
                       <div
                         className="grid text-xs font-medium py-4 px-5"
-                        style={{ gridTemplateColumns: '1fr repeat(6, 90px) 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
+                        style={{ gridTemplateColumns: '1fr repeat(5, 90px) 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
                       >
                         <div>Model</div>
-                        <div className="text-center">Browsers</div>
-                        <div className="text-center">Posts Today</div>
-                        <div className="text-center">Comments Today</div>
-                        <div className="text-center">Total Karma</div>
+                        <div className="text-center">Posts</div>
+                        <div className="text-center">Comments</div>
+                        <div className="text-center">Karma</div>
                         <div className="text-center">Status</div>
                         <div className="text-center">Renew</div>
                         <div></div>
@@ -754,7 +753,7 @@ export default function AdminPage({
                           <div key={stat.modelId || 'no-model'}>
                             <div
                               className="grid py-4 px-5 items-center cursor-pointer hover:bg-white/5 transition-colors"
-                              style={{ gridTemplateColumns: '1fr repeat(6, 90px) 50px', borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}
+                              style={{ gridTemplateColumns: '1fr repeat(5, 90px) 50px', borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}
                               onClick={() => toggleModelExpand(modelKey)}
                             >
                               <div className="flex items-center gap-2">
@@ -762,7 +761,6 @@ export default function AdminPage({
                                 <FolderSimple size={16} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
                                 <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{stat.modelName}</span>
                               </div>
-                              <div className="text-center text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{stat.total}</div>
                               <div className="text-center text-sm font-medium" style={{ color: stat.postsToday > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{stat.postsToday}</div>
                               <div className="text-center text-sm font-medium" style={{ color: stat.commentsToday > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{stat.commentsToday}</div>
                               <div className="text-center text-sm font-medium" style={{ color: stat.totalKarma > 0 ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>{stat.totalKarma > 0 ? stat.totalKarma.toLocaleString() : '-'}</div>
@@ -779,7 +777,7 @@ export default function AdminPage({
                                     <div
                                       key={profile.id}
                                       className="grid py-3 px-5 pl-12 items-center"
-                                      style={{ gridTemplateColumns: '1fr repeat(6, 90px) 50px', borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none' }}
+                                      style={{ gridTemplateColumns: '1fr repeat(5, 90px) 50px', borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none' }}
                                     >
                                       <div className="flex items-center gap-2">
                                         {profile.country && countryFlagImages[profile.country] && (
@@ -787,7 +785,6 @@ export default function AdminPage({
                                         )}
                                         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{profile.name}</span>
                                       </div>
-                                      <div></div>
                                       <div className="text-center text-sm" style={{ color: (profile.postsToday || 0) > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{profile.postsToday || 0}</div>
                                       <div className="text-center text-sm" style={{ color: (profile.commentsToday || 0) > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{profile.commentsToday || 0}</div>
                                       <div className="text-center text-sm" style={{ color: karma > 0 ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>{karma > 0 ? karma.toLocaleString() : '-'}</div>

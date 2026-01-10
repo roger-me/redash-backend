@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Profile, Model } from '../shared/types';
 import ProfileList from './components/ProfileList';
 import CreateProfileModal from './components/CreateProfileModal';
@@ -9,7 +9,7 @@ import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Plus, User, Desktop, Users, Swap, Brain, Sun, Moon, SignOut, Gear, ShieldCheck } from '@phosphor-icons/react';
+import { ArrowsClockwise, Desktop, Users, Swap, Brain, Gear, ShieldCheck } from '@phosphor-icons/react';
 import AIPage from './components/AIPage';
 import SettingsPage from './components/SettingsPage';
 
@@ -26,8 +26,6 @@ function App() {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = loading
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-
   const [currentPage, setCurrentPage] = useState<Page>('accounts');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [models, setModels] = useState<Model[]>([]);
@@ -46,7 +44,6 @@ function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
   });
-    const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Apply theme to document
   useEffect(() => {
@@ -165,15 +162,6 @@ function App() {
     window.electronAPI?.onBrowserClosed((profileId) => {
       setActiveBrowsers(prev => prev.filter(id => id !== profileId));
     });
-
-    // Close user menu when clicking outside
-    const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isAuthenticated, user?.role]);
 
   // Update relative time label periodically
@@ -594,42 +582,6 @@ function App() {
             <span className="text-sm font-medium">Settings</span>
           </button>
 
-          {/* Theme toggle, User & Version at bottom */}
-          <div className="mt-auto pt-4 px-1">
-            <div className="flex items-center justify-between">
-              <button
-                onClick={toggleTheme}
-                className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors hover:bg-black/10"
-                style={{ color: 'var(--text-tertiary)' }}
-                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {theme === 'dark' ? <Sun size={18} weight="bold" /> : <Moon size={18} weight="bold" />}
-              </button>
-              <div className="relative" ref={userMenuRef}>
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full hover:opacity-80"
-                  style={{ background: 'var(--accent-blue)' }}
-                  title={user?.username || 'Account'}
-                >
-                  <User size={16} weight="bold" color="white" />
-                </button>
-                {showUserMenu && (
-                  <div className="absolute bottom-10 right-0 w-48 py-2 rounded-xl shadow-lg z-50" style={{ background: 'var(--bg-tertiary)' }}>
-                    <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border)' }}>
-                      <p className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>{user?.username || 'User'}</p>
-                    </div>
-                    <button onClick={handleSignOut} className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-black/5" style={{ color: 'var(--accent-red)' }}>
-                      <SignOut size={16} /> Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="text-center mt-2">
-              <span className="text-[10px] font-medium" style={{ color: 'var(--text-tertiary)' }}>v1.2</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -729,7 +681,7 @@ function App() {
         )}
         {currentPage === 'flipper' && <FlipperPage />}
         {currentPage === 'ai' && <AIPage />}
-        {currentPage === 'settings' && <SettingsPage />}
+        {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onToggleTheme={toggleTheme} />}
         {currentPage === 'admin' && user?.role === 'admin' && (
           <AdminPage
             models={models}

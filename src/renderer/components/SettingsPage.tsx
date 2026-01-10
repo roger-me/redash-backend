@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowsClockwise, DownloadSimple, ArrowSquareOut, CheckCircle, XCircle, Info } from '@phosphor-icons/react';
+import { ArrowsClockwise, DownloadSimple, ArrowSquareOut, CheckCircle, XCircle, Info, SignOut, Sun, Moon } from '@phosphor-icons/react';
 
 interface UpdateStatus {
   status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
@@ -15,7 +15,14 @@ interface DownloadProgress {
   bytesPerSecond: number;
 }
 
-export default function SettingsPage() {
+interface SettingsPageProps {
+  user?: { id: string; username?: string; role?: string } | null;
+  onSignOut: () => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
+}
+
+export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: SettingsPageProps) {
   const [appVersion, setAppVersion] = useState<string>('');
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
@@ -135,7 +142,65 @@ export default function SettingsPage() {
         </h1>
       </div>
 
-      <div className="max-w-xl">
+      <div className="space-y-4">
+        {/* Account Section */}
+        <div className="p-5" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+          <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Account
+          </h2>
+          <div className="flex items-center gap-4">
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold"
+              style={{ background: 'var(--accent-blue)', color: 'white' }}
+            >
+              {(user?.username || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1">
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{user?.username || 'User'}</p>
+              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                {user?.role === 'admin' ? 'Administrator' : 'Basic User'}
+              </p>
+            </div>
+            <button
+              onClick={onSignOut}
+              className="h-9 px-4 flex items-center gap-2 text-sm font-medium rounded-full transition-colors hover:opacity-80"
+              style={{
+                background: 'rgba(255, 69, 58, 0.15)',
+                color: 'var(--accent-red)',
+              }}
+            >
+              <SignOut size={16} weight="bold" />
+              Sign Out
+            </button>
+          </div>
+        </div>
+
+        {/* Appearance Section */}
+        <div className="p-5" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+          <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Appearance
+          </h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Theme</p>
+              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+              </p>
+            </div>
+            <button
+              onClick={onToggleTheme}
+              className="h-9 px-4 flex items-center gap-2 text-sm font-medium rounded-full transition-colors"
+              style={{
+                background: 'var(--chip-bg)',
+                color: 'var(--text-primary)',
+              }}
+            >
+              {theme === 'dark' ? <Sun size={16} weight="bold" /> : <Moon size={16} weight="bold" />}
+              {theme === 'dark' ? 'Light' : 'Dark'}
+            </button>
+          </div>
+        </div>
+
         {/* Updates Section */}
         <div className="p-5" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
           <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
