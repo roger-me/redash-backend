@@ -12,6 +12,7 @@ import appIcon from './assets/icon.png';
 import { ArrowsClockwise, Desktop, Users, Swap, Brain, Gear, ShieldCheck } from '@phosphor-icons/react';
 import AIPage from './components/AIPage';
 import SettingsPage from './components/SettingsPage';
+import { LanguageProvider, useLanguage } from './i18n';
 
 type Page = 'accounts' | 'flipper' | 'ai' | 'settings' | 'admin';
 
@@ -22,7 +23,8 @@ interface AuthUser {
   role: 'admin' | 'basic';
 }
 
-function App() {
+function AppContent() {
+  const { t } = useLanguage();
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = loading
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -64,11 +66,11 @@ function App() {
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
 
-    if (diffSec < 30) return 'now';
-    if (diffSec < 60) return '30s ago';
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHour < 24) return `${diffHour}h ago`;
-    return `${diffDay}d ago`;
+    if (diffSec < 30) return t('time.now');
+    if (diffSec < 60) return t('time.secondsAgo', { seconds: 30 });
+    if (diffMin < 60) return t('time.minutesAgo', { minutes: diffMin });
+    if (diffHour < 24) return t('time.hoursAgo', { hours: diffHour });
+    return t('time.daysAgo', { days: diffDay });
   };
 
   // Check auth session on mount
@@ -191,7 +193,6 @@ function App() {
       setIsAuthenticated(false);
       setProfiles([]);
       setModels([]);
-      setShowUserMenu(false);
     } catch (error) {
       console.error('Failed to sign out:', error);
     }
@@ -288,18 +289,18 @@ function App() {
 
       if (showNotification) {
         if (totalWithUsername === 0) {
-          setNotification('No Reddit usernames configured');
+          setNotification(t('messages.noRedditUsernames'));
         } else if (syncedCount === totalWithUsername) {
-          setNotification(`Synced ${syncedCount} profile${syncedCount > 1 ? 's' : ''}`);
+          setNotification(t('messages.synced', { count: syncedCount }));
         } else {
-          setNotification(`Synced ${syncedCount}/${totalWithUsername} (some accounts not found)`);
+          setNotification(t('messages.syncedPartial', { synced: syncedCount, total: totalWithUsername }));
         }
         setTimeout(() => setNotification(null), 3000);
       }
     } catch (err) {
       console.error('Failed to sync Reddit karma:', err);
       if (showNotification) {
-        setNotification('Failed to sync karma');
+        setNotification(t('messages.failedSync'));
         setTimeout(() => setNotification(null), 3000);
       }
     } finally {
@@ -472,7 +473,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
         <div className="flex flex-col items-center gap-4">
           <img src={appIcon} alt="Redash" className="w-16 h-16 rounded-2xl animate-pulse" />
-          <p style={{ color: 'var(--text-tertiary)' }}>Loading...</p>
+          <p style={{ color: 'var(--text-tertiary)' }}>{t('messages.loading')}</p>
         </div>
       </div>
     );
@@ -529,7 +530,7 @@ function App() {
             }}
           >
             <Users size={20} weight={currentPage === 'accounts' ? 'fill' : 'regular'} />
-            <span className="text-sm font-medium">Accounts</span>
+            <span className="text-sm font-medium">{t('nav.accounts')}</span>
           </button>
 
           <button
@@ -541,7 +542,7 @@ function App() {
             }}
           >
             <Swap size={20} weight={currentPage === 'flipper' ? 'fill' : 'regular'} />
-            <span className="text-sm font-medium">Flipper</span>
+            <span className="text-sm font-medium">{t('nav.flipper')}</span>
           </button>
 
           <button
@@ -553,7 +554,7 @@ function App() {
             }}
           >
             <Brain size={20} weight={currentPage === 'ai' ? 'fill' : 'regular'} />
-            <span className="text-sm font-medium">AI</span>
+            <span className="text-sm font-medium">{t('nav.ai')}</span>
           </button>
 
           {user?.role === 'admin' && (
@@ -566,7 +567,7 @@ function App() {
               }}
             >
               <ShieldCheck size={20} weight={currentPage === 'admin' ? 'fill' : 'regular'} />
-              <span className="text-sm font-medium">Admin</span>
+              <span className="text-sm font-medium">{t('nav.admin')}</span>
             </button>
           )}
 
@@ -579,7 +580,7 @@ function App() {
             }}
           >
             <Gear size={20} weight={currentPage === 'settings' ? 'fill' : 'regular'} />
-            <span className="text-sm font-medium">Settings</span>
+            <span className="text-sm font-medium">{t('nav.settings')}</span>
           </button>
 
         </div>
@@ -610,7 +611,7 @@ function App() {
             {/* Toolbar */}
             <div className="flex items-center gap-3 mb-5 mt-2 px-1">
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                Accounts
+                {t('nav.accounts')}
               </h1>
               {/* Toolbar buttons */}
               <div className="ml-auto flex items-center gap-2">
@@ -625,7 +626,7 @@ function App() {
                     color: 'var(--text-primary)',
                     opacity: isSyncing ? 0.5 : 1,
                   }}
-                  title="Refresh karma from Reddit"
+                  title={t('accounts.refreshKarma')}
                 >
                   <ArrowsClockwise
                     size={16}
@@ -648,12 +649,12 @@ function App() {
                 border: '1px dashed var(--border-light)'
               }}>
                 <Desktop size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
-                <p style={{ color: 'var(--text-tertiary)' }}>No browsers yet</p>
+                <p style={{ color: 'var(--text-tertiary)' }}>{t('accounts.noBrowsers')}</p>
                 <button
                   onClick={() => setShowCreateModal(true)}
                   className="btn btn-ghost mt-3"
                 >
-                  Create your first browser
+                  {t('accounts.createFirst')}
                 </button>
               </div>
             ) : (
@@ -750,6 +751,14 @@ function App() {
         />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   );
 }
 

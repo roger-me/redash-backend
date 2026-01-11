@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Profile, Model } from '../../shared/types';
 import { Desktop, CaretDown, FolderSimple, MinusCircle } from '@phosphor-icons/react';
+import { useLanguage } from '../i18n';
 
 interface CreateProfileModalProps {
   models: Model[];
@@ -59,6 +60,7 @@ const countries = [
 ];
 
 function CreateProfileModal({ models, initialModelId, requireModel, onClose, onCreate }: CreateProfileModalProps) {
+  const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -94,32 +96,32 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
     e.preventDefault();
 
     if (!username.trim()) {
-      alert('Please enter a username');
+      alert(t('validation.enterUsername'));
       return;
     }
 
     if (!email.trim()) {
-      alert('Please enter an email');
+      alert(t('validation.enterEmail'));
       return;
     }
 
     if (!country) {
-      alert('Please select a country');
+      alert(t('validation.selectCountry'));
       return;
     }
 
     if (requireModel && !modelId) {
-      alert('Please select a model');
+      alert(t('validation.selectModel'));
       return;
     }
 
     if (!orderNumber.trim()) {
-      alert('Please enter an order number');
+      alert(t('validation.enterOrderNumber'));
       return;
     }
 
     if (!proxyString.trim()) {
-      alert('Please enter a proxy');
+      alert(t('validation.enterProxy'));
       return;
     }
 
@@ -181,10 +183,10 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
             </div>
             <div>
               <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                New Browser
+                {t('profile.newBrowser')}
               </h2>
               <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                Create a new browser profile
+                {t('profile.createNew')}
               </p>
             </div>
           </div>
@@ -195,27 +197,27 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
           {/* Account Credentials */}
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Account Credentials
+              {t('profile.accountCredentials')}
             </label>
             <div className="space-y-2">
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Username (display name)"
+                placeholder={t('profile.username')}
                 autoFocus
               />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email"
+                placeholder={t('profile.email')}
               />
               <input
                 type="text"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder={t('profile.password')}
               />
             </div>
           </div>
@@ -223,7 +225,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
           {/* Country */}
           <div className="relative" ref={countryMenuRef}>
             <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Country
+              {t('profile.country')}
             </label>
             <button
               type="button"
@@ -242,7 +244,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
                   <span className="truncate">{selectedCountry.name}</span>
                 </>
               ) : (
-                <span style={{ color: 'var(--text-tertiary)' }}>Select country</span>
+                <span style={{ color: 'var(--text-tertiary)' }}>{t('profile.selectCountry')}</span>
               )}
               <CaretDown size={12} weight="bold" className="ml-auto" />
             </button>
@@ -276,8 +278,8 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
           {models.length > 0 && (
             <div className="relative" ref={modelMenuRef}>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Model
-                <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> (optional)</span>
+                {t('profile.model')}
+                <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> {t('profile.optional')}</span>
               </label>
               <button
                 type="button"
@@ -294,7 +296,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
                 {modelId ? (
                   <span className="truncate">{models.find(m => m.id === modelId)?.name}</span>
                 ) : (
-                  <span style={{ color: 'var(--text-tertiary)' }}>No model</span>
+                  <span style={{ color: 'var(--text-tertiary)' }}>{t('profile.noModel')}</span>
                 )}
                 <CaretDown size={12} weight="bold" className="ml-auto" />
               </button>
@@ -316,7 +318,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
                       style={{ color: !modelId ? 'var(--accent-blue)' : 'var(--text-primary)' }}
                     >
                       <MinusCircle size={14} weight="bold" />
-                      <span>No model</span>
+                      <span>{t('profile.noModel')}</span>
                     </button>
                   )}
                   {models.map(m => (
@@ -340,20 +342,20 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Status
+                {t('profile.status')}
               </label>
               <select value={status} onChange={(e) => setStatus(e.target.value as any)}>
-                <option value="working">Working</option>
-                <option value="banned">Banned</option>
-                <option value="error">Error</option>
+                <option value="working">{t('profile.working')}</option>
+                <option value="banned">{t('profile.banned')}</option>
+                <option value="error">{t('profile.error')}</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Renew {expiresAt && (() => {
+                {t('profile.renew')} {expiresAt && (() => {
                   const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                   return <span style={{ color: days <= 0 ? '#F44336' : 'var(--accent-blue)' }}>
-                    ({days <= 0 ? 'Expired' : `${days} days`})
+                    ({days <= 0 ? t('profile.expired') : t('profile.daysLeft', { days })})
                   </span>;
                 })()}
               </label>
@@ -376,7 +378,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
                       borderRadius: '8px',
                     }}
                   >
-                    Cancel
+                    {t('button.cancel')}
                   </button>
                 )}
               </div>
@@ -387,7 +389,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Purchase Date
+                {t('profile.purchaseDate')}
               </label>
               <input
                 type="date"
@@ -398,7 +400,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
             </div>
             <div>
               <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Order Number <span style={{ color: 'var(--accent-red)' }}>*</span>
+                {t('profile.orderNumber')} <span style={{ color: 'var(--accent-red)' }}>*</span>
               </label>
               <input
                 type="text"
@@ -412,13 +414,13 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
           {/* Proxy */}
           <div>
             <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              Proxy <span style={{ color: 'var(--accent-red)' }}>*</span>
+              {t('profile.proxy')} <span style={{ color: 'var(--accent-red)' }}>*</span>
             </label>
             <input
               type="text"
               value={proxyString}
               onChange={(e) => setProxyString(e.target.value)}
-              placeholder="IP:PORT:USERNAME:PASSWORD"
+              placeholder={t('profile.proxyPlaceholder')}
               className="font-mono"
               style={{ fontSize: '12px' }}
             />
@@ -436,7 +438,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
                 borderRadius: '100px',
               }}
             >
-              Cancel
+              {t('button.cancel')}
             </button>
             <button
               type="submit"
@@ -447,7 +449,7 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
                 borderRadius: '100px',
               }}
             >
-              Create Browser
+              {t('button.createBrowser')}
             </button>
           </div>
         </form>

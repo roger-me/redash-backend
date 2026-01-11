@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ArrowsClockwise, DownloadSimple, ArrowSquareOut, CheckCircle, XCircle, Info, SignOut, Sun, Moon } from '@phosphor-icons/react';
+import { useLanguage } from '../i18n';
+import usFlag from '../assets/flags/US.png';
+import esFlag from '../assets/flags/ES.png';
 
 interface UpdateStatus {
   status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
@@ -23,6 +26,7 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: SettingsPageProps) {
+  const { t, language, setLanguage } = useLanguage();
   const [appVersion, setAppVersion] = useState<string>('');
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
@@ -115,22 +119,22 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
   const getStatusMessage = () => {
     switch (updateStatus.status) {
       case 'checking':
-        return 'Checking for updates...';
+        return t('settings.checkingUpdates');
       case 'available':
-        return `Version ${updateStatus.version} is available`;
+        return t('settings.versionAvailable', { version: updateStatus.version || '' });
       case 'not-available':
-        return 'You have the latest version';
+        return t('settings.latestVersion');
       case 'downloading':
         if (downloadProgress) {
-          return `Downloading... ${downloadProgress.percent.toFixed(0)}%`;
+          return t('settings.downloading', { percent: downloadProgress.percent.toFixed(0) });
         }
-        return 'Starting download...';
+        return t('settings.startingDownload');
       case 'downloaded':
-        return `Version ${updateStatus.version} is ready to install`;
+        return t('settings.readyToInstall', { version: updateStatus.version || '' });
       case 'error':
-        return updateStatus.error || 'Update check failed';
+        return updateStatus.error || t('settings.updateFailed');
       default:
-        return 'Click to check for updates';
+        return t('settings.clickToCheck');
     }
   };
 
@@ -138,7 +142,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
     <main className="px-6 pb-6 flex-1">
       <div className="flex items-center gap-3 mb-5 mt-2 px-1">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          Settings
+          {t('settings.title')}
         </h1>
       </div>
 
@@ -146,7 +150,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
         {/* Account Section */}
         <div className="p-5" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
           <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Account
+            {t('settings.account')}
           </h2>
           <div className="flex items-center gap-4">
             <div
@@ -156,9 +160,9 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
               {(user?.username || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="flex-1">
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{user?.username || 'User'}</p>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{user?.username || t('messages.user')}</p>
               <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                {user?.role === 'admin' ? 'Administrator' : 'Basic User'}
+                {user?.role === 'admin' ? t('settings.administrator') : t('settings.basicUser')}
               </p>
             </div>
             <button
@@ -170,7 +174,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
               }}
             >
               <SignOut size={16} weight="bold" />
-              Sign Out
+              {t('settings.signOut')}
             </button>
           </div>
         </div>
@@ -178,13 +182,15 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
         {/* Appearance Section */}
         <div className="p-5" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
           <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Appearance
+            {t('settings.appearance')}
           </h2>
-          <div className="flex items-center justify-between">
+
+          {/* Theme */}
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Theme</p>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{t('settings.theme')}</p>
               <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+                {theme === 'dark' ? t('settings.darkMode') : t('settings.lightMode')}
               </p>
             </div>
             <button
@@ -196,21 +202,53 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
               }}
             >
               {theme === 'dark' ? <Sun size={16} weight="bold" /> : <Moon size={16} weight="bold" />}
-              {theme === 'dark' ? 'Light' : 'Dark'}
+              {theme === 'dark' ? t('settings.light') : t('settings.dark')}
             </button>
+          </div>
+
+          {/* Language */}
+          <div className="flex items-center justify-between pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+            <div>
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{t('settings.language')}</p>
+              <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                {language === 'en' ? t('settings.english') : t('settings.spanish')}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLanguage('en')}
+                className="h-9 px-4 flex items-center gap-2 text-sm font-medium rounded-full transition-colors"
+                style={{
+                  background: language === 'en' ? 'var(--accent-blue)' : 'var(--chip-bg)',
+                  color: language === 'en' ? '#fff' : 'var(--text-primary)',
+                }}
+              >
+                <img src={usFlag} alt="English" className="w-5 h-4 object-cover rounded-sm" /> EN
+              </button>
+              <button
+                onClick={() => setLanguage('es')}
+                className="h-9 px-4 flex items-center gap-2 text-sm font-medium rounded-full transition-colors"
+                style={{
+                  background: language === 'es' ? 'var(--accent-blue)' : 'var(--chip-bg)',
+                  color: language === 'es' ? '#fff' : 'var(--text-primary)',
+                }}
+              >
+                <img src={esFlag} alt="Español" className="w-5 h-4 object-cover rounded-sm" /> ES
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Updates Section */}
         <div className="p-5" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
           <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Updates
+            {t('settings.updates')}
           </h2>
 
           {/* Current Version */}
           <div className="flex items-center justify-between mb-4 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <div>
-              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Current Version</p>
+              <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('settings.currentVersion')}</p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>v{appVersion}</p>
             </div>
           </div>
@@ -253,7 +291,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                 }}
               >
                 <ArrowsClockwise size={16} weight="bold" />
-                Check for Updates
+                {t('settings.checkForUpdates')}
               </button>
             ) : updateStatus.status === 'available' ? (
               <button
@@ -265,7 +303,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                 }}
               >
                 <DownloadSimple size={16} weight="bold" />
-                Download Update
+                {t('settings.downloadUpdate')}
               </button>
             ) : updateStatus.status === 'downloaded' ? (
               <button
@@ -277,7 +315,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                 }}
               >
                 <ArrowSquareOut size={16} weight="bold" />
-                Restart & Install
+                {t('settings.restartInstall')}
               </button>
             ) : null}
           </div>
@@ -286,10 +324,10 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
         {/* About Section */}
         <div className="p-5 mt-4" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
           <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            About
+            {t('settings.about')}
           </h2>
           <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            Redash is a browser profile manager with proxy support, mobile device emulation, and AI integration.
+            {t('settings.aboutDescription')}
           </p>
         </div>
       </div>

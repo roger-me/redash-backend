@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { User, Lock, Eye, EyeSlash } from '@phosphor-icons/react';
 import appIcon from '../../assets/icon.png';
+import { useLanguage } from '../../i18n';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
 }
 
 function LoginPage({ onLoginSuccess }: LoginPageProps) {
+  const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -20,12 +22,12 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
     setSuccessMessage('');
 
     if (!username || !password) {
-      setError('Please fill in all fields');
+      setError(t('login.fillAllFields'));
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError(t('login.passwordMinLength'));
       return;
     }
 
@@ -48,7 +50,7 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
 
   const handleForgotPassword = async () => {
     if (!username) {
-      setError('Please enter your username first');
+      setError(t('login.enterUsernameFirst'));
       return;
     }
 
@@ -59,7 +61,7 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
       if (result?.error) {
         setError(result.error);
       } else {
-        setSuccessMessage('Password reset requested');
+        setSuccessMessage(t('login.passwordResetRequested'));
       }
     } catch (err) {
       setError((err as Error).message || 'Failed to reset password');
@@ -88,13 +90,13 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
             className="text-2xl font-bold"
             style={{ color: 'var(--text-primary)' }}
           >
-            Welcome Back
+            {t('login.welcomeBack')}
           </h1>
           <p
             className="text-sm mt-1"
             style={{ color: 'var(--text-tertiary)' }}
           >
-            Sign in to sync your profiles
+            {t('login.signInToSync')}
           </p>
         </div>
 
@@ -111,7 +113,7 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username"
+              placeholder={t('login.username')}
               className="w-full pl-10 pr-4 py-3 rounded-xl text-sm"
               style={{
                 background: 'var(--bg-tertiary)',
@@ -133,7 +135,7 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
+              placeholder={t('login.password')}
               className="w-full pl-10 pr-10 py-3 rounded-xl text-sm"
               style={{
                 background: 'var(--bg-tertiary)',
@@ -182,7 +184,7 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
               color: 'white'
             }}
           >
-            {loading ? 'Please wait...' : 'Sign In'}
+            {loading ? t('login.pleaseWait') : t('login.signIn')}
           </button>
         </form>
 

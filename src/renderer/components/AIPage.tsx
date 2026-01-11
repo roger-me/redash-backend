@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Gear, Copy, ArrowClockwise, Check, Trash, Download, Warning, Terminal, Smiley, Lightbulb, MaskHappy, Heart, SealQuestion, SmileySad } from '@phosphor-icons/react';
+import { useLanguage } from '../i18n';
 
 interface OllamaModel {
   name: string;
@@ -19,16 +20,17 @@ interface StyleOption {
   promptRemove?: string;
 }
 
-const STYLE_OPTIONS: { id: string; label: string; Icon: typeof Smiley; promptAdd: string; promptRemove?: string }[] = [
-  { id: 'emoji', label: 'Emojis', Icon: Smiley, promptAdd: 'Use 1-2 relevant emojis', promptRemove: 'No emojis' },
-  { id: 'advice', label: 'Advice', Icon: Lightbulb, promptAdd: 'Give helpful advice', promptRemove: 'No advice' },
-  { id: 'joke', label: 'Joking', Icon: MaskHappy, promptAdd: 'Be funny and make a joke', promptRemove: '' },
-  { id: 'supportive', label: 'Supportive', Icon: Heart, promptAdd: 'Be warm and supportive', promptRemove: '' },
-  { id: 'sarcastic', label: 'Sarcastic', Icon: SmileySad, promptAdd: 'Be slightly sarcastic', promptRemove: '' },
-  { id: 'question', label: 'Question', Icon: SealQuestion, promptAdd: 'End with a question to engage', promptRemove: '' },
+const STYLE_OPTIONS: { id: string; labelKey: string; Icon: typeof Smiley; promptAdd: string; promptRemove?: string }[] = [
+  { id: 'emoji', labelKey: 'ai.emojis', Icon: Smiley, promptAdd: 'Use 1-2 relevant emojis', promptRemove: 'No emojis' },
+  { id: 'advice', labelKey: 'ai.advice', Icon: Lightbulb, promptAdd: 'Give helpful advice', promptRemove: 'No advice' },
+  { id: 'joke', labelKey: 'ai.joking', Icon: MaskHappy, promptAdd: 'Be funny and make a joke', promptRemove: '' },
+  { id: 'supportive', labelKey: 'ai.supportive', Icon: Heart, promptAdd: 'Be warm and supportive', promptRemove: '' },
+  { id: 'sarcastic', labelKey: 'ai.sarcastic', Icon: SmileySad, promptAdd: 'Be slightly sarcastic', promptRemove: '' },
+  { id: 'question', labelKey: 'ai.question', Icon: SealQuestion, promptAdd: 'End with a question to engage', promptRemove: '' },
 ];
 
 function AIPage() {
+  const { t } = useLanguage();
   const [mode, setMode] = useState<'post' | 'comment'>('post');
   const [postTitle, setPostTitle] = useState('');
   const [postContent, setPostContent] = useState('');
@@ -243,10 +245,10 @@ Generate a natural, human-like reply to the comment.`;
       {/* Toolbar */}
       <div className="flex items-center gap-3 mb-5 mt-2 px-1">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          AI
+          {t('ai.title')}
         </h1>
         <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-          Generate Reddit replies
+          {t('ai.subtitle')}
         </span>
         <button
           onClick={() => setShowSettings(!showSettings)}
@@ -269,10 +271,10 @@ Generate a natural, human-like reply to the comment.`;
           <Warning size={20} weight="bold" style={{ color: 'var(--accent-orange)' }} />
           <div className="flex-1">
             <p className="text-sm font-medium" style={{ color: 'var(--accent-orange)' }}>
-              Ollama not running
+              {t('ai.ollamaNotRunning')}
             </p>
             <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              {ollamaInstallStatus || 'Install Ollama to use local AI models'}
+              {ollamaInstallStatus || t('ai.installOllama')}
             </p>
           </div>
           <div className="flex gap-2">
@@ -291,12 +293,12 @@ Generate a natural, human-like reply to the comment.`;
                     className="w-3 h-3 border-2 border-current rounded-full"
                     style={{ borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }}
                   />
-                  Installing...
+                  {t('ai.installing')}
                 </>
               ) : (
                 <>
                   <Terminal size={12} weight="bold" />
-                  Install
+                  {t('ai.install')}
                 </>
               )}
             </button>
@@ -305,7 +307,7 @@ Generate a natural, human-like reply to the comment.`;
               className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:bg-white/10"
               style={{ background: 'rgba(255, 255, 255, 0.1)', color: 'var(--text-primary)' }}
             >
-              Retry
+              {t('ai.retry')}
             </button>
           </div>
         </div>
@@ -327,7 +329,7 @@ Generate a natural, human-like reply to the comment.`;
                 color: mode === 'post' ? 'var(--text-primary)' : 'var(--text-tertiary)',
               }}
             >
-              Reply to Post
+              {t('ai.replyToPost')}
             </button>
             <button
               onClick={() => setMode('comment')}
@@ -337,7 +339,7 @@ Generate a natural, human-like reply to the comment.`;
                 color: mode === 'comment' ? 'var(--text-primary)' : 'var(--text-tertiary)',
               }}
             >
-              Reply to Comment
+              {t('ai.replyToComment')}
             </button>
           </div>
 
@@ -361,7 +363,7 @@ Generate a natural, human-like reply to the comment.`;
                   }}
                 >
                   <IconComponent size={14} weight={isActive ? 'fill' : 'regular'} />
-                  {option.label}
+                  {t(option.labelKey as any)}
                 </button>
               );
             })}
@@ -371,12 +373,12 @@ Generate a natural, human-like reply to the comment.`;
           <div className="flex flex-col gap-3">
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Post Content
+                {t('ai.postContent')}
               </label>
               <textarea
                 value={postContent}
                 onChange={(e) => setPostContent(e.target.value)}
-                placeholder="Enter the post content if any..."
+                placeholder={t('ai.postContentPlaceholder')}
                 rows={3}
                 className="w-full px-4 py-3 text-sm rounded-xl outline-none resize-none"
                 style={{
@@ -390,12 +392,12 @@ Generate a natural, human-like reply to the comment.`;
             {mode === 'comment' && (
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                  Comment to Reply
+                  {t('ai.commentToReply')}
                 </label>
                 <textarea
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Enter the comment you want to reply to..."
+                  placeholder={t('ai.commentPlaceholder')}
                   rows={3}
                   className="w-full px-4 py-3 text-sm rounded-xl outline-none resize-none"
                   style={{
@@ -434,10 +436,10 @@ Generate a natural, human-like reply to the comment.`;
                     animation: 'spin 1s linear infinite'
                   }}
                 />
-                Generating...
+                {t('ai.generating')}
               </>
             ) : (
-              'Generate Reply'
+              t('ai.generateReply')
             )}
           </button>
 
@@ -449,7 +451,7 @@ Generate a natural, human-like reply to the comment.`;
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                  Generated Reply
+                  {t('ai.generatedReply')}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -485,13 +487,13 @@ Generate a natural, human-like reply to the comment.`;
             style={{ background: 'var(--bg-secondary)' }}
           >
             <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              Settings
+              {t('ai.settings')}
             </h3>
 
             {/* Model Selection */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Model
+                {t('ai.model')}
               </label>
               <select
                 value={selectedModel}
@@ -518,7 +520,7 @@ Generate a natural, human-like reply to the comment.`;
             {/* Installed Models */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Installed Models
+                {t('ai.installedModels')}
               </label>
               <div className="space-y-1.5 max-h-32 overflow-y-auto">
                 {installedModels.length > 0 ? (
@@ -545,7 +547,7 @@ Generate a natural, human-like reply to the comment.`;
                   ))
                 ) : (
                   <p className="text-xs py-2" style={{ color: 'var(--text-quaternary)' }}>
-                    No models installed
+                    {t('ai.noModelsInstalled')}
                   </p>
                 )}
               </div>
@@ -554,14 +556,14 @@ Generate a natural, human-like reply to the comment.`;
             {/* Install Model */}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Install Model
+                {t('ai.installModel')}
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={newModelName}
                   onChange={(e) => setNewModelName(e.target.value)}
-                  placeholder="Model name..."
+                  placeholder={t('ai.modelNamePlaceholder')}
                   className="flex-1 h-8 px-3 text-xs rounded-lg outline-none"
                   style={{
                     background: 'var(--bg-primary)',
@@ -610,7 +612,7 @@ Generate a natural, human-like reply to the comment.`;
             {/* Custom Rules */}
             <div className="flex-1 flex flex-col">
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Custom Rules
+                {t('ai.customRules')}
               </label>
               <textarea
                 value={customRules}
@@ -628,7 +630,7 @@ Generate a natural, human-like reply to the comment.`;
                 className="mt-2 text-xs transition-colors hover:underline"
                 style={{ color: 'var(--text-tertiary)' }}
               >
-                Reset to defaults
+                {t('ai.resetToDefaults')}
               </button>
             </div>
           </div>

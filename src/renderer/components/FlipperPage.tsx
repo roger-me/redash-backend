@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Swap, FolderSimple, X, CloudArrowUp, File, VideoCamera, Image } from '@phosphor-icons/react';
+import { useLanguage } from '../i18n';
 
 interface FileItem {
   path: string;
@@ -10,6 +11,7 @@ interface FileItem {
 }
 
 function FlipperPage() {
+  const { t } = useLanguage();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [outputFolder, setOutputFolder] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -131,6 +133,14 @@ function FlipperPage() {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'done': return t('flipper.done');
+      case 'error': return t('flipper.error');
+      default: return t('flipper.pending');
+    }
+  };
+
   const overallProgress = files.length > 0
     ? files.reduce((acc, f) => {
         if (f.status === 'done' || f.status === 'error') return acc + 100;
@@ -144,10 +154,10 @@ function FlipperPage() {
       {/* Toolbar */}
       <div className="flex items-center gap-3 mb-5 mt-2 px-1">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-          Flipper
+          {t('flipper.title')}
         </h1>
         <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-          Flip images & videos horizontally
+          {t('flipper.subtitle')}
         </span>
       </div>
 
@@ -171,11 +181,11 @@ function FlipperPage() {
           className="mx-auto mb-2"
         />
         <p className="text-sm" style={{ color: isDragOver ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>
-          {files.length > 0 ? 'Drop more files or click to add' : 'Drop files here or click to select'}
+          {files.length > 0 ? t('flipper.dropMoreFiles') : t('flipper.dropFilesOrClick')}
         </p>
         {files.length === 0 && (
           <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-            Supports MP4, MOV, MKV, AVI, WEBM, JPG, PNG, GIF, WEBP
+            {t('flipper.supportedFormats')}
           </p>
         )}
       </div>
@@ -185,7 +195,9 @@ function FlipperPage() {
         <div className="mt-4 flex-1 flex flex-col">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-              {files.length} file{files.length !== 1 ? 's' : ''} selected
+              {files.length === 1
+                ? t('flipper.filesSelected', { count: files.length })
+                : t('flipper.filesSelectedPlural', { count: files.length })}
             </span>
             {!isProcessing && (
               <button
@@ -193,7 +205,7 @@ function FlipperPage() {
                 className="text-xs px-3 py-1 rounded-full transition-colors hover:bg-white/10"
                 style={{ color: 'var(--text-tertiary)' }}
               >
-                Clear all
+                {t('flipper.clearAll')}
               </button>
             )}
           </div>
@@ -240,7 +252,7 @@ function FlipperPage() {
                       color: getStatusColor(file.status)
                     }}
                   >
-                    {file.status === 'done' ? 'Done' : file.status === 'error' ? 'Error' : 'Pending'}
+                    {getStatusLabel(file.status)}
                   </span>
                 )}
                 {!isProcessing && (
@@ -271,7 +283,7 @@ function FlipperPage() {
               }}
             >
               <FolderSimple size={16} weight="bold" />
-              {outputFolder ? 'Change folder' : 'Select output folder'}
+              {outputFolder ? t('flipper.changeFolder') : t('flipper.selectOutputFolder')}
             </button>
             {outputFolder && (
               <span className="text-xs truncate flex-1" style={{ color: 'var(--text-tertiary)' }}>
@@ -284,7 +296,7 @@ function FlipperPage() {
           {isProcessing && (
             <div className="mb-4">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Processing...</span>
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('flipper.processing')}</span>
                 <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
                   {Math.round(overallProgress)}%
                 </span>
@@ -318,12 +330,12 @@ function FlipperPage() {
                     animation: 'spin 1s linear infinite'
                   }}
                 />
-                Processing...
+                {t('flipper.processing')}
               </>
             ) : (
               <>
                 <Swap size={18} weight="bold" />
-                Flip All
+                {t('flipper.flipAll')}
               </>
             )}
           </button>

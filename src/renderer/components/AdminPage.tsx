@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, GenderFemale } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile } from '../../shared/types';
+import { useLanguage } from '../i18n';
 
 // Flag PNG imports
 import flagUS from '../assets/flags/US.png';
@@ -114,6 +115,7 @@ export default function AdminPage({
   onEditProfile,
   refreshTrigger
 }: AdminPageProps) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('stats');
 
   // User management state
@@ -173,11 +175,11 @@ export default function AdminPage({
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
 
-    if (diffSec < 30) return 'now';
-    if (diffSec < 60) return '30s ago';
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHour < 24) return `${diffHour}h ago`;
-    return `${diffDay}d ago`;
+    if (diffSec < 30) return t('time.now');
+    if (diffSec < 60) return t('time.secondsAgo', { seconds: 30 });
+    if (diffMin < 60) return t('time.minutesAgo', { minutes: diffMin });
+    if (diffHour < 24) return t('time.hoursAgo', { hours: diffHour });
+    return t('time.daysAgo', { days: diffDay });
   };
 
   useEffect(() => {
@@ -289,7 +291,7 @@ export default function AdminPage({
 
         modelStats.push({
           modelId,
-          modelName: model?.name || 'No Model',
+          modelName: model?.name || t('profile.noModel'),
           total: groupProfiles.length,
           working: groupProfiles.filter(p => p.status === 'working').length,
           banned: groupProfiles.filter(p => p.status === 'banned').length,
@@ -341,7 +343,7 @@ export default function AdminPage({
   };
 
   const handleDeleteProfile = async (profileId: string) => {
-    if (!confirm('Move this account to trash?')) return;
+    if (!confirm(t('admin.confirmMoveToTrash'))) return;
     try {
       await window.electronAPI?.deleteProfile(profileId);
       await handleRefresh();
@@ -361,7 +363,7 @@ export default function AdminPage({
   };
 
   const handlePermanentDelete = async (profileId: string) => {
-    if (!confirm('Permanently delete this account? This cannot be undone.')) return;
+    if (!confirm(t('admin.confirmPermanentDelete'))) return;
     try {
       await window.electronAPI?.permanentDeleteProfile(profileId);
       await loadDeletedProfiles();
@@ -391,11 +393,11 @@ export default function AdminPage({
 
   const handleCreateUser = async () => {
     if (!newUsername.trim()) {
-      setCreateError('Username is required');
+      setCreateError(t('admin.usernameRequired'));
       return;
     }
     if (newPassword.length < 6) {
-      setCreateError('Password must be at least 6 characters');
+      setCreateError(t('admin.passwordMin6'));
       return;
     }
 
@@ -421,7 +423,7 @@ export default function AdminPage({
     }
     if (editPassword.length > 0) {
       if (editPassword.length < 6) {
-        setEditError('Password must be at least 6 characters');
+        setEditError(t('admin.passwordMin6'));
         return;
       }
       updates.password = editPassword;
@@ -447,10 +449,10 @@ export default function AdminPage({
 
   const handleDeleteUser = async (userId: string) => {
     if (userId === currentUserId) {
-      alert('You cannot delete yourself!');
+      alert(t('admin.cannotDeleteSelf'));
       return;
     }
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    if (!confirm(t('admin.confirmDeleteUser'))) return;
 
     try {
       await window.electronAPI?.adminDeleteUser(userId);
@@ -501,7 +503,7 @@ export default function AdminPage({
     const reader = new FileReader();
     reader.onloadend = () => {
       const result = reader.result as string;
-      const img = new Image();
+      const img = new window.Image();
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const maxSize = 150;
@@ -535,7 +537,7 @@ export default function AdminPage({
 
   const handleCreateModel = async () => {
     if (!newModelName.trim()) {
-      setModelError('Model name is required');
+      setModelError(t('admin.modelNameRequired'));
       return;
     }
     try {
@@ -552,7 +554,7 @@ export default function AdminPage({
   const handleUpdateModel = async () => {
     if (!editingModel) return;
     if (!newModelName.trim()) {
-      setModelError('Model name is required');
+      setModelError(t('admin.modelNameRequired'));
       return;
     }
     try {
@@ -567,7 +569,7 @@ export default function AdminPage({
   };
 
   const handleDeleteModel = async (modelId: string) => {
-    if (!confirm('Are you sure you want to delete this model? All browsers in this model will become unassigned.')) return;
+    if (!confirm(t('admin.confirmDeleteModel'))) return;
     try {
       await onDeleteModel(modelId);
     } catch (err) {
@@ -585,7 +587,7 @@ export default function AdminPage({
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p style={{ color: 'var(--text-tertiary)' }}>Loading...</p>
+        <p style={{ color: 'var(--text-tertiary)' }}>{t('messages.loading')}</p>
       </div>
     );
   }
@@ -609,7 +611,7 @@ export default function AdminPage({
             }}
           >
             <ChartBar size={16} weight="bold" />
-            Stats
+            {t('admin.stats')}
           </button>
           <button
             onClick={() => setActiveTab('users')}
@@ -622,7 +624,7 @@ export default function AdminPage({
             }}
           >
             <Users size={16} weight="bold" />
-            Users
+            {t('admin.users')}
           </button>
           <button
             onClick={() => setActiveTab('models')}
@@ -635,7 +637,7 @@ export default function AdminPage({
             }}
           >
             <GenderFemale size={16} weight="bold" />
-            Models
+            {t('admin.models')}
           </button>
         </div>
 
@@ -668,7 +670,7 @@ export default function AdminPage({
               style={{ background: 'var(--btn-primary-bg)', borderRadius: '100px', color: 'var(--btn-primary-color)' }}
             >
               <Plus size={14} weight="bold" />
-              New User
+              {t('admin.newUser')}
             </button>
           )}
           {activeTab === 'models' && (
@@ -678,7 +680,7 @@ export default function AdminPage({
               style={{ background: 'var(--btn-primary-bg)', borderRadius: '100px', color: 'var(--btn-primary-color)' }}
             >
               <Plus size={14} weight="bold" />
-              New Model
+              {t('admin.newModel')}
             </button>
           )}
         </div>
@@ -690,7 +692,7 @@ export default function AdminPage({
           {userStats.length === 0 ? (
             <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
               <User size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
-              <p style={{ color: 'var(--text-tertiary)' }}>No data yet</p>
+              <p style={{ color: 'var(--text-tertiary)' }}>{t('admin.noDataYet')}</p>
             </div>
           ) : (
             userStats.map(({ user, modelStats, totalProfiles }) => (
@@ -716,7 +718,7 @@ export default function AdminPage({
                       </span>
                     </div>
                     <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                      {totalProfiles} browser{totalProfiles !== 1 ? 's' : ''} across {modelStats.length} model{modelStats.length !== 1 ? 's' : ''}
+                      {totalProfiles} {totalProfiles !== 1 ? t('admin.browsersPlural') : t('admin.browsers')} {t('admin.across')} {modelStats.length} {modelStats.length !== 1 ? t('admin.models').toLowerCase() : t('admin.model').toLowerCase()}
                     </span>
                   </div>
                   <button
@@ -735,12 +737,12 @@ export default function AdminPage({
                         className="grid text-xs font-medium py-4 px-5"
                         style={{ gridTemplateColumns: '1fr repeat(5, 90px) 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
                       >
-                        <div>Model</div>
-                        <div className="text-center">Posts</div>
-                        <div className="text-center">Comments</div>
-                        <div className="text-center">Karma</div>
-                        <div className="text-center">Status</div>
-                        <div className="text-center">Renew</div>
+                        <div>{t('admin.model')}</div>
+                        <div className="text-center">{t('admin.posts')}</div>
+                        <div className="text-center">{t('admin.comments')}</div>
+                        <div className="text-center">{t('admin.karma')}</div>
+                        <div className="text-center">{t('admin.status')}</div>
+                        <div className="text-center">{t('admin.renew')}</div>
                         <div></div>
                       </div>
 
@@ -789,10 +791,10 @@ export default function AdminPage({
                                       <div className="text-center text-sm" style={{ color: (profile.commentsToday || 0) > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{profile.commentsToday || 0}</div>
                                       <div className="text-center text-sm" style={{ color: karma > 0 ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>{karma > 0 ? karma.toLocaleString() : '-'}</div>
                                       <div className="flex justify-center">
-                                        {profile.status === 'working' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>Working</span>}
-                                        {profile.status === 'banned' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>Banned</span>}
-                                        {profile.status === 'error' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255, 152, 0, 0.15)', color: '#FF9800' }}>Error</span>}
-                                        {(!profile.status || profile.status === 'unknown') && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--chip-bg)', color: 'var(--text-tertiary)' }}>Unknown</span>}
+                                        {profile.status === 'working' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>{t('profile.working')}</span>}
+                                        {profile.status === 'banned' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>{t('profile.banned')}</span>}
+                                        {profile.status === 'error' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(255, 152, 0, 0.15)', color: '#FF9800' }}>{t('profile.error')}</span>}
+                                        {(!profile.status || profile.status === 'unknown') && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--chip-bg)', color: 'var(--text-tertiary)' }}>{t('admin.unknown')}</span>}
                                       </div>
                                       <div className="flex justify-center items-center">
                                         {profile.expiresAt ? (
@@ -815,7 +817,7 @@ export default function AdminPage({
                                           >
                                             {(() => {
                                               const days = Math.ceil((new Date(profile.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                                              if (days <= 0) return 'Expired';
+                                              if (days <= 0) return t('admin.expired');
                                               return `${days}d`;
                                             })()}
                                           </span>
@@ -848,7 +850,7 @@ export default function AdminPage({
                                               style={{ color: 'var(--text-primary)' }}
                                             >
                                               <PencilSimple size={14} />
-                                              Edit
+                                              {t('admin.edit')}
                                             </button>
                                             <button
                                               onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDeleteProfile(profile.id); }}
@@ -856,7 +858,7 @@ export default function AdminPage({
                                               style={{ color: '#F44336' }}
                                             >
                                               <Trash size={14} />
-                                              Delete
+                                              {t('admin.delete')}
                                             </button>
                                           </div>
                                         )}
@@ -875,7 +877,7 @@ export default function AdminPage({
                           className="grid py-4 px-5 items-center"
                           style={{ gridTemplateColumns: '1fr repeat(6, 90px) 50px', background: 'rgba(128, 128, 128, 0.04)', borderTop: '1px solid var(--border)' }}
                         >
-                          <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Total</div>
+                          <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('admin.total')}</div>
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{modelStats.reduce((sum, m) => sum + m.total, 0)}</div>
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-green)' }}>{modelStats.reduce((sum, m) => sum + m.postsToday, 0)}</div>
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--accent-green)' }}>{modelStats.reduce((sum, m) => sum + m.commentsToday, 0)}</div>
@@ -900,7 +902,7 @@ export default function AdminPage({
           {users.length === 0 ? (
             <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
               <User size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
-              <p style={{ color: 'var(--text-tertiary)' }}>No users yet</p>
+              <p style={{ color: 'var(--text-tertiary)' }}>{t('admin.noUsersYet')}</p>
             </div>
           ) : (
             users.map(user => (
@@ -915,9 +917,9 @@ export default function AdminPage({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{user.username}</span>
-                      {user.id === currentUserId && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-green)', color: 'white' }}>You</span>}
+                      {user.id === currentUserId && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-green)', color: 'white' }}>{t('admin.you')}</span>}
                     </div>
-                    <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{user.role === 'admin' ? 'Administrator' : 'Basic User'}</span>
+                    <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{user.role === 'admin' ? t('settings.administrator') : t('settings.basicUser')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => openEditModal(user)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
@@ -927,9 +929,9 @@ export default function AdminPage({
 
                 {expandedUser === user.id && user.role === 'basic' && (
                   <div className="px-4 pb-4 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-                    <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Assigned Models</p>
+                    <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>{t('admin.assignedModels')}</p>
                     {models.length === 0 ? (
-                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No models available. Create models first.</p>
+                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.noModelsAvailable')}</p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {models.map(model => {
@@ -953,9 +955,9 @@ export default function AdminPage({
 
                 {expandedUser === user.id && user.role === 'admin' && (
                   <div className="px-4 pb-4 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-                    <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>Full Access to All Models</p>
+                    <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>{t('admin.fullAccessAllModels')}</p>
                     {models.length === 0 ? (
-                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No models created yet.</p>
+                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.noModelsCreated')}</p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {models.map(model => (
@@ -984,8 +986,8 @@ export default function AdminPage({
           {models.length === 0 ? (
             <div className="p-8 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
               <FolderSimple size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
-              <p style={{ color: 'var(--text-tertiary)' }}>No models yet</p>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>Create models to organize browsers and assign to users</p>
+              <p style={{ color: 'var(--text-tertiary)' }}>{t('admin.noModelsYet')}</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('admin.createModelsFirst')}</p>
             </div>
           ) : (
             models.map(model => (
@@ -995,7 +997,7 @@ export default function AdminPage({
                 </div>
                 <div className="flex-1">
                   <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{model.name}</span>
-                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Created {new Date(model.createdAt).toLocaleDateString()}</p>
+                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.created')} {new Date(model.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => openModelEditModal(model)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
@@ -1012,27 +1014,27 @@ export default function AdminPage({
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Create User</h2>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{t('admin.createUser')}</h2>
               <button onClick={() => setShowCreateModal(false)} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Username</label>
-                <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="Enter username" />
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('login.username')}</label>
+                <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder={t('admin.enterUsername')} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Password</label>
-                <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="Min 6 characters" />
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('login.password')}</label>
+                <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder={t('admin.minChars')} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Role</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.role')}</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setNewRole('basic')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: newRole === 'basic' ? 'white' : 'var(--text-secondary)' }}><User size={16} /> Basic</button>
+                  <button onClick={() => setNewRole('basic')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: newRole === 'basic' ? 'white' : 'var(--text-secondary)' }}><User size={16} /> {t('admin.basic')}</button>
                   <button onClick={() => setNewRole('admin')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'admin' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: newRole === 'admin' ? 'white' : 'var(--text-secondary)' }}><Shield size={16} /> Admin</button>
                 </div>
               </div>
               {createError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{createError}</p>}
-              <button onClick={handleCreateUser} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>Create User</button>
+              <button onClick={handleCreateUser} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{t('admin.createUser')}</button>
             </div>
           </div>
         </div>
@@ -1043,28 +1045,28 @@ export default function AdminPage({
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Edit User</h2>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{t('admin.editUser')}</h2>
               <button onClick={() => setEditingUser(null)} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Username</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('login.username')}</label>
                 <input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>New Password (leave blank to keep current)</label>
-                <input type="text" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="Min 6 characters" />
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.newPasswordHint')}</label>
+                <input type="text" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder={t('admin.minChars')} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Role</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.role')}</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditRole('basic')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: editRole === 'basic' ? 'white' : 'var(--text-secondary)' }}><User size={16} /> Basic</button>
+                  <button onClick={() => setEditRole('basic')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: editRole === 'basic' ? 'white' : 'var(--text-secondary)' }}><User size={16} /> {t('admin.basic')}</button>
                   <button onClick={() => setEditRole('admin')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'admin' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: editRole === 'admin' ? 'white' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1 }}><Shield size={16} /> Admin</button>
                 </div>
-                {editingUser.id === currentUserId && <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>You cannot change your own role</p>}
+                {editingUser.id === currentUserId && <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('admin.cannotChangeOwnRole')}</p>}
               </div>
               {editError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{editError}</p>}
-              <button onClick={handleUpdateUser} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>Save Changes</button>
+              <button onClick={handleUpdateUser} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{t('admin.saveChanges')}</button>
             </div>
           </div>
         </div>
@@ -1075,7 +1077,7 @@ export default function AdminPage({
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingModel ? 'Edit Model' : 'Create Model'}</h2>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingModel ? t('model.edit') : t('model.create')}</h2>
               <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
@@ -1086,16 +1088,16 @@ export default function AdminPage({
                 </div>
                 <input ref={modelFileInputRef} type="file" accept="image/*" onChange={handleModelImageUpload} className="hidden" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Profile Picture</p>
-                  <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Click to upload</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{t('model.profilePicture')}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('admin.clickToUpload')}</p>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Model Name</label>
-                <input type="text" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="Enter model name" autoFocus />
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.name')}</label>
+                <input type="text" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder={t('admin.enterModelName')} autoFocus />
               </div>
               {modelError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{modelError}</p>}
-              <button onClick={editingModel ? handleUpdateModel : handleCreateModel} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{editingModel ? 'Save Changes' : 'Create Model'}</button>
+              <button onClick={editingModel ? handleUpdateModel : handleCreateModel} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{editingModel ? t('admin.saveChanges') : t('model.create')}</button>
             </div>
           </div>
         </div>
@@ -1109,8 +1111,8 @@ export default function AdminPage({
               <div className="flex items-center gap-3">
                 <Trash size={24} weight="bold" style={{ color: 'var(--text-primary)' }} />
                 <div>
-                  <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Trash</h2>
-                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Items are permanently deleted after 30 days</p>
+                  <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{t('admin.trash')}</h2>
+                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.trashDescription')}</p>
                 </div>
               </div>
               <button onClick={() => setShowTrash(false)} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
@@ -1119,7 +1121,7 @@ export default function AdminPage({
               {deletedProfiles.length === 0 ? (
                 <div className="text-center py-12">
                   <Trash size={48} weight="light" style={{ color: 'var(--text-tertiary)' }} className="mx-auto mb-3" />
-                  <p style={{ color: 'var(--text-tertiary)' }}>Trash is empty</p>
+                  <p style={{ color: 'var(--text-tertiary)' }}>{t('admin.trashEmpty')}</p>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -1130,11 +1132,11 @@ export default function AdminPage({
                         {profile.country && countryFlagImages[profile.country] && <img src={countryFlagImages[profile.country]} alt={profile.country} className="w-5 h-5 object-contain rounded-sm" />}
                         <div className="flex-1">
                           <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{profile.name}</span>
-                          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{daysLeft} days remaining</p>
+                          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{daysLeft} {t('admin.daysRemaining')}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button onClick={() => handleRestoreProfile(profile.id)} className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}><ArrowCounterClockwise size={14} weight="bold" /> Restore</button>
-                          <button onClick={() => handlePermanentDelete(profile.id)} className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}><Trash size={14} weight="bold" /> Delete</button>
+                          <button onClick={() => handleRestoreProfile(profile.id)} className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}><ArrowCounterClockwise size={14} weight="bold" /> {t('admin.restore')}</button>
+                          <button onClick={() => handlePermanentDelete(profile.id)} className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}><Trash size={14} weight="bold" /> {t('admin.delete')}</button>
                         </div>
                       </div>
                     );
