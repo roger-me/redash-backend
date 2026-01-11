@@ -64,8 +64,8 @@
     ],
     "publish": {
       "provider": "github",
-      "owner": "rogersans",
-      "repo": "redash-user"
+      "owner": "roger-me",
+      "repo": "redash-backend"
     },
     "mac": {
       "target": [
