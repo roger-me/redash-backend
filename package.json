@@ -53,12 +53,18 @@
       "node_modules/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": ".env"
+      }
+    ],
     "asarUnpack": [
       "node_modules/ffmpeg-static/**/*"
     ],
     "publish": {
       "provider": "github",
-      "owner": "YOUR_GITHUB_USERNAME",
+      "owner": "rogersans",
       "repo": "redash-user"
     },
     "mac": {

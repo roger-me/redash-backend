@@ -100,3 +100,12 @@ iPhone 14/13/12, Pixel 7/6, Galaxy S23/S22, iPad Pro 11, iPad Mini
 - macOS: ARM64 builds (dir + zip) in `release/`
 - Windows: x64 portable + zip
 - Linux: AppImage + zip
+
+## Claude Commands
+
+### "release update"
+When the user says "release update", automatically:
+1. Run `yarn package` to build for macOS
+2. Run `npx electron-builder --win` to build for Windows
+3. Clean the release folder (remove `mac-arm64/`, `win-unpacked/`, `*.yml`, `*.blockmap`)
+4. List the final distributable files
