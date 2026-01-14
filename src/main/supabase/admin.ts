@@ -251,6 +251,8 @@ export async function getAllModels(): Promise<any[]> {
     name: m.name,
     isExpanded: m.is_expanded !== false,
     profilePicture: m.profile_picture,
+    instagram: m.instagram,
+    onlyfans: m.onlyfans,
     createdAt: m.created_at,
     userId: m.user_id,
   }));

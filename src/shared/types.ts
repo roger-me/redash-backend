@@ -16,6 +16,8 @@ export interface Model {
   name: string;
   isExpanded?: boolean;
   profilePicture?: string;
+  instagram?: string;
+  onlyfans?: string;
   createdAt: string;
 }
 

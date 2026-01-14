@@ -161,14 +161,20 @@ export async function createModel(model: Record<string, any>) {
 
 export async function updateModel(id: string, updates: Record<string, any>) {
   const supabase = getSupabaseClient();
+  const snakeCaseUpdates = toSnakeCase(updates);
+  console.log('DB updateModel - id:', id);
+  console.log('DB updateModel - updates:', updates);
+  console.log('DB updateModel - snakeCaseUpdates:', snakeCaseUpdates);
 
   const { data, error } = await supabase
     .from('models')
-    .update(toSnakeCase(updates))
+    .update(snakeCaseUpdates)
     .eq('id', id)
     .select()
     .single();
 
+  console.log('DB updateModel - result data:', data);
+  console.log('DB updateModel - result error:', error);
   if (error) throw new Error(error.message);
   return toCamelCase(data);
 }

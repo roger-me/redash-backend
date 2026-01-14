@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, InstagramLogo } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -75,8 +75,8 @@ interface AdminPageProps {
   models: Model[];
   currentUserId: string;
   currentUserRole: UserRole;
-  onCreateModel: (name: string, profilePicture?: string) => Promise<void>;
-  onUpdateModel: (id: string, name: string, profilePicture?: string) => Promise<void>;
+  onCreateModel: (name: string, profilePicture?: string, instagram?: string, onlyfans?: string) => Promise<void>;
+  onUpdateModel: (id: string, name: string, profilePicture?: string, instagram?: string, onlyfans?: string) => Promise<void>;
   onDeleteModel: (id: string) => Promise<void>;
   onCreateBrowser: () => void;
   onEditProfile: (profileId: string) => void;
@@ -144,6 +144,8 @@ export default function AdminPage({
   const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [newModelName, setNewModelName] = useState('');
   const [modelProfilePicture, setModelProfilePicture] = useState('');
+  const [modelInstagram, setModelInstagram] = useState('');
+  const [modelOnlyfans, setModelOnlyfans] = useState('');
   const [modelError, setModelError] = useState('');
   const modelFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -642,10 +644,12 @@ export default function AdminPage({
       return;
     }
     try {
-      await onCreateModel(newModelName.trim(), modelProfilePicture || undefined);
+      await onCreateModel(newModelName.trim(), modelProfilePicture || undefined, modelInstagram || undefined, modelOnlyfans || undefined);
       setShowModelModal(false);
       setNewModelName('');
       setModelProfilePicture('');
+      setModelInstagram('');
+      setModelOnlyfans('');
       setModelError('');
     } catch (err: any) {
       setModelError(err.message || 'Failed to create model');
@@ -659,10 +663,13 @@ export default function AdminPage({
       return;
     }
     try {
-      await onUpdateModel(editingModel.id, newModelName.trim(), modelProfilePicture || undefined);
+      console.log('AdminPage handleUpdateModel:', { modelInstagram, modelOnlyfans });
+      await onUpdateModel(editingModel.id, newModelName.trim(), modelProfilePicture, modelInstagram, modelOnlyfans);
       setEditingModel(null);
       setNewModelName('');
       setModelProfilePicture('');
+      setModelInstagram('');
+      setModelOnlyfans('');
       setModelError('');
     } catch (err: any) {
       setModelError(err.message || 'Failed to update model');
@@ -682,6 +689,8 @@ export default function AdminPage({
     setEditingModel(model);
     setNewModelName(model.name);
     setModelProfilePicture(model.profilePicture || '');
+    setModelInstagram(model.instagram || '');
+    setModelOnlyfans(model.onlyfans || '');
     setModelError('');
   };
 
@@ -1123,6 +1132,7 @@ export default function AdminPage({
                         const modelKey = `${user.id}-${stat.modelId || 'no-model'}`;
                         const isExpanded = expandedModels.has(modelKey);
                         const modelProfiles = getProfilesForModel(user.id, stat.modelId);
+                        const modelData = models.find(m => m.id === stat.modelId);
 
                         // Find most recent last post and last comment for the model
                         const modelLastPost = modelProfiles
@@ -1154,6 +1164,28 @@ export default function AdminPage({
                                 {isExpanded ? <CaretDown size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} /> : <CaretRight size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
                                 <FolderSimple size={16} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
                                 <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{stat.modelName}</span>
+                                {modelData?.instagram && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); copyToClipboard(modelData.instagram!, `ig-${stat.modelId}`); }}
+                                    className="h-6 px-2 flex items-center gap-1 text-xs"
+                                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
+                                    title={modelData.instagram}
+                                  >
+                                    <InstagramLogo size={12} weight="bold" />
+                                    {copiedId === `ig-${stat.modelId}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : modelData.instagram}
+                                  </button>
+                                )}
+                                {modelData?.onlyfans && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); copyToClipboard(modelData.onlyfans!, `of-${stat.modelId}`); }}
+                                    className="h-6 px-2 flex items-center gap-1 text-xs"
+                                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
+                                    title={modelData.onlyfans}
+                                  >
+                                    <span className="font-bold text-[10px]">OF</span>
+                                    {copiedId === `of-${stat.modelId}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : modelData.onlyfans}
+                                  </button>
+                                )}
                               </div>
                               <div className="text-center text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                                 {stat.totalPosts}
@@ -1494,7 +1526,6 @@ export default function AdminPage({
                           const assignedProfiles = getProfilesForSubEmail(subEmail.id);
                           return (
                             <div key={subEmail.id} className="flex items-center gap-3 py-2 px-1 border-b border-white/5 last:border-b-0">
-                              <EnvelopeSimple size={16} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
                               <button onClick={() => copyToClipboard(subEmail.email, `sub-${subEmail.id}`)} className="text-sm text-left hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--text-secondary)', minWidth: '180px' }} title="Click to copy">
                                 {copiedId === `sub-${subEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : subEmail.email}
                                 {copiedId !== `sub-${subEmail.id}` && <Copy size={12} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
@@ -1695,7 +1726,7 @@ export default function AdminPage({
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingModel ? t('model.edit') : t('model.create')}</h2>
-              <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+              <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelInstagram(''); setModelOnlyfans(''); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-4 cursor-pointer" onClick={() => modelFileInputRef.current?.click()}>
@@ -1712,6 +1743,14 @@ export default function AdminPage({
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.name')}</label>
                 <input type="text" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder={t('admin.enterModelName')} autoFocus />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.instagram')}</label>
+                <input type="url" value={modelInstagram} onChange={(e) => setModelInstagram(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="https://instagram.com/username" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.onlyfans')}</label>
+                <input type="url" value={modelOnlyfans} onChange={(e) => setModelOnlyfans(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="https://onlyfans.com/username" />
               </div>
               {modelError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{modelError}</p>}
               <button onClick={editingModel ? handleUpdateModel : handleCreateModel} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', borderRadius: '100px' }}>{editingModel ? t('admin.saveChanges') : t('model.create')}</button>

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Profile, Model } from '../../shared/types';
-import { CaretRight, ChatCircle, File, User, Calendar } from '@phosphor-icons/react';
+import { CaretRight, ChatCircle, File, User, Calendar, Copy } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 
 // Flag PNG imports
@@ -110,6 +111,13 @@ function ProfileList({
   onCreateAccountInModel,
 }: ProfileListProps) {
   const { t } = useLanguage();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // Group profiles by model
   // Sort order: working (0) -> error (1) -> banned (2)
@@ -296,10 +304,30 @@ function ProfileList({
                     <User size={16} weight="bold" color="var(--text-tertiary)" />
                   )}
                 </div>
-                <span className="font-semibold text-base flex-1" style={{ color: 'var(--text-primary)' }}>
+                <span className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
                   {model.name}
                 </span>
-
+                {model.instagram && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); copyToClipboard(model.instagram!, `ig-${model.id}`); }}
+                    className="h-7 px-2.5 flex items-center gap-1.5 text-xs font-medium"
+                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
+                    title={model.instagram}
+                  >
+                    {copiedId === `ig-${model.id}` ? <span style={{ color: 'var(--accent-green)' }}>{t('common.copied')}</span> : <><span>Instagram</span><Copy size={12} /></>}
+                  </button>
+                )}
+                {model.onlyfans && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); copyToClipboard(model.onlyfans!, `of-${model.id}`); }}
+                    className="h-7 px-2.5 flex items-center gap-1.5 text-xs font-medium"
+                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
+                    title={model.onlyfans}
+                  >
+                    {copiedId === `of-${model.id}` ? <span style={{ color: 'var(--accent-green)' }}>{t('common.copied')}</span> : <><span>OnlyFans</span><Copy size={12} /></>}
+                  </button>
+                )}
+                <div className="flex-1" />
                 <CaretRight
                   size={16}
                   weight="bold"

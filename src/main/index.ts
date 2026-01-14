@@ -765,7 +765,10 @@ ipcMain.handle('models:create', async (_, model: Omit<Model, 'id' | 'createdAt'>
 });
 
 ipcMain.handle('models:update', async (_, modelId: string, updates: Partial<Model>) => {
-  return db.updateModel(modelId, updates);
+  console.log('IPC models:update received:', { modelId, updates });
+  const result = await db.updateModel(modelId, updates);
+  console.log('IPC models:update result:', result);
+  return result;
 });
 
 ipcMain.handle('models:delete', async (_, modelId: string) => {

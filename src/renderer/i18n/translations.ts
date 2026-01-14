@@ -77,6 +77,7 @@ export const translations = {
     'profile.daysLeft': '{days} days',
     'profile.launch': 'Launch',
     'profile.stop': 'Stop',
+    'common.copied': 'Copied!',
 
     // Validation
     'validation.enterUsername': 'Please enter a username',
@@ -173,7 +174,6 @@ export const translations = {
     'admin.none': 'None',
     'admin.alreadyAssigned': '(already assigned)',
     'admin.saving': 'Saving...',
-    'admin.saveChanges': 'Save Changes',
     'admin.noSubEmailsYet': 'No sub-emails yet. Click + to add one.',
     'admin.trash': 'Trash',
     'admin.trashDescription': 'Items are permanently deleted after 30 days',
@@ -256,6 +256,8 @@ export const translations = {
     'model.edit': 'Edit Model',
     'model.name': 'Model Name',
     'model.profilePicture': 'Profile Picture',
+    'model.instagram': 'Instagram',
+    'model.onlyfans': 'OnlyFans',
 
     // Time
     'time.now': 'now',
@@ -342,6 +344,7 @@ export const translations = {
     'profile.daysLeft': '{days} días',
     'profile.launch': 'Abrir',
     'profile.stop': 'Cerrar',
+    'common.copied': 'Copiado!',
 
     // Validation
     'validation.enterUsername': 'Por favor ingresa un nombre de usuario',
@@ -438,7 +441,6 @@ export const translations = {
     'admin.none': 'Ninguno',
     'admin.alreadyAssigned': '(ya asignado)',
     'admin.saving': 'Guardando...',
-    'admin.saveChanges': 'Guardar Cambios',
     'admin.noSubEmailsYet': 'No hay sub-emails aún. Haz clic en + para añadir uno.',
     'admin.trash': 'Papelera',
     'admin.trashDescription': 'Los elementos se eliminan permanentemente después de 30 días',
@@ -521,6 +523,8 @@ export const translations = {
     'model.edit': 'Editar Modelo',
     'model.name': 'Nombre del Modelo',
     'model.profilePicture': 'Foto de Perfil',
+    'model.instagram': 'Instagram',
+    'model.onlyfans': 'OnlyFans',
 
     // Time
     'time.now': 'ahora',

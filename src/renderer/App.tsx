@@ -417,13 +417,27 @@ function AppContent() {
   };
 
   // Admin page model handlers (simpler interface)
-  const handleAdminCreateModel = async (name: string, profilePicture?: string) => {
-    await window.electronAPI?.createModel({ name, isExpanded: true, profilePicture });
+  const handleAdminCreateModel = async (name: string, profilePicture?: string, instagram?: string, onlyfans?: string) => {
+    await window.electronAPI?.createModel({
+      name,
+      isExpanded: true,
+      profilePicture: profilePicture || null,
+      instagram: instagram || null,
+      onlyfans: onlyfans || null,
+    });
     await loadModels();
   };
 
-  const handleAdminUpdateModel = async (id: string, name: string, profilePicture?: string) => {
-    await window.electronAPI?.updateModel(id, { name, profilePicture });
+  const handleAdminUpdateModel = async (id: string, name: string, profilePicture?: string, instagram?: string, onlyfans?: string) => {
+    console.log('handleAdminUpdateModel called:', { id, name, profilePicture, instagram, onlyfans });
+    const updates = {
+      name,
+      profilePicture: profilePicture || null,
+      instagram: instagram || null,
+      onlyfans: onlyfans || null,
+    };
+    console.log('Sending updates:', updates);
+    await window.electronAPI?.updateModel(id, updates);
     await loadModels();
   };
 
