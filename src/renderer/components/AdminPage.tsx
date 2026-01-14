@@ -176,6 +176,7 @@ export default function AdminPage({
   const [emailError, setEmailError] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [emailMenuOpen, setEmailMenuOpen] = useState<string | null>(null);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -183,10 +184,11 @@ export default function AdminPage({
       const target = e.target as HTMLElement;
       if (target.closest('[data-menu="true"]')) return;
       if (openMenuId) setOpenMenuId(null);
+      if (emailMenuOpen) setEmailMenuOpen(null);
     };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [openMenuId]);
+  }, [openMenuId, emailMenuOpen]);
 
   const getRelativeTime = (date: Date): string => {
     const now = new Date();
@@ -657,15 +659,18 @@ export default function AdminPage({
   // Email handlers
   const loadEmails = async () => {
     try {
-      const [mainData, subData, profilesData] = await Promise.all([
+      const [mainData, subData, profilesData, usersData] = await Promise.all([
         window.electronAPI?.listMainEmails(),
         window.electronAPI?.listSubEmails(),
         window.electronAPI?.adminGetAllProfiles(),
+        window.electronAPI?.adminListUsers(),
       ]);
       setMainEmails(mainData || []);
       setSubEmails(subData || []);
       // Update profiles for email assignment display
       if (profilesData) setProfiles(profilesData);
+      // Update users for showing usernames
+      if (usersData) setUsers(usersData);
       // Expand all by default
       setExpandedEmails(new Set((mainData || []).map((e: MainEmail) => e.id)));
     } catch (err) {
@@ -684,7 +689,7 @@ export default function AdminPage({
   };
 
   useEffect(() => {
-    if (activeTab === 'emails' && mainEmails.length === 0) {
+    if (activeTab === 'emails') {
       loadEmails();
     }
   }, [activeTab]);
@@ -1391,8 +1396,35 @@ export default function AdminPage({
                       >
                         <Plus size={18} />
                       </button>
-                      <button onClick={() => openMainEmailEditModal(mainEmail)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
-                      <button onClick={() => handleDeleteMainEmail(mainEmail.id)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>
+                      <div className="relative">
+                        <button
+                          onClick={() => setEmailMenuOpen(emailMenuOpen === `main-${mainEmail.id}` ? null : `main-${mainEmail.id}`)}
+                          className="p-2 rounded-lg hover:bg-black/10"
+                          style={{ color: 'var(--text-tertiary)' }}
+                        >
+                          <DotsThree size={18} weight="bold" />
+                        </button>
+                        {emailMenuOpen === `main-${mainEmail.id}` && (
+                          <div className="absolute right-0 top-full mt-1 py-1 min-w-[120px] rounded-lg shadow-lg z-50" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                            <button
+                              onClick={() => { openMainEmailEditModal(mainEmail); setEmailMenuOpen(null); }}
+                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                              style={{ color: 'var(--text-primary)' }}
+                            >
+                              <PencilSimple size={14} />
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => { handleDeleteMainEmail(mainEmail.id); setEmailMenuOpen(null); }}
+                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                              style={{ color: 'var(--accent-red)' }}
+                            >
+                              <Trash size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   {isExpanded && emailSubEmails.length > 0 && (
@@ -1401,7 +1433,7 @@ export default function AdminPage({
                         {emailSubEmails.map(subEmail => {
                           const assignedProfiles = getProfilesForSubEmail(subEmail.id);
                           return (
-                            <div key={subEmail.id} className="flex items-center gap-3 p-3" style={{ background: 'var(--bg-tertiary)', borderRadius: '16px' }}>
+                            <div key={subEmail.id} className="flex items-center gap-3 py-2 px-1 hover:bg-white/5 border-b border-white/5 last:border-b-0">
                               <EnvelopeSimple size={16} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
                               <button onClick={() => copyToClipboard(subEmail.email, `sub-${subEmail.id}`)} className="text-sm text-left hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--text-secondary)', minWidth: '180px' }} title="Click to copy">
                                 {copiedId === `sub-${subEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : subEmail.email}
@@ -1422,9 +1454,34 @@ export default function AdminPage({
                                   );
                                 })}
                               </div>
-                              <div className="flex items-center gap-1">
-                                <button onClick={() => openSubEmailEditModal(subEmail)} className="p-1.5 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={14} /></button>
-                                <button onClick={() => handleDeleteSubEmail(subEmail.id)} className="p-1.5 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={14} /></button>
+                              <div className="relative">
+                                <button
+                                  onClick={() => setEmailMenuOpen(emailMenuOpen === `sub-${subEmail.id}` ? null : `sub-${subEmail.id}`)}
+                                  className="p-1.5 rounded-lg hover:bg-black/10"
+                                  style={{ color: 'var(--text-tertiary)' }}
+                                >
+                                  <DotsThree size={16} weight="bold" />
+                                </button>
+                                {emailMenuOpen === `sub-${subEmail.id}` && (
+                                  <div className="absolute right-0 top-full mt-1 py-1 min-w-[120px] rounded-lg shadow-lg z-50" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
+                                    <button
+                                      onClick={() => { openSubEmailEditModal(subEmail); setEmailMenuOpen(null); }}
+                                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                                      style={{ color: 'var(--text-primary)' }}
+                                    >
+                                      <PencilSimple size={14} />
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => { handleDeleteSubEmail(subEmail.id); setEmailMenuOpen(null); }}
+                                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                                      style={{ color: 'var(--accent-red)' }}
+                                    >
+                                      <Trash size={14} />
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );
