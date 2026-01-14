@@ -79,6 +79,7 @@ interface AdminPageProps {
   onDeleteModel: (id: string) => Promise<void>;
   onCreateBrowser: () => void;
   onEditProfile: (profileId: string) => void;
+  onSyncKarma: () => Promise<void>;
   refreshTrigger?: number;
 }
 
@@ -94,6 +95,8 @@ interface ModelStats {
   totalKarma: number;
   postsToday: number;
   commentsToday: number;
+  totalPosts: number;
+  totalComments: number;
 }
 
 interface UserStats {
@@ -113,6 +116,7 @@ export default function AdminPage({
   onDeleteModel,
   onCreateBrowser,
   onEditProfile,
+  onSyncKarma,
   refreshTrigger
 }: AdminPageProps) {
   const { t } = useLanguage();
@@ -195,6 +199,19 @@ export default function AdminPage({
     loadData();
   }, []);
 
+  // Auto-refresh every 2 minutes when on stats tab
+  useEffect(() => {
+    if (activeTab !== 'stats') return;
+
+    const autoRefreshInterval = setInterval(() => {
+      if (!syncing && !refreshing) {
+        handleRefresh();
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(autoRefreshInterval);
+  }, [activeTab, syncing, refreshing]);
+
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0) {
       handleRefresh();
@@ -251,17 +268,21 @@ export default function AdminPage({
     }
   };
 
-  const handleSyncToSheet = async () => {
+  const handleSyncAll = async () => {
     setSyncing(true);
     try {
+      // First sync Reddit karma
+      await onSyncKarma();
+      // Then sync to Google Sheet
       const result = await window.electronAPI?.sheetsSyncAll();
       if (result?.success) {
-        alert('Synced all browsers to Google Sheet!');
+        // Refresh the data after syncing
+        await handleRefresh();
       } else {
-        alert('Sync failed: ' + (result?.error || 'Unknown error'));
+        alert('Sheet sync failed: ' + (result?.error || 'Unknown error'));
       }
     } catch (err) {
-      console.error('Failed to sync to sheet:', err);
+      console.error('Failed to sync:', err);
       alert('Sync failed');
     } finally {
       setSyncing(false);
@@ -312,6 +333,8 @@ export default function AdminPage({
         const model = models.find(m => m.id === modelId);
         const postsToday = groupProfiles.reduce((sum, p) => sum + (p.postsToday || 0), 0);
         const commentsToday = groupProfiles.reduce((sum, p) => sum + (p.commentsToday || 0), 0);
+        const totalPosts = groupProfiles.reduce((sum, p) => sum + ((p as any).totalPosts || 0), 0);
+        const totalComments = groupProfiles.reduce((sum, p) => sum + ((p as any).totalComments || 0), 0);
         const karma = groupProfiles.reduce((sum, p) => sum + (p.commentKarma || 0) + (p.postKarma || 0), 0);
 
         totalPostsToday += postsToday;
@@ -330,6 +353,8 @@ export default function AdminPage({
           totalKarma: karma,
           postsToday,
           commentsToday,
+          totalPosts,
+          totalComments,
         });
       });
 
@@ -675,16 +700,6 @@ export default function AdminPage({
           {activeTab === 'stats' && (
             <>
               <button
-                onClick={handleSyncToSheet}
-                disabled={syncing}
-                className="h-9 px-3 flex items-center gap-2 transition-colors"
-                style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)', opacity: syncing ? 0.5 : 1 }}
-                title="Sync all browsers to Google Sheet"
-              >
-                <ArrowsClockwise size={16} weight="bold" style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
-                <span className="text-sm font-medium">Sync Sheet</span>
-              </button>
-              <button
                 onClick={handleOpenTrash}
                 className="h-9 px-3 flex items-center gap-2 transition-colors"
                 style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
@@ -692,12 +707,13 @@ export default function AdminPage({
                 <Trash size={16} weight="bold" />
               </button>
               <button
-                onClick={handleRefresh}
-                disabled={refreshing}
+                onClick={handleSyncAll}
+                disabled={syncing || refreshing}
                 className="h-9 px-3 flex items-center gap-2 transition-colors"
-                style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)', opacity: refreshing ? 0.5 : 1 }}
+                style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)', opacity: (syncing || refreshing) ? 0.5 : 1 }}
+                title="Sync karma and Google Sheet"
               >
-                <ArrowsClockwise size={16} weight="bold" style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} />
+                <ArrowsClockwise size={16} weight="bold" style={{ animation: (syncing || refreshing) ? 'spin 1s linear infinite' : 'none' }} />
                 {lastRefreshLabel && <span className="text-sm font-medium">{lastRefreshLabel}</span>}
               </button>
             </>
@@ -774,12 +790,14 @@ export default function AdminPage({
                     <div style={{ background: 'rgba(128, 128, 128, 0.06)', borderRadius: '20px', overflow: 'hidden' }}>
                       <div
                         className="grid text-xs font-medium py-4 px-5"
-                        style={{ gridTemplateColumns: '1fr repeat(5, 90px) 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
+                        style={{ gridTemplateColumns: '1fr repeat(7, 90px) 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
                       >
                         <div>{t('admin.model')}</div>
                         <div className="text-center">{t('admin.posts')}</div>
                         <div className="text-center">{t('admin.comments')}</div>
                         <div className="text-center">{t('admin.karma')}</div>
+                        <div className="text-center">{t('admin.lastPost')}</div>
+                        <div className="text-center">{t('admin.lastComment')}</div>
                         <div className="text-center">{t('admin.status')}</div>
                         <div className="text-center">{t('admin.renew')}</div>
                         <div></div>
@@ -790,11 +808,30 @@ export default function AdminPage({
                         const isExpanded = expandedModels.has(modelKey);
                         const modelProfiles = getProfilesForModel(user.id, stat.modelId);
 
+                        // Find most recent last post and last comment for the model
+                        const modelLastPost = modelProfiles
+                          .map(p => (p as any).lastPostDate)
+                          .filter(Boolean)
+                          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+                        const modelLastComment = modelProfiles
+                          .map(p => (p as any).lastCommentDate)
+                          .filter(Boolean)
+                          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+                        const formatDateTimeModel = (dateStr: string | undefined) => {
+                          if (!dateStr) return '-';
+                          const date = new Date(dateStr);
+                          const dd = String(date.getDate()).padStart(2, '0');
+                          const mm = String(date.getMonth() + 1).padStart(2, '0');
+                          const hh = String(date.getHours()).padStart(2, '0');
+                          const min = String(date.getMinutes()).padStart(2, '0');
+                          return `${dd}/${mm} ${hh}:${min}`;
+                        };
+
                         return (
                           <div key={stat.modelId || 'no-model'}>
                             <div
                               className="grid py-4 px-5 items-center cursor-pointer hover:bg-white/5 transition-colors"
-                              style={{ gridTemplateColumns: '1fr repeat(5, 90px) 50px', borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}
+                              style={{ gridTemplateColumns: '1fr repeat(7, 90px) 50px', borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}
                               onClick={() => toggleModelExpand(modelKey)}
                             >
                               <div className="flex items-center gap-2">
@@ -802,9 +839,17 @@ export default function AdminPage({
                                 <FolderSimple size={16} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
                                 <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{stat.modelName}</span>
                               </div>
-                              <div className="text-center text-sm font-medium" style={{ color: stat.postsToday > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{stat.postsToday}</div>
-                              <div className="text-center text-sm font-medium" style={{ color: stat.commentsToday > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{stat.commentsToday}</div>
+                              <div className="text-center text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                {stat.totalPosts}
+                                {stat.postsToday > 0 && <span style={{ color: 'var(--accent-green)', marginLeft: '4px' }}>+{stat.postsToday}</span>}
+                              </div>
+                              <div className="text-center text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                {stat.totalComments}
+                                {stat.commentsToday > 0 && <span style={{ color: 'var(--accent-green)', marginLeft: '4px' }}>+{stat.commentsToday}</span>}
+                              </div>
                               <div className="text-center text-sm font-medium" style={{ color: stat.totalKarma > 0 ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>{stat.totalKarma > 0 ? stat.totalKarma.toLocaleString() : '-'}</div>
+                              <div className="text-center text-xs font-medium" style={{ color: modelLastPost ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{formatDateTimeModel(modelLastPost)}</div>
+                              <div className="text-center text-xs font-medium" style={{ color: modelLastComment ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{formatDateTimeModel(modelLastComment)}</div>
                               <div className="text-center text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>{stat.working}/{stat.total}</div>
                               <div className="text-center text-sm font-medium" style={{ color: 'var(--text-tertiary)' }}>{stat.enabled}/{stat.total}</div>
                               <div></div>
@@ -814,11 +859,20 @@ export default function AdminPage({
                               <div style={{ borderBottom: index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}>
                                 {modelProfiles.map((profile, pIndex) => {
                                   const karma = (profile.commentKarma || 0) + (profile.postKarma || 0);
+                                  const formatDateTime = (dateStr: string | undefined) => {
+                                    if (!dateStr) return '-';
+                                    const date = new Date(dateStr);
+                                    const dd = String(date.getDate()).padStart(2, '0');
+                                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                                    const hh = String(date.getHours()).padStart(2, '0');
+                                    const min = String(date.getMinutes()).padStart(2, '0');
+                                    return `${dd}/${mm} ${hh}:${min}`;
+                                  };
                                   return (
                                     <div
                                       key={profile.id}
                                       className="grid py-3 px-5 pl-12 items-center"
-                                      style={{ gridTemplateColumns: '1fr repeat(5, 90px) 50px', borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none' }}
+                                      style={{ gridTemplateColumns: '1fr repeat(7, 90px) 50px', borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none' }}
                                     >
                                       <div className="flex items-center gap-2">
                                         {profile.country && countryFlagImages[profile.country] && (
@@ -826,9 +880,17 @@ export default function AdminPage({
                                         )}
                                         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{profile.name}</span>
                                       </div>
-                                      <div className="text-center text-sm" style={{ color: (profile.postsToday || 0) > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{profile.postsToday || 0}</div>
-                                      <div className="text-center text-sm" style={{ color: (profile.commentsToday || 0) > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>{profile.commentsToday || 0}</div>
+                                      <div className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                        {(profile as any).totalPosts || 0}
+                                        {(profile.postsToday || 0) > 0 && <span style={{ color: 'var(--accent-green)', marginLeft: '4px' }}>+{profile.postsToday}</span>}
+                                      </div>
+                                      <div className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+                                        {(profile as any).totalComments || 0}
+                                        {(profile.commentsToday || 0) > 0 && <span style={{ color: 'var(--accent-green)', marginLeft: '4px' }}>+{profile.commentsToday}</span>}
+                                      </div>
                                       <div className="text-center text-sm" style={{ color: karma > 0 ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>{karma > 0 ? karma.toLocaleString() : '-'}</div>
+                                      <div className="text-center text-xs" style={{ color: (profile as any).lastPostDate ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{formatDateTime((profile as any).lastPostDate)}</div>
+                                      <div className="text-center text-xs" style={{ color: (profile as any).lastCommentDate ? 'var(--text-secondary)' : 'var(--text-tertiary)' }}>{formatDateTime((profile as any).lastCommentDate)}</div>
                                       <div className="flex justify-center">
                                         {profile.status === 'working' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>{t('profile.working')}</span>}
                                         {profile.status === 'banned' && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>{t('profile.banned')}</span>}

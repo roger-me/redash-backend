@@ -37,7 +37,11 @@ export interface Profile {
   isEnabled?: boolean;
   commentKarma?: number;
   postKarma?: number;
+  totalPosts?: number;
+  totalComments?: number;
   lastCompletedDate?: string;
+  lastPostDate?: string;
+  lastCommentDate?: string;
   profilePicture?: string;
   createdAt: string;
   deletedAt?: string;
@@ -107,7 +111,7 @@ export interface ElectronAPI {
   onBrowserClosed: (callback: (profileId: string) => void) => void;
 
   // Reddit
-  fetchRedditKarma: (username: string) => Promise<{ commentKarma: number; postKarma: number } | null>;
+  fetchRedditKarma: (username: string) => Promise<{ commentKarma: number; postKarma: number; lastPostDate: string | null; lastCommentDate: string | null; totalPosts: number; totalComments: number } | null>;
 
   // Models
   listModels: () => Promise<Model[]>;

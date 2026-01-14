@@ -1,7 +1,7 @@
 import https from 'https';
 
 // Hardcoded webhook URL - automatic sync, no user configuration needed
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxqYBEZOUeZIHujo9UjXAY8fMbHWkj9T5OJ2zvr7xTbHJprKiIv5yOk9aUhI0AjZBE2OQ/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyuwwlzMtUIfYvdmeSyJzBOxCV0l2TmfzlUM5s-S0ZOvwmuLGYf660gT0Ee93G1f7iQqA/exec';
 
 // Send data to webhook with redirect support
 const sendToWebhook = (data: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
@@ -143,7 +143,8 @@ export const syncAllProfilesToSheet = async (profiles: Array<{
   commentKarma?: number;
   postKarma?: number;
   createdAt?: string;
-  isBanned?: boolean;
+  lastPostDate?: string;
+  lastCommentDate?: string;
   assignedTo?: string;
 }>): Promise<{ success: boolean; error?: string }> => {
   console.log(`Syncing ${profiles.length} profiles to sheet (batch upsert)...`);

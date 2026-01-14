@@ -828,56 +828,82 @@ ipcMain.handle('admin:getAllProfiles', async () => {
   }
 });
 
-// Fetch Reddit karma for a username
-ipcMain.handle('reddit:fetchKarma', async (_, username: string) => {
+// Helper to fetch JSON from Reddit
+const fetchRedditJson = (url: string): Promise<any> => {
   return new Promise((resolve) => {
-    // Clean username (remove u/ prefix if present)
-    const cleanUsername = username.replace(/^u\//, '').trim();
-    if (!cleanUsername) {
-      resolve(null);
-      return;
-    }
-
-    const url = `https://www.reddit.com/user/${cleanUsername}/about.json`;
-
     const req = https.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
       timeout: 10000,
     }, (res) => {
-      // Handle redirects or non-200 responses
       if (res.statusCode !== 200) {
         resolve(null);
         return;
       }
-
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
-          const json = JSON.parse(data);
-          // Check if account exists and is not suspended
-          if (json.data && !json.data.is_suspended) {
-            resolve({
-              commentKarma: json.data.comment_karma || 0,
-              postKarma: json.data.link_karma || 0,
-            });
-          } else {
-            resolve(null);
-          }
+          resolve(JSON.parse(data));
         } catch {
           resolve(null);
         }
       });
     });
-
     req.on('error', () => resolve(null));
     req.on('timeout', () => {
       req.destroy();
       resolve(null);
     });
   });
+};
+
+// Fetch Reddit karma and last activity for a username
+ipcMain.handle('reddit:fetchKarma', async (_, username: string) => {
+  // Clean username (remove u/ prefix if present)
+  const cleanUsername = username.replace(/^u\//, '').trim();
+  if (!cleanUsername) {
+    return null;
+  }
+
+  // Fetch user info, posts (for count + last date), and comments (for count + last date) in parallel
+  console.log('Fetching Reddit data for:', cleanUsername);
+  const [userInfo, postsData, commentsData] = await Promise.all([
+    fetchRedditJson(`https://www.reddit.com/user/${cleanUsername}/about.json`),
+    fetchRedditJson(`https://www.reddit.com/user/${cleanUsername}/submitted.json?limit=100&sort=new`),
+    fetchRedditJson(`https://www.reddit.com/user/${cleanUsername}/comments.json?limit=100&sort=new`),
+  ]);
+  console.log('Posts count:', postsData?.data?.children?.length || 0);
+  console.log('Comments count:', commentsData?.data?.children?.length || 0);
+
+  // Check if account exists and is not suspended
+  if (!userInfo?.data || userInfo.data.is_suspended) {
+    return null;
+  }
+
+  // Extract last post date
+  let lastPostDate: string | null = null;
+  if (postsData?.data?.children?.length > 0) {
+    const lastPost = postsData.data.children[0].data;
+    lastPostDate = new Date(lastPost.created_utc * 1000).toISOString();
+  }
+
+  // Extract last comment date
+  let lastCommentDate: string | null = null;
+  if (commentsData?.data?.children?.length > 0) {
+    const lastComment = commentsData.data.children[0].data;
+    lastCommentDate = new Date(lastComment.created_utc * 1000).toISOString();
+  }
+
+  return {
+    commentKarma: userInfo.data.comment_karma || 0,
+    postKarma: userInfo.data.link_karma || 0,
+    lastPostDate,
+    lastCommentDate,
+    totalPosts: postsData?.data?.children?.length || 0,
+    totalComments: commentsData?.data?.children?.length || 0,
+  };
 });
 
 // Window creation
@@ -982,6 +1008,17 @@ ipcMain.handle('sheets:syncAll', async () => {
       return dateStr.split('T')[0]; // Extract YYYY-MM-DD
     };
 
+    // Helper to format date with time (DD/MM HH:mm)
+    const formatDateTime = (dateStr: string | undefined): string => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const hh = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      return `${dd}/${mm} ${hh}:${min}`;
+    };
+
     // Map profiles with model names and extracted fields
     const profilesWithModels = profiles.map((p: any) => {
       const mapped = {
@@ -993,16 +1030,17 @@ ipcMain.handle('sheets:syncAll', async () => {
         modelName: models.find(m => m.id === p.modelId)?.name || '',
         status: p.status,
         purchaseDate: p.purchaseDate,
-        expiresAt: p.expiresAt,
+        expiresAt: formatDate(p.expiresAt),
         orderNumber: p.orderNumber,
         proxyString: buildProxyString(p.proxy),
         commentKarma: p.commentKarma,
         postKarma: p.postKarma,
         createdAt: formatDate(p.createdAt),
-        isBanned: p.status === 'banned',
+        lastPostDate: formatDateTime(p.lastPostDate),
+        lastCommentDate: formatDateTime(p.lastCommentDate),
         assignedTo: userMap.get(p.userId) || '',
       };
-      console.log('Profile mapped:', p.name, '| userId:', p.userId, '| assignedTo:', mapped.assignedTo, '| isBanned:', mapped.isBanned, '| createdAt:', mapped.createdAt);
+      console.log('Profile mapped:', p.name, '| assignedTo:', mapped.assignedTo, '| createdAt:', mapped.createdAt);
       return mapped;
     });
 

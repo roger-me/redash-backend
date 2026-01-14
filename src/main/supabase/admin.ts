@@ -206,7 +206,11 @@ export async function getAllProfilesForStats(): Promise<any[]> {
     country: p.country,
     postsToday: p.posts_today || 0,
     commentsToday: p.comments_today || 0,
+    totalPosts: p.total_posts || 0,
+    totalComments: p.total_comments || 0,
     expiresAt: p.expires_at,
+    lastPostDate: p.last_post_date,
+    lastCommentDate: p.last_comment_date,
   }));
 }
 
@@ -252,8 +256,12 @@ export async function getAllProfiles(): Promise<any[]> {
     purchaseDate: p.purchase_date,
     orderNumber: p.order_number,
     lastCompletedDate: p.last_completed_date,
+    lastPostDate: p.last_post_date,
+    lastCommentDate: p.last_comment_date,
     postsToday: p.posts_today || 0,
     commentsToday: p.comments_today || 0,
+    totalPosts: p.total_posts || 0,
+    totalComments: p.total_comments || 0,
     expiresAt: p.expires_at,
   }));
 }

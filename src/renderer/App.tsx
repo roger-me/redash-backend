@@ -267,10 +267,14 @@ function AppContent() {
 
           const karma = await window.electronAPI?.fetchRedditKarma(redditUsername);
           if (karma) {
-            // Update karma and set status to working
+            // Update karma, counts, last activity dates, and set status to working
             await window.electronAPI?.updateProfile(profile.id, {
               commentKarma: karma.commentKarma,
               postKarma: karma.postKarma,
+              totalPosts: karma.totalPosts,
+              totalComments: karma.totalComments,
+              lastPostDate: karma.lastPostDate || undefined,
+              lastCommentDate: karma.lastCommentDate || undefined,
               status: 'working',
             });
             syncedCount++;
@@ -681,6 +685,7 @@ function AppContent() {
               const profile = await window.electronAPI?.getProfileById(profileId);
               if (profile) setEditingProfile(profile);
             }}
+            onSyncKarma={() => syncRedditKarma(false)}
             refreshTrigger={statsRefreshTrigger}
           />
         )}
