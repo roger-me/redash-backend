@@ -488,7 +488,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--bg-primary)' }}>
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
       {/* Spin animation */}
       <style>{`
         @keyframes spin {
@@ -502,7 +502,7 @@ function AppContent() {
       `}</style>
 
       {/* Sidebar */}
-      <div className="flex-shrink-0 flex flex-col ml-6 pb-6">
+      <div className="flex-shrink-0 flex flex-col ml-6 pb-6 h-screen sticky top-0">
         {/* Titlebar drag region - matches main content */}
         <div className="h-12" style={{ WebkitAppRegion: 'drag' } as any} />
 
@@ -578,9 +578,9 @@ function AppContent() {
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col min-h-screen ${activeBrowserProfile ? 'max-w-[50%]' : ''}`}>
-        {/* Titlebar drag region */}
-        <div className="titlebar h-12" style={{ WebkitAppRegion: 'drag' } as any} />
+      <div className={`flex-1 flex flex-col h-screen overflow-y-auto ${activeBrowserProfile ? 'max-w-[50%]' : ''}`}>
+        {/* Titlebar drag region - matches sidebar spacing */}
+        <div className="titlebar h-10 flex-shrink-0" style={{ WebkitAppRegion: 'drag' } as any} />
 
         {/* Notification */}
         {notification && (

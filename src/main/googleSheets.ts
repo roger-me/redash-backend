@@ -1,7 +1,7 @@
 import https from 'https';
 
 // Hardcoded webhook URL - automatic sync, no user configuration needed
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyCxpBDddQwNHDfND7O3_L-1TnzSRIFbTk7kdae-G8tmuqxpnNTNFj0RqnNRxQQzKwrSA/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxdh_i1tfRAdVcS5F8ZxF1rLW1bnrH0G5s315NJ2k6mGjXLDxLp6dEJRFux6KJTX8PK3A/exec';
 
 // Send data to webhook with redirect support
 const sendToWebhook = (data: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
