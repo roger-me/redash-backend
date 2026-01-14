@@ -1,0 +1,31 @@
+Theme,Type,Color Property,Hex,RGB,Usage Description
+Midnight,Dark,Background,#0D1117,"rgb(13, 17, 23)",Primary background - deep blue-black inspired by GitHub dark
+Midnight,Dark,Text,#C9D1D9,"rgb(201, 209, 217)",Primary text - soft grayish white for comfortable reading
+Midnight,Dark,Prompt,#58A6FF,"rgb(88, 166, 255)",Primary action color - bright blue for CTAs and key elements
+Midnight,Dark,Accent,#58A6FF,"rgb(88, 166, 255)",Accent color - links, buttons, interactive highlights
+Midnight,Dark,Separator,#8B949E,"rgb(139, 148, 158)",Borders and dividers - subtle muted gray
+Terminal,Dark,Background,#0A0A0A,"rgb(10, 10, 10)",Primary background - classic near-black
+Terminal,Dark,Text,#33FF33,"rgb(51, 255, 51)",Primary text - retro phosphor green
+Terminal,Dark,Prompt,#33FF33,"rgb(51, 255, 51)",Primary action color - classic green
+Terminal,Dark,Accent,#33FF33,"rgb(51, 255, 51)",Accent color - monochrome green theme
+Terminal,Dark,Separator,#888888,"rgb(136, 136, 136)",Borders and dividers - neutral gray
+Nord,Dark,Background,#2E3440,"rgb(46, 52, 64)",Primary background - polar night deep blue-gray
+Nord,Dark,Text,#ECEFF4,"rgb(236, 239, 244)",Primary text - snow storm crisp white
+Nord,Dark,Prompt,#88C0D0,"rgb(136, 192, 208)",Primary action color - frost cyan
+Nord,Dark,Accent,#88C0D0,"rgb(136, 192, 208)",Accent color - cool frost blue
+Nord,Dark,Separator,#D8DEE9,"rgb(216, 222, 233)",Borders and dividers - light snow gray
+Paper,Light,Background,#FAFAFA,"rgb(250, 250, 250)",Primary background - clean minimal off-white
+Paper,Light,Text,#24292E,"rgb(36, 41, 46)",Primary text - dark charcoal for high contrast
+Paper,Light,Prompt,#0366D6,"rgb(3, 102, 214)",Primary action color - professional blue
+Paper,Light,Accent,#0366D6,"rgb(3, 102, 214)",Accent color - GitHub-style blue
+Paper,Light,Separator,#6A737D,"rgb(106, 115, 125)",Borders and dividers - medium gray
+Dracula,Dark,Background,#282A36,"rgb(40, 42, 54)",Primary background - rich purple-tinted black
+Dracula,Dark,Text,#F8F8F2,"rgb(248, 248, 242)",Primary text - warm soft white
+Dracula,Dark,Prompt,#BD93F9,"rgb(189, 147, 249)",Primary action color - signature purple
+Dracula,Dark,Accent,#BD93F9,"rgb(189, 147, 249)",Accent color - vibrant purple
+Dracula,Dark,Separator,#8A95C9,"rgb(138, 149, 201)",Borders and dividers - muted purple-blue
+Cyberpunk,Dark,Background,#1A1625,"rgb(26, 22, 37)",Primary background - deep neon night purple
+Cyberpunk,Dark,Text,#7EECD3,"rgb(126, 236, 211)",Primary text - electric teal/cyan
+Cyberpunk,Dark,Prompt,#F5E946,"rgb(245, 233, 70)",Primary action color - neon yellow
+Cyberpunk,Dark,Accent,#F5E946,"rgb(245, 233, 70)",Accent color - high-contrast neon yellow
+Cyberpunk,Dark,Separator,#5EEEF0,"rgb(94, 238, 240)",Borders and dividers - bright cyan

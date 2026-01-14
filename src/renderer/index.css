@@ -2,56 +2,149 @@
 @tailwind components;
 @tailwind utilities;
 
-:root, [data-theme="dark"] {
-  --bg-primary: #121212;
-  --bg-secondary: #1C1C1E;
-  --bg-tertiary: #2C2C2E;
-  --bg-hover: #3A3A3C;
+/* Midnight Theme (default) */
+:root, [data-theme="midnight"] {
+  --bg-primary: #0D1117;
+  --bg-secondary: #161B22;
+  --bg-tertiary: #21262D;
+  --bg-hover: #30363D;
   --bg-hover-light: rgba(255, 255, 255, 0.1);
   --bg-active: rgba(255, 255, 255, 0.1);
-  --text-primary: #ffffff;
-  --text-secondary: rgba(255, 255, 255, 0.7);
-  --text-tertiary: rgba(255, 255, 255, 0.4);
-  --text-quaternary: rgba(255, 255, 255, 0.25);
-  --accent-blue: #007aff;
+  --text-primary: #C9D1D9;
+  --text-secondary: rgba(201, 209, 217, 0.7);
+  --text-tertiary: #8B949E;
+  --text-quaternary: rgba(139, 148, 158, 0.5);
+  --accent-primary: #58A6FF;
+  --accent-text: #ffffff;
+  --accent-blue: #58A6FF;
   --accent-purple: #af52de;
   --accent-green: #32d74b;
   --accent-red: #ff453a;
   --accent-orange: #ff9f0a;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-light: rgba(255, 255, 255, 0.12);
-  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
-  --chip-bg: rgba(142, 142, 147, 0.12);
-  --btn-primary-bg: #ffffff;
-  --btn-primary-color: #000000;
+  --border: rgba(139, 148, 158, 0.2);
+  --border-light: rgba(139, 148, 158, 0.3);
+  --scrollbar-thumb: rgba(139, 148, 158, 0.3);
+  --scrollbar-thumb-hover: rgba(139, 148, 158, 0.5);
+  --chip-bg: rgba(139, 148, 158, 0.15);
+  --btn-primary-bg: #C9D1D9;
+  --btn-primary-color: #0D1117;
+  --shadow-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Nord Theme */
+[data-theme="nord"] {
+  --bg-primary: #2E3440;
+  --bg-secondary: #3B4252;
+  --bg-tertiary: #434C5E;
+  --bg-hover: #4C566A;
+  --bg-hover-light: rgba(236, 239, 244, 0.1);
+  --bg-active: rgba(236, 239, 244, 0.15);
+  --text-primary: #ECEFF4;
+  --text-secondary: rgba(236, 239, 244, 0.7);
+  --text-tertiary: #D8DEE9;
+  --text-quaternary: rgba(216, 222, 233, 0.5);
+  --accent-primary: #88C0D0;
+  --accent-text: #2E3440;
+  --accent-blue: #88C0D0;
+  --accent-purple: #B48EAD;
+  --accent-green: #A3BE8C;
+  --accent-red: #BF616A;
+  --accent-orange: #D08770;
+  --border: rgba(216, 222, 233, 0.15);
+  --border-light: rgba(216, 222, 233, 0.25);
+  --scrollbar-thumb: rgba(136, 192, 208, 0.3);
+  --scrollbar-thumb-hover: rgba(136, 192, 208, 0.5);
+  --chip-bg: rgba(136, 192, 208, 0.15);
+  --btn-primary-bg: #ECEFF4;
+  --btn-primary-color: #2E3440;
   --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
-[data-theme="light"] {
-  --bg-primary: #f5f5f7;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #e5e5ea;
-  --bg-hover: #d1d1d6;
+/* Paper Theme (Light) */
+[data-theme="paper"] {
+  --bg-primary: #FAFAFA;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F0F0F0;
+  --bg-hover: #E5E5E5;
   --bg-hover-light: rgba(0, 0, 0, 0.05);
   --bg-active: rgba(0, 0, 0, 0.08);
-  --text-primary: #1d1d1f;
-  --text-secondary: rgba(0, 0, 0, 0.7);
-  --text-tertiary: rgba(0, 0, 0, 0.45);
-  --text-quaternary: rgba(0, 0, 0, 0.25);
-  --accent-blue: #007aff;
-  --accent-purple: #af52de;
-  --accent-green: #34c759;
-  --accent-red: #ff3b30;
-  --accent-orange: #ff9500;
-  --border: rgba(0, 0, 0, 0.06);
-  --border-light: rgba(0, 0, 0, 0.1);
-  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
-  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
-  --chip-bg: rgba(142, 142, 147, 0.12);
-  --btn-primary-bg: #000000;
-  --btn-primary-color: #ffffff;
-  --shadow-color: rgba(0, 0, 0, 0.15);
+  --text-primary: #24292E;
+  --text-secondary: rgba(36, 41, 46, 0.7);
+  --text-tertiary: #6A737D;
+  --text-quaternary: rgba(106, 115, 125, 0.5);
+  --accent-primary: #0366D6;
+  --accent-text: #FFFFFF;
+  --accent-blue: #0366D6;
+  --accent-purple: #6f42c1;
+  --accent-green: #28a745;
+  --accent-red: #d73a49;
+  --accent-orange: #f66a0a;
+  --border: rgba(106, 115, 125, 0.2);
+  --border-light: rgba(106, 115, 125, 0.3);
+  --scrollbar-thumb: rgba(106, 115, 125, 0.3);
+  --scrollbar-thumb-hover: rgba(106, 115, 125, 0.5);
+  --chip-bg: rgba(106, 115, 125, 0.1);
+  --btn-primary-bg: #24292E;
+  --btn-primary-color: #FFFFFF;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Dracula Theme */
+[data-theme="dracula"] {
+  --bg-primary: #282A36;
+  --bg-secondary: #343746;
+  --bg-tertiary: #3E4251;
+  --bg-hover: #4A4D5E;
+  --bg-hover-light: rgba(248, 248, 242, 0.1);
+  --bg-active: rgba(248, 248, 242, 0.15);
+  --text-primary: #F8F8F2;
+  --text-secondary: rgba(248, 248, 242, 0.7);
+  --text-tertiary: #8A95C9;
+  --text-quaternary: rgba(138, 149, 201, 0.5);
+  --accent-primary: #BD93F9;
+  --accent-text: #282A36;
+  --accent-blue: #8BE9FD;
+  --accent-purple: #BD93F9;
+  --accent-green: #50FA7B;
+  --accent-red: #FF5555;
+  --accent-orange: #FFB86C;
+  --border: rgba(138, 149, 201, 0.2);
+  --border-light: rgba(138, 149, 201, 0.3);
+  --scrollbar-thumb: rgba(189, 147, 249, 0.3);
+  --scrollbar-thumb-hover: rgba(189, 147, 249, 0.5);
+  --chip-bg: rgba(189, 147, 249, 0.15);
+  --btn-primary-bg: #F8F8F2;
+  --btn-primary-color: #282A36;
+  --shadow-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Cyberpunk Theme */
+[data-theme="cyberpunk"] {
+  --bg-primary: #1A1625;
+  --bg-secondary: #231E2E;
+  --bg-tertiary: #2D2739;
+  --bg-hover: #3A3347;
+  --bg-hover-light: rgba(126, 236, 211, 0.1);
+  --bg-active: rgba(126, 236, 211, 0.15);
+  --text-primary: #7EECD3;
+  --text-secondary: rgba(126, 236, 211, 0.7);
+  --text-tertiary: #5EEEF0;
+  --text-quaternary: rgba(94, 238, 240, 0.5);
+  --accent-primary: #F5E946;
+  --accent-text: #1A1625;
+  --accent-blue: #5EEEF0;
+  --accent-purple: #BD93F9;
+  --accent-green: #7EECD3;
+  --accent-red: #FF6B6B;
+  --accent-orange: #F5E946;
+  --border: rgba(94, 238, 240, 0.2);
+  --border-light: rgba(94, 238, 240, 0.3);
+  --scrollbar-thumb: rgba(245, 233, 70, 0.3);
+  --scrollbar-thumb-hover: rgba(245, 233, 70, 0.5);
+  --chip-bg: rgba(245, 233, 70, 0.1);
+  --btn-primary-bg: #F5E946;
+  --btn-primary-color: #1A1625;
+  --shadow-color: rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -175,8 +268,8 @@ input, select {
 }
 
 input:focus, select:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent);
 }
 
 input::placeholder {

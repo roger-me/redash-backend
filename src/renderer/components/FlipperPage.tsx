@@ -237,7 +237,7 @@ function FlipperPage() {
                     <div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(142, 142, 147, 0.12)' }}>
                       <div
                         className="h-full rounded-full transition-all"
-                        style={{ width: `${file.progress}%`, background: 'var(--accent-blue)' }}
+                        style={{ width: `${file.progress}%`, background: 'var(--accent-primary)' }}
                       />
                     </div>
                   )}
@@ -304,7 +304,7 @@ function FlipperPage() {
               <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(142, 142, 147, 0.12)' }}>
                 <div
                   className="h-full rounded-full transition-all"
-                  style={{ width: `${overallProgress}%`, background: 'var(--accent-blue)' }}
+                  style={{ width: `${overallProgress}%`, background: 'var(--accent-primary)' }}
                 />
               </div>
             </div>

@@ -42,19 +42,38 @@ function AppContent() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [lastSyncLabel, setLastSyncLabel] = useState<string>('');
   const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+  const [theme, setTheme] = useState<string>(() => {
+    const saved = localStorage.getItem('theme');
+    // Convert old dark/light values to default
+    if (saved === 'dark' || saved === 'light') return 'default';
+    if (saved) return saved;
+    return 'default';
   });
+
+  // Get actual theme (resolve 'default' to midnight/paper based on system preference)
+  const getActualTheme = (t: string) => {
+    if (t === 'default') {
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'midnight';
+    }
+    return t;
+  };
 
   // Apply theme to document
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-theme', getActualTheme(theme));
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
-  };
+  // Listen for system theme changes when using default
+  useEffect(() => {
+    if (theme !== 'default') return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = () => {
+      document.documentElement.setAttribute('data-theme', getActualTheme('default'));
+    };
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, [theme]);
 
   // Helper to format relative time
   const getRelativeTime = (date: Date): string => {
@@ -510,26 +529,16 @@ function AppContent() {
           className="w-52 flex flex-col pt-5 px-3 pb-3 gap-1 mt-2 flex-1"
           style={{
             background: 'var(--bg-secondary)',
-            borderRadius: '34px',
+            borderRadius: '28px',
           }}
         >
-          {/* App Icon + Name */}
-          <div className="flex items-center gap-3 px-2 mb-2">
-            <img
-              src={appIcon}
-              alt="Redash"
-              className="w-9 h-9 rounded-full"
-            />
-            <span className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Redash</span>
-          </div>
-
           {/* Navigation */}
           <button
             onClick={() => setCurrentPage('accounts')}
             className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
             style={{
-              background: currentPage === 'accounts' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              color: currentPage === 'accounts' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              background: currentPage === 'accounts' ? 'var(--accent-primary)' : 'transparent',
+              color: currentPage === 'accounts' ? 'var(--accent-text)' : 'var(--text-tertiary)',
             }}
           >
             <Users size={20} weight={currentPage === 'accounts' ? 'fill' : 'regular'} />
@@ -540,8 +549,8 @@ function AppContent() {
             onClick={() => setCurrentPage('flipper')}
             className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
             style={{
-              background: currentPage === 'flipper' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              color: currentPage === 'flipper' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              background: currentPage === 'flipper' ? 'var(--accent-primary)' : 'transparent',
+              color: currentPage === 'flipper' ? 'var(--accent-text)' : 'var(--text-tertiary)',
             }}
           >
             <Swap size={20} weight={currentPage === 'flipper' ? 'fill' : 'regular'} />
@@ -553,8 +562,8 @@ function AppContent() {
               onClick={() => setCurrentPage('admin')}
               className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
               style={{
-                background: currentPage === 'admin' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-                color: currentPage === 'admin' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                background: currentPage === 'admin' ? 'var(--accent-primary)' : 'transparent',
+                color: currentPage === 'admin' ? 'var(--accent-text)' : 'var(--text-tertiary)',
               }}
             >
               <ShieldCheck size={20} weight={currentPage === 'admin' ? 'fill' : 'regular'} />
@@ -566,8 +575,8 @@ function AppContent() {
             onClick={() => setCurrentPage('settings')}
             className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
             style={{
-              background: currentPage === 'settings' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              color: currentPage === 'settings' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              background: currentPage === 'settings' ? 'var(--accent-primary)' : 'transparent',
+              color: currentPage === 'settings' ? 'var(--accent-text)' : 'var(--text-tertiary)',
             }}
           >
             <Gear size={20} weight={currentPage === 'settings' ? 'fill' : 'regular'} />
@@ -672,7 +681,7 @@ function AppContent() {
           </main>
         )}
         {currentPage === 'flipper' && <FlipperPage />}
-        {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onToggleTheme={toggleTheme} />}
+        {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onChangeTheme={setTheme} />}
         {currentPage === 'admin' && (user?.role === 'admin' || user?.role === 'dev') && (
           <AdminPage
             models={models}

@@ -946,9 +946,8 @@ export default function AdminPage({
             className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
               borderRadius: '100px',
-              background: activeTab === 'accounts' ? 'var(--bg-secondary)' : 'transparent',
-              color: activeTab === 'accounts' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              boxShadow: activeTab === 'accounts' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              background: activeTab === 'accounts' ? 'var(--accent-primary)' : 'transparent',
+              color: activeTab === 'accounts' ? 'var(--accent-text)' : 'var(--text-tertiary)',
             }}
           >
             <Users size={16} weight="bold" />
@@ -959,9 +958,8 @@ export default function AdminPage({
             className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
               borderRadius: '100px',
-              background: activeTab === 'users' ? 'var(--bg-secondary)' : 'transparent',
-              color: activeTab === 'users' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              boxShadow: activeTab === 'users' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              background: activeTab === 'users' ? 'var(--accent-primary)' : 'transparent',
+              color: activeTab === 'users' ? 'var(--accent-text)' : 'var(--text-tertiary)',
             }}
           >
             <UserList size={16} weight="bold" />
@@ -972,9 +970,8 @@ export default function AdminPage({
             className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
               borderRadius: '100px',
-              background: activeTab === 'models' ? 'var(--bg-secondary)' : 'transparent',
-              color: activeTab === 'models' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              boxShadow: activeTab === 'models' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              background: activeTab === 'models' ? 'var(--accent-primary)' : 'transparent',
+              color: activeTab === 'models' ? 'var(--accent-text)' : 'var(--text-tertiary)',
             }}
           >
             <Smiley size={16} weight="bold" />
@@ -985,9 +982,8 @@ export default function AdminPage({
             className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
               borderRadius: '100px',
-              background: activeTab === 'emails' ? 'var(--bg-secondary)' : 'transparent',
-              color: activeTab === 'emails' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              boxShadow: activeTab === 'emails' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              background: activeTab === 'emails' ? 'var(--accent-primary)' : 'transparent',
+              color: activeTab === 'emails' ? 'var(--accent-text)' : 'var(--text-tertiary)',
             }}
           >
             <EnvelopeSimple size={16} weight="bold" />

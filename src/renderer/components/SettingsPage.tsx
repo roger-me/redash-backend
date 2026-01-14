@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowsClockwise, DownloadSimple, ArrowSquareOut, CheckCircle, XCircle, Info, SignOut, Sun, Moon } from '@phosphor-icons/react';
+import { ArrowsClockwise, DownloadSimple, ArrowSquareOut, CheckCircle, XCircle, Info, SignOut } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 import usFlag from '../assets/flags/US.png';
 import esFlag from '../assets/flags/ES.png';
@@ -21,11 +21,18 @@ interface DownloadProgress {
 interface SettingsPageProps {
   user?: { id: string; username?: string; role?: string } | null;
   onSignOut: () => void;
-  theme: 'dark' | 'light';
-  onToggleTheme: () => void;
+  theme: string;
+  onChangeTheme: (theme: string) => void;
 }
 
-export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: SettingsPageProps) {
+const THEMES = [
+  { id: 'default', name: 'Default', accent: 'split' },
+  { id: 'nord', name: 'Nord', accent: '#88C0D0' },
+  { id: 'dracula', name: 'Dracula', accent: '#BD93F9' },
+  { id: 'cyberpunk', name: 'Cyberpunk', accent: '#F5E946' },
+];
+
+export default function SettingsPage({ user, onSignOut, theme, onChangeTheme }: SettingsPageProps) {
   const { t, language, setLanguage } = useLanguage();
   const [appVersion, setAppVersion] = useState<string>('');
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' });
@@ -190,20 +197,26 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
             <div>
               <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{t('settings.theme')}</p>
               <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                {theme === 'dark' ? t('settings.darkMode') : t('settings.lightMode')}
+                {THEMES.find(th => th.id === theme)?.name || 'Default'}
               </p>
             </div>
-            <button
-              onClick={onToggleTheme}
-              className="h-9 px-4 flex items-center gap-2 text-sm font-medium rounded-full transition-colors"
-              style={{
-                background: 'var(--chip-bg)',
-                color: 'var(--text-primary)',
-              }}
-            >
-              {theme === 'dark' ? <Sun size={16} weight="bold" /> : <Moon size={16} weight="bold" />}
-              {theme === 'dark' ? t('settings.light') : t('settings.dark')}
-            </button>
+            <div className="flex items-center gap-2">
+              {THEMES.map((themeOption) => (
+                <button
+                  key={themeOption.id}
+                  onClick={() => onChangeTheme(themeOption.id)}
+                  className="w-7 h-7 rounded-full transition-all"
+                  style={{
+                    background: themeOption.accent === 'split'
+                      ? 'linear-gradient(135deg, #fff 50%, #000 50%)'
+                      : themeOption.accent,
+                    boxShadow: theme === themeOption.id
+                      ? `0 0 0 2px var(--bg-secondary), 0 0 0 4px ${themeOption.accent === 'split' ? 'var(--text-tertiary)' : themeOption.accent}`
+                      : 'none',
+                  }}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Language */}
@@ -219,8 +232,8 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                 onClick={() => setLanguage('en')}
                 className="h-9 px-4 flex items-center gap-2 text-sm font-medium rounded-full transition-colors"
                 style={{
-                  background: language === 'en' ? 'var(--accent-blue)' : 'var(--chip-bg)',
-                  color: language === 'en' ? '#fff' : 'var(--text-primary)',
+                  background: language === 'en' ? 'var(--accent-primary)' : 'var(--chip-bg)',
+                  color: language === 'en' ? 'var(--accent-text)' : 'var(--text-primary)',
                 }}
               >
                 <img src={usFlag} alt="English" className="w-4 h-3 object-contain" /> EN
@@ -229,8 +242,8 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                 onClick={() => setLanguage('es')}
                 className="h-9 px-4 flex items-center gap-2 text-sm font-medium rounded-full transition-colors"
                 style={{
-                  background: language === 'es' ? 'var(--accent-blue)' : 'var(--chip-bg)',
-                  color: language === 'es' ? '#fff' : 'var(--text-primary)',
+                  background: language === 'es' ? 'var(--accent-primary)' : 'var(--chip-bg)',
+                  color: language === 'es' ? 'var(--accent-text)' : 'var(--text-primary)',
                 }}
               >
                 <img src={esFlag} alt="Español" className="w-4 h-3 object-contain" /> ES
@@ -267,7 +280,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                       className="h-full transition-all duration-300"
                       style={{
                         width: `${downloadProgress.percent}%`,
-                        background: 'var(--accent-blue)',
+                        background: 'var(--accent-primary)',
                       }}
                     />
                   </div>
@@ -298,8 +311,8 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                 onClick={handleDownloadUpdate}
                 className="h-9 px-4 flex items-center gap-2 text-sm font-medium rounded-full transition-colors"
                 style={{
-                  background: 'var(--accent-blue)',
-                  color: '#fff',
+                  background: 'var(--accent-primary)',
+                  color: 'var(--accent-text)',
                 }}
               >
                 <DownloadSimple size={16} weight="bold" />

@@ -182,8 +182,8 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
             disabled={loading}
             className="w-full py-3 font-medium transition-all hover:opacity-90 disabled:opacity-50"
             style={{
-              background: 'var(--accent-blue)',
-              color: 'white',
+              background: 'var(--accent-primary)',
+              color: 'var(--accent-text)',
               borderRadius: '100px'
             }}
           >
@@ -197,8 +197,8 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
               onClick={() => setLanguage('en')}
               className="h-8 px-3 text-xs font-medium flex items-center gap-1.5"
               style={{
-                background: language === 'en' ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)',
-                color: language === 'en' ? '#60A5FA' : 'var(--text-secondary)',
+                background: language === 'en' ? 'color-mix(in srgb, var(--accent-primary) 30%, transparent)' : 'var(--chip-bg)',
+                color: language === 'en' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                 borderRadius: '100px'
               }}
             >
@@ -209,8 +209,8 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
               onClick={() => setLanguage('es')}
               className="h-8 px-3 text-xs font-medium flex items-center gap-1.5"
               style={{
-                background: language === 'es' ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)',
-                color: language === 'es' ? '#60A5FA' : 'var(--text-secondary)',
+                background: language === 'es' ? 'color-mix(in srgb, var(--accent-primary) 30%, transparent)' : 'var(--chip-bg)',
+                color: language === 'es' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                 borderRadius: '100px'
               }}
             >
