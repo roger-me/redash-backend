@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { User, Lock, Eye, EyeSlash } from '@phosphor-icons/react';
+import { User, Lock, Eye, EyeSlash, Globe } from '@phosphor-icons/react';
 import appIcon from '../../assets/icon.png';
-import { useLanguage } from '../../i18n';
+import { useLanguage, Language } from '../../i18n';
 
 interface LoginPageProps {
   onLoginSuccess: () => void;
 }
 
 function LoginPage({ onLoginSuccess }: LoginPageProps) {
-  const { t } = useLanguage();
+  const { t, language, setLanguage } = useLanguage();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -114,11 +114,12 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder={t('login.username')}
-              className="w-full pl-10 pr-4 py-3 rounded-xl text-sm"
+              className="w-full pl-10 pr-4 py-3 text-sm"
               style={{
                 background: 'var(--bg-tertiary)',
                 color: 'var(--text-primary)',
-                border: '1px solid var(--border-light)'
+                border: 'none',
+                borderRadius: '100px'
               }}
               required
             />
@@ -136,11 +137,12 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('login.password')}
-              className="w-full pl-10 pr-10 py-3 rounded-xl text-sm"
+              className="w-full pl-10 pr-10 py-3 text-sm"
               style={{
                 background: 'var(--bg-tertiary)',
                 color: 'var(--text-primary)',
-                border: '1px solid var(--border-light)'
+                border: 'none',
+                borderRadius: '100px'
               }}
               required
             />
@@ -178,14 +180,43 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl font-medium transition-all hover:opacity-90 disabled:opacity-50"
+            className="w-full py-3 font-medium transition-all hover:opacity-90 disabled:opacity-50"
             style={{
               background: 'var(--accent-blue)',
-              color: 'white'
+              color: 'white',
+              borderRadius: '100px'
             }}
           >
             {loading ? t('login.pleaseWait') : t('login.signIn')}
           </button>
+
+          {/* Language selector */}
+          <div className="flex justify-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              className="h-8 px-3 text-xs font-medium flex items-center gap-1.5"
+              style={{
+                background: language === 'en' ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)',
+                color: language === 'en' ? '#60A5FA' : 'var(--text-secondary)',
+                borderRadius: '100px'
+              }}
+            >
+              English
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('es')}
+              className="h-8 px-3 text-xs font-medium flex items-center gap-1.5"
+              style={{
+                background: language === 'es' ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)',
+                color: language === 'es' ? '#60A5FA' : 'var(--text-secondary)',
+                borderRadius: '100px'
+              }}
+            >
+              Español
+            </button>
+          </div>
         </form>
 
       </div>

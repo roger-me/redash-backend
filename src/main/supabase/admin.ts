@@ -6,6 +6,7 @@ export type UserRole = 'dev' | 'admin' | 'basic';
 export interface AppUser {
   id: string;
   username: string;
+  password?: string;
   role: UserRole;
   created_at: string;
 }
@@ -22,11 +23,17 @@ export async function listUsers(): Promise<AppUser[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('app_users')
-    .select('id, username, role, created_at')
+    .select('*')
     .order('created_at', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return data || [];
+  return (data || []).map((u: any) => ({
+    id: u.id,
+    username: u.username,
+    password: u.plain_password || undefined,
+    role: u.role,
+    created_at: u.created_at,
+  }));
 }
 
 // Create a new user (admin only)
@@ -43,9 +50,10 @@ export async function createAppUser(
     .insert({
       username: username.toLowerCase().trim(),
       password: hashedPassword,
+      plain_password: password,
       role,
     })
-    .select('id, username, role, created_at')
+    .select('*')
     .single();
 
   if (error) {
@@ -54,7 +62,13 @@ export async function createAppUser(
     }
     throw new Error(error.message);
   }
-  return data;
+  return {
+    id: data.id,
+    username: data.username,
+    password: data.plain_password || password,
+    role: data.role,
+    created_at: data.created_at,
+  };
 }
 
 // Update a user (admin only)
@@ -66,18 +80,27 @@ export async function updateAppUser(
 
   const dbUpdates: any = {};
   if (updates.username) dbUpdates.username = updates.username.toLowerCase().trim();
-  if (updates.password) dbUpdates.password = hashPassword(updates.password);
+  if (updates.password) {
+    dbUpdates.password = hashPassword(updates.password);
+    dbUpdates.plain_password = updates.password;
+  }
   if (updates.role) dbUpdates.role = updates.role;
 
   const { data, error } = await supabase
     .from('app_users')
     .update(dbUpdates)
     .eq('id', userId)
-    .select('id, username, role, created_at')
+    .select('*')
     .single();
 
   if (error) throw new Error(error.message);
-  return data;
+  return {
+    id: data.id,
+    username: data.username,
+    password: data.plain_password || updates.password,
+    role: data.role,
+    created_at: data.created_at,
+  };
 }
 
 // Delete a user (admin only)

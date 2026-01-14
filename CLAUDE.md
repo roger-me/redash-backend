@@ -21,6 +21,11 @@ Redash allows users to create and manage browser profiles with:
 - **Media**: fluent-ffmpeg with ffmpeg-static
 - **AI**: Ollama (local LLM)
 
+## UI Styling Rules
+
+- **Inputs**: Always use `border: none` and `borderRadius: 100px`
+- **Buttons**: Always use `borderRadius: 100px`
+
 ## Project Structure
 
 ```

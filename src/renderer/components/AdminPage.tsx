@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -136,6 +136,7 @@ export default function AdminPage({
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('basic');
+  const [newUserModels, setNewUserModels] = useState<string[]>([]);
   const [createError, setCreateError] = useState('');
 
   // Model management state
@@ -149,6 +150,7 @@ export default function AdminPage({
   const [editUsername, setEditUsername] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [editRole, setEditRole] = useState<UserRole>('basic');
+  const [editUserModels, setEditUserModels] = useState<string[]>([]);
   const [editError, setEditError] = useState('');
 
   // Stats state
@@ -207,6 +209,15 @@ export default function AdminPage({
     if (diffMin < 60) return t('time.minutesAgo', { minutes: diffMin });
     if (diffHour < 24) return t('time.hoursAgo', { hours: diffHour });
     return t('time.daysAgo', { days: diffDay });
+  };
+
+  const generatePassword = (): string => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let password = '';
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
   };
 
   useEffect(() => {
@@ -478,12 +489,17 @@ export default function AdminPage({
     }
 
     try {
-      await window.electronAPI?.adminCreateUser(newUsername, newPassword, newRole);
+      const result = await window.electronAPI?.adminCreateUser(newUsername, newPassword, newRole);
+      // If basic user with model assignments, save them
+      if (result?.user?.id && newRole === 'basic' && newUserModels.length > 0) {
+        await window.electronAPI?.adminSetUserModelAssignments(result.user.id, newUserModels);
+      }
       await loadData();
       setShowCreateModal(false);
       setNewUsername('');
       setNewPassword('');
       setNewRole('basic');
+      setNewUserModels([]);
       setCreateError('');
     } catch (err: any) {
       setCreateError(err.message || 'Failed to create user');
@@ -508,13 +524,16 @@ export default function AdminPage({
       updates.role = editRole;
     }
 
-    if (Object.keys(updates).length === 0) {
-      setEditingUser(null);
-      return;
-    }
-
     try {
-      await window.electronAPI?.adminUpdateUser(editingUser.id, updates);
+      // Update user info if there are changes
+      if (Object.keys(updates).length > 0) {
+        await window.electronAPI?.adminUpdateUser(editingUser.id, updates);
+      }
+      // Update model assignments for basic users
+      if (editRole === 'basic') {
+        await window.electronAPI?.adminSetUserModelAssignments(editingUser.id, editUserModels);
+        setUserAssignments(prev => ({ ...prev, [editingUser.id]: editUserModels }));
+      }
       await loadData();
       setEditingUser(null);
       setEditError('');
@@ -563,12 +582,20 @@ export default function AdminPage({
     }
   };
 
-  const openEditModal = (user: AppUser) => {
+  const openEditModal = async (user: AppUser) => {
     setEditingUser(user);
     setEditUsername(user.username);
-    setEditPassword('');
+    setEditPassword(user.password || '');
     setEditRole(user.role);
     setEditError('');
+    // Load assignments
+    if (userAssignments[user.id]) {
+      setEditUserModels(userAssignments[user.id]);
+    } else {
+      const assignments = await window.electronAPI?.adminGetUserModelAssignments(user.id);
+      setUserAssignments(prev => ({ ...prev, [user.id]: assignments || [] }));
+      setEditUserModels(assignments || []);
+    }
   };
 
   // Model handlers
@@ -973,13 +1000,23 @@ export default function AdminPage({
           {activeTab === 'accounts' && (
             <>
               {canDelete && (
-                <button
-                  onClick={handleOpenTrash}
-                  className="h-9 px-3 flex items-center gap-2 transition-colors"
-                  style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
-                >
-                  <Trash size={16} weight="bold" />
-                </button>
+                <>
+                  <button
+                    onClick={() => window.open('https://docs.google.com/spreadsheets/d/1qfzEHUOmh-1WqDpQh0v75RDKPFwGpcRcxsn6HpFFCU8/edit?gid=2124940835#gid=2124940835', '_blank')}
+                    className="h-9 px-3 flex items-center gap-2 transition-colors"
+                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
+                    title="Open Sheet"
+                  >
+                    <Table size={16} weight="bold" />
+                  </button>
+                  <button
+                    onClick={handleOpenTrash}
+                    className="h-9 px-3 flex items-center gap-2 transition-colors"
+                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
+                  >
+                    <Trash size={16} weight="bold" />
+                  </button>
+                </>
               )}
               <button
                 onClick={handleSyncAll}
@@ -1312,35 +1349,37 @@ export default function AdminPage({
                   </div>
                 </div>
 
-                {user.role === 'basic' && models.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3 ml-13">
-                    {models.map(model => {
-                      const isAssigned = (userAssignments[user.id] || []).includes(model.id);
-                      return (
-                        <button
+                {user.role === 'basic' && (userAssignments[user.id] || []).length > 0 && (
+                  <div className="mt-3 ml-13">
+                    <p className="text-xs mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Assigned models</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {models.filter(model => (userAssignments[user.id] || []).includes(model.id)).map(model => (
+                        <div
                           key={model.id}
-                          onClick={() => handleToggleModelAssignment(user.id, model.id)}
-                          className="h-7 px-3 rounded-full text-xs font-medium transition-colors flex items-center"
-                          style={{ background: isAssigned ? '#0A84FF' : 'var(--chip-bg)', color: isAssigned ? 'white' : 'var(--text-secondary)' }}
+                          className="h-7 px-3 text-xs font-medium flex items-center"
+                          style={{ background: 'var(--chip-bg)', color: 'var(--text-secondary)', borderRadius: '100px' }}
                         >
                           {model.name}
-                        </button>
-                      );
-                    })}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {(user.role === 'admin' || user.role === 'dev') && models.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3 ml-13">
-                    {models.map(model => (
-                      <div
-                        key={model.id}
-                        className="h-7 px-3 rounded-full text-xs font-medium flex items-center"
-                        style={{ background: '#0A84FF', color: 'white' }}
-                      >
-                        {model.name}
-                      </div>
-                    ))}
+                  <div className="mt-3 ml-13">
+                    <p className="text-xs mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Assigned models</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {models.map(model => (
+                        <div
+                          key={model.id}
+                          className="h-7 px-3 text-xs font-medium flex items-center"
+                          style={{ background: 'var(--chip-bg)', color: 'var(--text-secondary)', borderRadius: '100px' }}
+                        >
+                          {model.name}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1548,22 +1587,52 @@ export default function AdminPage({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('login.username')}</label>
-                <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder={t('admin.enterUsername')} />
+                <input type="text" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder={t('admin.enterUsername')} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('login.password')}</label>
-                <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder={t('admin.minChars')} />
+                <div className="flex gap-2">
+                  <input type="text" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="flex-1 h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder={t('admin.minChars')} />
+                  <button
+                    type="button"
+                    onClick={() => setNewPassword(generatePassword())}
+                    className="h-10 px-3 flex items-center gap-1.5 text-sm font-medium"
+                    style={{ background: 'var(--chip-bg)', color: 'var(--text-secondary)', borderRadius: '100px' }}
+                  >
+                    <Shuffle size={16} />
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.role')}</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setNewRole('basic')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: newRole === 'basic' ? 'white' : 'var(--text-secondary)' }}><User size={16} /> {t('admin.basic')}</button>
-                  <button onClick={() => setNewRole('admin')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'admin' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: newRole === 'admin' ? 'white' : 'var(--text-secondary)' }}><Shield size={16} /> Admin</button>
-                  <button onClick={() => setNewRole('dev')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'dev' ? '#EF4444' : 'var(--chip-bg)', color: newRole === 'dev' ? 'white' : 'var(--text-secondary)' }}><Code size={16} /> Dev</button>
+                  <button onClick={() => setNewRole('basic')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'basic' ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)', color: newRole === 'basic' ? '#60A5FA' : 'var(--text-secondary)', borderRadius: '100px' }}><User size={16} /> {t('admin.basic')}</button>
+                  <button onClick={() => setNewRole('admin')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'admin' ? 'rgba(147, 112, 219, 0.3)' : 'var(--chip-bg)', color: newRole === 'admin' ? '#A78BFA' : 'var(--text-secondary)', borderRadius: '100px' }}><Shield size={16} /> Admin</button>
+                  <button onClick={() => setNewRole('dev')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'dev' ? 'rgba(239, 68, 68, 0.3)' : 'var(--chip-bg)', color: newRole === 'dev' ? '#F87171' : 'var(--text-secondary)', borderRadius: '100px' }}><Code size={16} /> Dev</button>
                 </div>
               </div>
+              {newRole === 'basic' && models.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Models</label>
+                  <div className="flex flex-wrap gap-2">
+                    {models.map(model => {
+                      const isSelected = newUserModels.includes(model.id);
+                      return (
+                        <button
+                          key={model.id}
+                          onClick={() => setNewUserModels(prev => isSelected ? prev.filter(id => id !== model.id) : [...prev, model.id])}
+                          className="h-8 px-3 text-xs font-medium flex items-center gap-1.5"
+                          style={{ background: isSelected ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)', color: isSelected ? '#60A5FA' : 'var(--text-secondary)', borderRadius: '100px' }}
+                        >
+                          {model.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {createError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{createError}</p>}
-              <button onClick={handleCreateUser} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{t('admin.createUser')}</button>
+              <button onClick={handleCreateUser} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', borderRadius: '100px' }}>{t('admin.createUser')}</button>
             </div>
           </div>
         </div>
@@ -1580,23 +1649,53 @@ export default function AdminPage({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('login.username')}</label>
-                <input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} />
+                <input type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.newPasswordHint')}</label>
-                <input type="text" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder={t('admin.minChars')} />
+                <div className="flex gap-2">
+                  <input type="text" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} className="flex-1 h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder={t('admin.minChars')} />
+                  <button
+                    type="button"
+                    onClick={() => setEditPassword(generatePassword())}
+                    className="h-10 px-3 flex items-center gap-1.5 text-sm font-medium"
+                    style={{ background: 'var(--chip-bg)', color: 'var(--text-secondary)', borderRadius: '100px' }}
+                  >
+                    <Shuffle size={16} />
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.role')}</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditRole('basic')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: editRole === 'basic' ? 'white' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1 }}><User size={16} /> {t('admin.basic')}</button>
-                  <button onClick={() => setEditRole('admin')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'admin' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: editRole === 'admin' ? 'white' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1 }}><Shield size={16} /> Admin</button>
-                  <button onClick={() => setEditRole('dev')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'dev' ? '#EF4444' : 'var(--chip-bg)', color: editRole === 'dev' ? 'white' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1 }}><Code size={16} /> Dev</button>
+                  <button onClick={() => setEditRole('basic')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'basic' ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)', color: editRole === 'basic' ? '#60A5FA' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><User size={16} /> {t('admin.basic')}</button>
+                  <button onClick={() => setEditRole('admin')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'admin' ? 'rgba(147, 112, 219, 0.3)' : 'var(--chip-bg)', color: editRole === 'admin' ? '#A78BFA' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><Shield size={16} /> Admin</button>
+                  <button onClick={() => setEditRole('dev')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'dev' ? 'rgba(239, 68, 68, 0.3)' : 'var(--chip-bg)', color: editRole === 'dev' ? '#F87171' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><Code size={16} /> Dev</button>
                 </div>
                 {editingUser.id === currentUserId && <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('admin.cannotChangeOwnRole')}</p>}
               </div>
+              {editRole === 'basic' && models.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Models</label>
+                  <div className="flex flex-wrap gap-2">
+                    {models.map(model => {
+                      const isSelected = editUserModels.includes(model.id);
+                      return (
+                        <button
+                          key={model.id}
+                          onClick={() => setEditUserModels(prev => isSelected ? prev.filter(id => id !== model.id) : [...prev, model.id])}
+                          className="h-8 px-3 text-xs font-medium flex items-center gap-1.5"
+                          style={{ background: isSelected ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)', color: isSelected ? '#60A5FA' : 'var(--text-secondary)', borderRadius: '100px' }}
+                        >
+                          {model.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {editError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{editError}</p>}
-              <button onClick={handleUpdateUser} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{t('admin.saveChanges')}</button>
+              <button onClick={handleUpdateUser} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', borderRadius: '100px' }}>{t('admin.saveChanges')}</button>
             </div>
           </div>
         </div>
@@ -1624,10 +1723,10 @@ export default function AdminPage({
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.name')}</label>
-                <input type="text" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder={t('admin.enterModelName')} autoFocus />
+                <input type="text" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder={t('admin.enterModelName')} autoFocus />
               </div>
               {modelError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{modelError}</p>}
-              <button onClick={editingModel ? handleUpdateModel : handleCreateModel} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{editingModel ? t('admin.saveChanges') : t('model.create')}</button>
+              <button onClick={editingModel ? handleUpdateModel : handleCreateModel} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', borderRadius: '100px' }}>{editingModel ? t('admin.saveChanges') : t('model.create')}</button>
             </div>
           </div>
         </div>
@@ -1689,14 +1788,14 @@ export default function AdminPage({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
-                <input type="email" value={newMainEmail} onChange={(e) => setNewMainEmail(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="email@example.com" />
+                <input type="email" value={newMainEmail} onChange={(e) => setNewMainEmail(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="email@example.com" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Password</label>
-                <input type="text" value={newMainPassword} onChange={(e) => setNewMainPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="••••••••" />
+                <input type="text" value={newMainPassword} onChange={(e) => setNewMainPassword(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="••••••••" />
               </div>
               {emailError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
-              <button onClick={editingMainEmail ? handleUpdateMainEmail : handleCreateMainEmail} disabled={savingEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1 }}>{savingEmail ? 'Saving...' : (editingMainEmail ? 'Save Changes' : 'Create Email')}</button>
+              <button onClick={editingMainEmail ? handleUpdateMainEmail : handleCreateMainEmail} disabled={savingEmail} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1, borderRadius: '100px' }}>{savingEmail ? 'Saving...' : (editingMainEmail ? 'Save Changes' : 'Create Email')}</button>
             </div>
           </div>
         </div>
@@ -1714,13 +1813,13 @@ export default function AdminPage({
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{editingSubEmail ? 'Sub-Email' : 'Sub-Emails (one per line or comma-separated)'}</label>
                 {editingSubEmail ? (
-                  <input type="email" value={newSubEmail} onChange={(e) => setNewSubEmail(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="sub-email@example.com" autoFocus />
+                  <input type="email" value={newSubEmail} onChange={(e) => setNewSubEmail(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="sub-email@example.com" autoFocus />
                 ) : (
                   <textarea
                     value={newSubEmail}
                     onChange={(e) => setNewSubEmail(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg text-sm resize-none"
-                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)', minHeight: '120px' }}
+                    className="w-full px-4 py-3 text-sm resize-none"
+                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '24px', minHeight: '120px' }}
                     placeholder="email1@example.com&#10;email2@example.com&#10;email3@example.com"
                     autoFocus
                   />
@@ -1732,8 +1831,8 @@ export default function AdminPage({
                   <select
                     value={selectedProfileForSubEmail || ''}
                     onChange={(e) => setSelectedProfileForSubEmail(e.target.value || null)}
-                    className="w-full h-10 px-3 rounded-lg text-sm"
-                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                    className="w-full h-10 px-3 text-sm"
+                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
                   >
                     <option value="">None</option>
                     {profiles.map(profile => {
@@ -1749,7 +1848,7 @@ export default function AdminPage({
                 </div>
               )}
               {emailError && <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
-              <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} disabled={savingEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1 }}>{savingEmail ? 'Saving...' : (editingSubEmail ? 'Save Changes' : 'Add Sub-Emails')}</button>
+              <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} disabled={savingEmail} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1, borderRadius: '100px' }}>{savingEmail ? 'Saving...' : (editingSubEmail ? 'Save Changes' : 'Add Sub-Emails')}</button>
             </div>
           </div>
         </div>
