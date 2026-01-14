@@ -49,11 +49,13 @@ export interface Profile {
   subEmailId?: string;
 }
 
+export type UserRole = 'dev' | 'admin' | 'basic';
+
 export interface AuthUser {
   id: string;
   username?: string;
   email?: string;
-  role: 'admin' | 'basic';
+  role: UserRole;
 }
 
 export interface AuthResult {
@@ -64,7 +66,7 @@ export interface AuthResult {
 export interface AppUser {
   id: string;
   username: string;
-  role: 'admin' | 'basic';
+  role: UserRole;
   created_at: string;
 }
 
@@ -137,8 +139,8 @@ export interface ElectronAPI {
 
   // Admin
   adminListUsers: () => Promise<AppUser[]>;
-  adminCreateUser: (username: string, password: string, role: 'admin' | 'basic') => Promise<AppUser>;
-  adminUpdateUser: (userId: string, updates: { username?: string; password?: string; role?: 'admin' | 'basic' }) => Promise<AppUser>;
+  adminCreateUser: (username: string, password: string, role: UserRole) => Promise<AppUser>;
+  adminUpdateUser: (userId: string, updates: { username?: string; password?: string; role?: UserRole }) => Promise<AppUser>;
   adminDeleteUser: (userId: string) => Promise<boolean>;
   adminGetUserModelAssignments: (userId: string) => Promise<string[]>;
   adminSetUserModelAssignments: (userId: string, modelIds: string[]) => Promise<boolean>;

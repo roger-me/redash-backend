@@ -1,7 +1,9 @@
 import { getSupabaseClient, authStore } from './client';
 
+export type UserRole = 'dev' | 'admin' | 'basic';
+
 export interface AuthResult {
-  user: { id: string; username: string; role: 'admin' | 'basic' } | null;
+  user: { id: string; username: string; role: UserRole } | null;
   error?: string;
 }
 
@@ -21,7 +23,7 @@ export async function getSession(): Promise<AuthResult> {
   try {
     const userId = authStore.get('userId') as string | undefined;
     const username = authStore.get('username') as string | undefined;
-    const role = (authStore.get('role') as 'admin' | 'basic') || 'basic';
+    const role = (authStore.get('role') as UserRole) || 'basic';
 
     if (userId && username) {
       return { user: { id: userId, username, role } };
@@ -53,7 +55,7 @@ export async function signInWithEmail(username: string, password: string): Promi
       return { user: null, error: 'Invalid username or password' };
     }
 
-    const role = (data.role as 'admin' | 'basic') || 'basic';
+    const role = (data.role as UserRole) || 'basic';
 
     // Store session locally
     authStore.set('userId', data.id);
@@ -69,7 +71,7 @@ export async function signInWithEmail(username: string, password: string): Promi
 }
 
 // Sign up - not used, users created by admin
-export async function signUp(username: string, password: string, role: 'admin' | 'basic' = 'basic'): Promise<AuthResult> {
+export async function signUp(username: string, password: string, role: UserRole = 'basic'): Promise<AuthResult> {
   try {
     const supabase = getSupabaseClient();
     const hashedPassword = hashPassword(password);
@@ -127,7 +129,7 @@ export function onAuthStateChange(_callback: (event: string, session: any) => vo
 }
 
 // Helper to create a user (for admin use)
-export async function createUser(username: string, password: string, role: 'admin' | 'basic' = 'basic'): Promise<AuthResult> {
+export async function createUser(username: string, password: string, role: UserRole = 'basic'): Promise<AuthResult> {
   return signUp(username, password, role);
 }
 

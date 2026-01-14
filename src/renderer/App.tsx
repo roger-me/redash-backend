@@ -103,7 +103,7 @@ function AppContent() {
 
   // Load assigned model IDs for basic users
   const loadAssignedModels = async () => {
-    if (!user || user.role === 'admin') {
+    if (!user || user.role === 'admin' || user.role === 'dev') {
       setAssignedModelIds([]);
       return;
     }
@@ -117,7 +117,7 @@ function AppContent() {
   };
 
   // Compute available models based on user role
-  const availableModels = user?.role === 'admin'
+  const availableModels = (user?.role === 'admin' || user?.role === 'dev')
     ? models
     : models.filter(m => assignedModelIds.includes(m.id));
 
@@ -133,8 +133,8 @@ function AppContent() {
     if (!isAuthenticated || !user) return;
 
     const init = async () => {
-      // Admin users get all data, basic users get filtered data
-      if (user.role === 'admin') {
+      // Admin/Dev users get all data, basic users get filtered data
+      if (user.role === 'admin' || user.role === 'dev') {
         const [profilesData, modelsData] = await Promise.all([
           window.electronAPI?.adminGetAllProfilesForStats(),
           window.electronAPI?.adminGetAllModels(),
@@ -199,8 +199,8 @@ function AppContent() {
 
   const loadProfiles = async () => {
     try {
-      // Admin users get ALL profiles
-      if (user?.role === 'admin') {
+      // Admin/Dev users get ALL profiles
+      if (user?.role === 'admin' || user?.role === 'dev') {
         const data = await window.electronAPI?.adminGetAllProfilesForStats();
         const profilesWithType = (data || []).map((p: any) => ({ ...p, type: p.type || 'desktop' }));
         setProfiles(profilesWithType);
@@ -215,8 +215,8 @@ function AppContent() {
 
   const loadModels = async () => {
     try {
-      // Admin users get ALL models, basic users get filtered list
-      if (user?.role === 'admin') {
+      // Admin/Dev users get ALL models, basic users get filtered list
+      if (user?.role === 'admin' || user?.role === 'dev') {
         const allModels = await window.electronAPI?.adminGetAllModels();
         setModels(allModels || []);
       } else if (user?.role === 'basic' && user?.id) {
@@ -548,7 +548,7 @@ function AppContent() {
             <span className="text-sm font-medium">{t('nav.flipper')}</span>
           </button>
 
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'dev') && (
             <button
               onClick={() => setCurrentPage('admin')}
               className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
@@ -673,10 +673,11 @@ function AppContent() {
         )}
         {currentPage === 'flipper' && <FlipperPage />}
         {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onToggleTheme={toggleTheme} />}
-        {currentPage === 'admin' && user?.role === 'admin' && (
+        {currentPage === 'admin' && (user?.role === 'admin' || user?.role === 'dev') && (
           <AdminPage
             models={models}
             currentUserId={user.id}
+            currentUserRole={user.role}
             onCreateModel={handleAdminCreateModel}
             onUpdateModel={handleAdminUpdateModel}
             onDeleteModel={handleDeleteModel}
@@ -712,7 +713,7 @@ function AppContent() {
         <CreateProfileModal
           models={availableModels}
           initialModelId={createInModelId}
-          requireModel={user?.role !== 'admin'}
+          requireModel={user?.role === 'basic'}
           onClose={() => {
             setShowCreateModal(false);
             setCreateInModelId(undefined);

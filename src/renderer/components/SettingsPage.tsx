@@ -162,7 +162,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
             <div className="flex-1">
               <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{user?.username || t('messages.user')}</p>
               <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                {user?.role === 'admin' ? t('settings.administrator') : t('settings.basicUser')}
+                {user?.role === 'dev' ? t('settings.developer') : user?.role === 'admin' ? t('settings.administrator') : t('settings.basicUser')}
               </p>
             </div>
             <button

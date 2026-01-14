@@ -782,11 +782,11 @@ ipcMain.handle('admin:listUsers', async () => {
   }
 });
 
-ipcMain.handle('admin:createUser', async (_, username: string, password: string, role: 'admin' | 'basic') => {
+ipcMain.handle('admin:createUser', async (_, username: string, password: string, role: 'dev' | 'admin' | 'basic') => {
   return admin.createAppUser(username, password, role);
 });
 
-ipcMain.handle('admin:updateUser', async (_, userId: string, updates: { username?: string; password?: string; role?: 'admin' | 'basic' }) => {
+ipcMain.handle('admin:updateUser', async (_, userId: string, updates: { username?: string; password?: string; role?: 'dev' | 'admin' | 'basic' }) => {
   return admin.updateAppUser(userId, updates);
 });
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Profile, Model, MainEmail, SubEmail } from '../../shared/types';
-import { Desktop, CaretDown, FolderSimple, MinusCircle, EnvelopeSimple } from '@phosphor-icons/react';
+import { CaretDown, FolderSimple, MinusCircle, EnvelopeSimple } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 
 interface EditProfileModalProps {
@@ -195,30 +195,17 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
         }}
       >
         {/* Header */}
-        <div className="px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'var(--accent-blue)' }}
-            >
-              <Desktop size={16} weight="bold" color="white" />
-            </div>
-            <div>
-              <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {t('profile.editBrowser')}
-              </h2>
-              <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                {t('profile.updateSettings')}
-              </p>
-            </div>
-          </div>
+        <div className="px-5 pt-5 pb-2 flex-shrink-0">
+          <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {t('profile.editBrowser')}
+          </h2>
         </div>
 
         {/* Form - Scrollable */}
-        <div className="p-5 space-y-4 overflow-y-auto flex-1">
+        <div className="px-5 pb-5 space-y-4 overflow-y-auto flex-1">
           {/* Account Credentials */}
           <div>
-            <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               {t('profile.accountCredentials')}
             </label>
             <div className="space-y-2">
@@ -228,36 +215,64 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder={t('profile.username')}
                 autoFocus
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                }}
               />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('profile.email')}
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                }}
               />
               <input
                 type="text"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t('profile.password')}
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                }}
               />
             </div>
           </div>
 
           {/* Country */}
           <div className="relative" ref={countryMenuRef}>
-            <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               {t('profile.country')}
             </label>
             <button
               type="button"
               onClick={() => setShowCountryMenu(!showCountryMenu)}
-              className="w-full text-left px-3 py-2 text-sm flex items-center gap-2"
+              className="w-full text-left text-sm flex items-center gap-2"
               style={{
                 background: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-light)',
-                borderRadius: '8px',
+                border: 'none',
+                borderRadius: '34px',
                 color: 'var(--text-primary)',
+                padding: '12px 16px',
               }}
             >
               {selectedCountry ? (
@@ -299,18 +314,20 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
           {/* Model */}
           {models.length > 0 && (
             <div className="relative" ref={modelMenuRef}>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 {t('profile.model')}
+                <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> {t('profile.optional')}</span>
               </label>
               <button
                 type="button"
                 onClick={() => setShowModelMenu(!showModelMenu)}
-                className="w-full text-left px-3 py-2 text-sm flex items-center gap-2"
+                className="w-full text-left text-sm flex items-center gap-2"
                 style={{
                   background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '8px',
+                  border: 'none',
+                  borderRadius: '34px',
                   color: 'var(--text-primary)',
+                  padding: '12px 16px',
                 }}
               >
                 <FolderSimple size={14} weight="bold" color="var(--text-tertiary)" />
@@ -360,18 +377,20 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
           {/* Email Selection */}
           {mainEmails.length > 0 && (
             <div className="relative" ref={emailMenuRef}>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 Email Account
+                <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> {t('profile.optional')}</span>
               </label>
               <button
                 type="button"
                 onClick={() => setShowEmailMenu(!showEmailMenu)}
-                className="w-full text-left px-3 py-2 text-sm flex items-center gap-2"
+                className="w-full text-left text-sm flex items-center gap-2"
                 style={{
                   background: 'var(--bg-tertiary)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '8px',
+                  border: 'none',
+                  borderRadius: '34px',
                   color: 'var(--text-primary)',
+                  padding: '12px 16px',
                 }}
               >
                 <EnvelopeSimple size={14} weight="bold" color="var(--text-tertiary)" />
@@ -432,17 +451,31 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
           {/* Status & Enabled Row */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 {t('profile.status')}
               </label>
-              <select value={status} onChange={(e) => setStatus(e.target.value as any)}>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                  appearance: 'none',
+                  cursor: 'pointer',
+                }}
+              >
                 <option value="working">{t('profile.working')}</option>
                 <option value="banned">{t('profile.banned')}</option>
                 <option value="error">{t('profile.error')}</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 {t('profile.renew')} {expiresAt && (() => {
                   const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                   return <span style={{ color: days <= 0 ? '#F44336' : 'var(--accent-blue)' }}>
@@ -450,62 +483,72 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
                   </span>;
                 })()}
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
-                  className="flex-1"
-                  style={{ colorScheme: 'dark' }}
-                />
-                {expiresAt && (
-                  <button
-                    type="button"
-                    onClick={() => setExpiresAt('')}
-                    className="px-3 py-2 text-sm font-medium"
-                    style={{
-                      background: 'rgba(244, 67, 54, 0.15)',
-                      color: '#F44336',
-                      borderRadius: '8px',
-                    }}
-                  >
-                    {t('button.cancel')}
-                  </button>
-                )}
-              </div>
+              <input
+                type="date"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                  colorScheme: 'dark',
+                }}
+              />
             </div>
           </div>
 
           {/* Purchase Date & Order Number */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 {t('profile.purchaseDate')}
               </label>
               <input
                 type="date"
                 value={purchaseDate}
                 onChange={(e) => setPurchaseDate(e.target.value)}
-                style={{ colorScheme: 'dark' }}
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                  colorScheme: 'dark',
+                }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                {t('profile.orderNumber')} <span style={{ color: 'var(--accent-red)' }}>*</span>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+                {t('profile.orderNumber')}
               </label>
               <input
                 type="text"
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
                 placeholder="e.g. #12345"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                }}
               />
             </div>
           </div>
 
           {/* Proxy */}
           <div>
-            <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-              {t('profile.proxy')} <span style={{ color: 'var(--accent-red)' }}>*</span>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              {t('profile.proxy')}
             </label>
             <input
               type="text"
@@ -513,12 +556,20 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
               onChange={(e) => setProxyString(e.target.value)}
               placeholder={t('profile.proxyPlaceholder')}
               className="font-mono"
-              style={{ fontSize: '12px' }}
+              style={{
+                background: 'var(--bg-tertiary)',
+                border: 'none',
+                borderRadius: '34px',
+                color: 'var(--text-primary)',
+                padding: '12px 16px',
+                width: '100%',
+                fontSize: '12px',
+              }}
             />
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
@@ -536,8 +587,8 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
               onClick={handleSubmit}
               className="flex-1 py-2.5 text-sm font-medium"
               style={{
-                background: 'var(--text-primary)',
-                color: 'var(--bg-primary)',
+                background: 'var(--btn-primary-bg)',
+                color: 'var(--btn-primary-color)',
                 borderRadius: '100px',
               }}
             >

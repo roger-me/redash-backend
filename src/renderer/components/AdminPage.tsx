@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList } from '@phosphor-icons/react';
-import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail } from '../../shared/types';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code } from '@phosphor-icons/react';
+import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
 // Flag PNG imports
@@ -74,6 +74,7 @@ type AdminTab = 'accounts' | 'users' | 'models' | 'emails';
 interface AdminPageProps {
   models: Model[];
   currentUserId: string;
+  currentUserRole: UserRole;
   onCreateModel: (name: string, profilePicture?: string) => Promise<void>;
   onUpdateModel: (id: string, name: string, profilePicture?: string) => Promise<void>;
   onDeleteModel: (id: string) => Promise<void>;
@@ -111,6 +112,7 @@ interface UserStats {
 export default function AdminPage({
   models,
   currentUserId,
+  currentUserRole,
   onCreateModel,
   onUpdateModel,
   onDeleteModel,
@@ -119,6 +121,7 @@ export default function AdminPage({
   onSyncKarma,
   refreshTrigger
 }: AdminPageProps) {
+  const canDelete = currentUserRole === 'dev';
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('accounts');
 
@@ -132,7 +135,7 @@ export default function AdminPage({
 
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRole, setNewRole] = useState<'admin' | 'basic'>('basic');
+  const [newRole, setNewRole] = useState<UserRole>('basic');
   const [createError, setCreateError] = useState('');
 
   // Model management state
@@ -145,7 +148,7 @@ export default function AdminPage({
 
   const [editUsername, setEditUsername] = useState('');
   const [editPassword, setEditPassword] = useState('');
-  const [editRole, setEditRole] = useState<'admin' | 'basic'>('basic');
+  const [editRole, setEditRole] = useState<UserRole>('basic');
   const [editError, setEditError] = useState('');
 
   // Stats state
@@ -969,13 +972,15 @@ export default function AdminPage({
         <div className="flex items-center gap-2">
           {activeTab === 'accounts' && (
             <>
-              <button
-                onClick={handleOpenTrash}
-                className="h-9 px-3 flex items-center gap-2 transition-colors"
-                style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
-              >
-                <Trash size={16} weight="bold" />
-              </button>
+              {canDelete && (
+                <button
+                  onClick={handleOpenTrash}
+                  className="h-9 px-3 flex items-center gap-2 transition-colors"
+                  style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
+                >
+                  <Trash size={16} weight="bold" />
+                </button>
+              )}
               <button
                 onClick={handleSyncAll}
                 disabled={syncing || refreshing}
@@ -1045,8 +1050,8 @@ export default function AdminPage({
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-medium"
                         style={{
-                          background: user.role === 'admin' ? 'rgba(147, 112, 219, 0.2)' : 'var(--chip-bg)',
-                          color: user.role === 'admin' ? '#A78BFA' : 'var(--text-secondary)'
+                          background: user.role === 'dev' ? 'rgba(239, 68, 68, 0.2)' : user.role === 'admin' ? 'rgba(147, 112, 219, 0.2)' : 'var(--chip-bg)',
+                          color: user.role === 'dev' ? '#F87171' : user.role === 'admin' ? '#A78BFA' : 'var(--text-secondary)'
                         }}
                       >
                         {user.role}
@@ -1233,14 +1238,16 @@ export default function AdminPage({
                                               <PencilSimple size={14} />
                                               {t('admin.edit')}
                                             </button>
-                                            <button
-                                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDeleteProfile(profile.id); }}
-                                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
-                                              style={{ color: '#F44336' }}
-                                            >
-                                              <Trash size={14} />
-                                              {t('admin.delete')}
-                                            </button>
+                                            {canDelete && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDeleteProfile(profile.id); }}
+                                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+                                                style={{ color: '#F44336' }}
+                                              >
+                                                <Trash size={14} />
+                                                {t('admin.delete')}
+                                              </button>
+                                            )}
                                           </div>
                                         )}
                                       </div>
@@ -1297,11 +1304,11 @@ export default function AdminPage({
                       <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{user.username}</span>
                       {user.id === currentUserId && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-green)', color: 'white' }}>{t('admin.you')}</span>}
                     </div>
-                    <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{user.role === 'admin' ? t('settings.administrator') : t('settings.basicUser')}</span>
+                    <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{user.role === 'dev' ? t('settings.developer') : user.role === 'admin' ? t('settings.administrator') : t('settings.basicUser')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={() => openEditModal(user)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
-                    {user.id !== currentUserId && <button onClick={() => handleDeleteUser(user.id)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>}
+                    {canDelete && user.id !== currentUserId && <button onClick={() => handleDeleteUser(user.id)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>}
                   </div>
                 </div>
 
@@ -1323,7 +1330,7 @@ export default function AdminPage({
                   </div>
                 )}
 
-                {user.role === 'admin' && models.length > 0 && (
+                {(user.role === 'admin' || user.role === 'dev') && models.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-3 ml-13">
                     {models.map(model => (
                       <div
@@ -1363,7 +1370,7 @@ export default function AdminPage({
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => openModelEditModal(model)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
-                  <button onClick={() => handleDeleteModel(model.id)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>
+                  {canDelete && <button onClick={() => handleDeleteModel(model.id)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>}
                 </div>
               </div>
             ))
@@ -1438,14 +1445,16 @@ export default function AdminPage({
                               <PencilSimple size={14} />
                               Edit
                             </button>
-                            <button
-                              onClick={() => { handleDeleteMainEmail(mainEmail.id); setEmailMenuOpen(null); }}
-                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
-                              style={{ color: 'var(--accent-red)' }}
-                            >
-                              <Trash size={14} />
-                              Delete
-                            </button>
+                            {canDelete && (
+                              <button
+                                onClick={() => { handleDeleteMainEmail(mainEmail.id); setEmailMenuOpen(null); }}
+                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                                style={{ color: 'var(--accent-red)' }}
+                              >
+                                <Trash size={14} />
+                                Delete
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1497,14 +1506,16 @@ export default function AdminPage({
                                       <PencilSimple size={14} />
                                       Edit
                                     </button>
-                                    <button
-                                      onClick={() => { handleDeleteSubEmail(subEmail.id); setEmailMenuOpen(null); }}
-                                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
-                                      style={{ color: 'var(--accent-red)' }}
-                                    >
-                                      <Trash size={14} />
-                                      Delete
-                                    </button>
+                                    {canDelete && (
+                                      <button
+                                        onClick={() => { handleDeleteSubEmail(subEmail.id); setEmailMenuOpen(null); }}
+                                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                                        style={{ color: 'var(--accent-red)' }}
+                                      >
+                                        <Trash size={14} />
+                                        Delete
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -1548,6 +1559,7 @@ export default function AdminPage({
                 <div className="flex gap-2">
                   <button onClick={() => setNewRole('basic')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: newRole === 'basic' ? 'white' : 'var(--text-secondary)' }}><User size={16} /> {t('admin.basic')}</button>
                   <button onClick={() => setNewRole('admin')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'admin' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: newRole === 'admin' ? 'white' : 'var(--text-secondary)' }}><Shield size={16} /> Admin</button>
+                  <button onClick={() => setNewRole('dev')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'dev' ? '#EF4444' : 'var(--chip-bg)', color: newRole === 'dev' ? 'white' : 'var(--text-secondary)' }}><Code size={16} /> Dev</button>
                 </div>
               </div>
               {createError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{createError}</p>}
@@ -1577,8 +1589,9 @@ export default function AdminPage({
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.role')}</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditRole('basic')} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: editRole === 'basic' ? 'white' : 'var(--text-secondary)' }}><User size={16} /> {t('admin.basic')}</button>
+                  <button onClick={() => setEditRole('basic')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'basic' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: editRole === 'basic' ? 'white' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1 }}><User size={16} /> {t('admin.basic')}</button>
                   <button onClick={() => setEditRole('admin')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'admin' ? 'var(--accent-blue)' : 'var(--chip-bg)', color: editRole === 'admin' ? 'white' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1 }}><Shield size={16} /> Admin</button>
+                  <button onClick={() => setEditRole('dev')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 rounded-lg text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'dev' ? '#EF4444' : 'var(--chip-bg)', color: editRole === 'dev' ? 'white' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1 }}><Code size={16} /> Dev</button>
                 </div>
                 {editingUser.id === currentUserId && <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('admin.cannotChangeOwnRole')}</p>}
               </div>

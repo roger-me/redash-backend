@@ -42,9 +42,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Admin
   adminListUsers: () => ipcRenderer.invoke('admin:listUsers'),
-  adminCreateUser: (username: string, password: string, role: 'admin' | 'basic') =>
+  adminCreateUser: (username: string, password: string, role: 'dev' | 'admin' | 'basic') =>
     ipcRenderer.invoke('admin:createUser', username, password, role),
-  adminUpdateUser: (userId: string, updates: { username?: string; password?: string; role?: 'admin' | 'basic' }) =>
+  adminUpdateUser: (userId: string, updates: { username?: string; password?: string; role?: 'dev' | 'admin' | 'basic' }) =>
     ipcRenderer.invoke('admin:updateUser', userId, updates),
   adminDeleteUser: (userId: string) => ipcRenderer.invoke('admin:deleteUser', userId),
   adminGetUserModelAssignments: (userId: string) => ipcRenderer.invoke('admin:getUserModelAssignments', userId),

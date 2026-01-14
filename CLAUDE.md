@@ -101,6 +101,26 @@ iPhone 14/13/12, Pixel 7/6, Galaxy S23/S22, iPad Pro 11, iPad Mini
 - Windows: x64 portable + zip
 - Linux: AppImage + zip
 
+## Database (Supabase)
+
+The app uses Supabase for data storage. Credentials are in `.env` file.
+
+**Supabase Dashboard:** https://supabase.com/dashboard/project/hvesxkydjpqoswxbkysx
+
+For schema changes (new columns, constraints, migrations), run SQL in the **Supabase Dashboard > SQL Editor**.
+
+**Key tables:**
+- `app_users` - User accounts with roles (dev, admin, basic). User "roger" should always be 'dev' role.
+- `profiles` - Browser profiles
+- `models` - Profile groups/models
+- `user_model_assignments` - Links users to their assigned models
+- `main_emails` / `sub_emails` - Email management
+
+**User Roles:**
+- `dev` - Full access (can delete users, models, etc.)
+- `admin` - Can create/assign but NOT delete
+- `basic` - Limited to assigned models only
+
 ## Claude Commands
 
 ### "release update"

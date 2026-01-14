@@ -1,10 +1,12 @@
 import { getSupabaseClient } from './client';
 import { hashPassword } from './auth';
 
+export type UserRole = 'dev' | 'admin' | 'basic';
+
 export interface AppUser {
   id: string;
   username: string;
-  role: 'admin' | 'basic';
+  role: UserRole;
   created_at: string;
 }
 
@@ -31,7 +33,7 @@ export async function listUsers(): Promise<AppUser[]> {
 export async function createAppUser(
   username: string,
   password: string,
-  role: 'admin' | 'basic' = 'basic'
+  role: UserRole = 'basic'
 ): Promise<AppUser> {
   const supabase = getSupabaseClient();
   const hashedPassword = hashPassword(password);
@@ -58,7 +60,7 @@ export async function createAppUser(
 // Update a user (admin only)
 export async function updateAppUser(
   userId: string,
-  updates: { username?: string; password?: string; role?: 'admin' | 'basic' }
+  updates: { username?: string; password?: string; role?: UserRole }
 ): Promise<AppUser> {
   const supabase = getSupabaseClient();
 
