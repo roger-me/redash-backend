@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -69,7 +69,7 @@ const getAvatarColor = (name: string): string => {
   return avatarColors[Math.abs(hash) % avatarColors.length];
 };
 
-type AdminTab = 'stats' | 'users' | 'models' | 'emails';
+type AdminTab = 'accounts' | 'users' | 'models' | 'emails';
 
 interface AdminPageProps {
   models: Model[];
@@ -120,7 +120,7 @@ export default function AdminPage({
   refreshTrigger
 }: AdminPageProps) {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<AdminTab>('stats');
+  const [activeTab, setActiveTab] = useState<AdminTab>('accounts');
 
   // User management state
   const [users, setUsers] = useState<AppUser[]>([]);
@@ -220,7 +220,7 @@ export default function AdminPage({
 
   // Auto-refresh every 2 minutes when on stats tab
   useEffect(() => {
-    if (activeTab !== 'stats') return;
+    if (activeTab !== 'accounts') return;
 
     const autoRefreshInterval = setInterval(() => {
       if (!syncing && !refreshing) {
@@ -912,17 +912,17 @@ export default function AdminPage({
           style={{ background: 'var(--chip-bg)', borderRadius: '100px' }}
         >
           <button
-            onClick={() => setActiveTab('stats')}
+            onClick={() => setActiveTab('accounts')}
             className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
               borderRadius: '100px',
-              background: activeTab === 'stats' ? 'var(--bg-secondary)' : 'transparent',
-              color: activeTab === 'stats' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              boxShadow: activeTab === 'stats' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+              background: activeTab === 'accounts' ? 'var(--bg-secondary)' : 'transparent',
+              color: activeTab === 'accounts' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              boxShadow: activeTab === 'accounts' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
             }}
           >
-            <ChartBar size={16} weight="bold" />
-            {t('admin.stats')}
+            <Users size={16} weight="bold" />
+            Accounts
           </button>
           <button
             onClick={() => setActiveTab('users')}
@@ -934,7 +934,7 @@ export default function AdminPage({
               boxShadow: activeTab === 'users' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
             }}
           >
-            <Users size={16} weight="bold" />
+            <UserList size={16} weight="bold" />
             {t('admin.users')}
           </button>
           <button
@@ -967,7 +967,7 @@ export default function AdminPage({
 
         {/* Action buttons based on tab */}
         <div className="flex items-center gap-2">
-          {activeTab === 'stats' && (
+          {activeTab === 'accounts' && (
             <>
               <button
                 onClick={handleOpenTrash}
@@ -1021,8 +1021,8 @@ export default function AdminPage({
         </div>
       </div>
 
-      {/* Stats Tab */}
-      {activeTab === 'stats' && (
+      {/* Accounts Tab */}
+      {activeTab === 'accounts' && (
         <div className="space-y-3">
           {userStats.length === 0 ? (
             <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
