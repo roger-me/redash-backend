@@ -10,6 +10,7 @@ import { processFiles, isValidFlipperFile } from './flipper';
 import { getSession, signInWithEmail, signUp, signOut, resetPassword, signInWithGoogle, onAuthStateChange } from './supabase/auth';
 import * as db from './supabase/database';
 import * as admin from './supabase/admin';
+import * as emails from './supabase/emails';
 
 // Updater
 import { initUpdater } from './updater';
@@ -826,6 +827,43 @@ ipcMain.handle('admin:getAllProfiles', async () => {
     console.error('Failed to get all profiles:', error);
     return [];
   }
+});
+
+// Email management
+ipcMain.handle('emails:listMain', async () => {
+  return emails.listMainEmails();
+});
+
+ipcMain.handle('emails:createMain', async (_, email: string, password: string) => {
+  return emails.createMainEmail(email, password);
+});
+
+ipcMain.handle('emails:updateMain', async (_, id: string, updates: { email?: string; password?: string }) => {
+  return emails.updateMainEmail(id, updates);
+});
+
+ipcMain.handle('emails:deleteMain', async (_, id: string) => {
+  return emails.deleteMainEmail(id);
+});
+
+ipcMain.handle('emails:listSub', async (_, mainEmailId?: string) => {
+  return emails.listSubEmails(mainEmailId);
+});
+
+ipcMain.handle('emails:createSub', async (_, mainEmailId: string, email: string) => {
+  return emails.createSubEmail(mainEmailId, email);
+});
+
+ipcMain.handle('emails:updateSub', async (_, id: string, email: string) => {
+  return emails.updateSubEmail(id, email);
+});
+
+ipcMain.handle('emails:deleteSub', async (_, id: string) => {
+  return emails.deleteSubEmail(id);
+});
+
+ipcMain.handle('emails:getForSelection', async () => {
+  return emails.getEmailsForSelection();
 });
 
 // Helper to fetch JSON from Reddit

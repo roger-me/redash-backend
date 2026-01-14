@@ -83,6 +83,20 @@ export interface ProfileForStats {
   expiresAt?: string;
 }
 
+export interface MainEmail {
+  id: string;
+  email: string;
+  password: string;
+  createdAt: string;
+}
+
+export interface SubEmail {
+  id: string;
+  mainEmailId: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface ElectronAPI {
   // Auth
   getSession: () => Promise<AuthResult>;
@@ -129,6 +143,17 @@ export interface ElectronAPI {
   adminGetAllProfilesForStats: () => Promise<ProfileForStats[]>;
   adminGetAllModels: () => Promise<Model[]>;
   adminGetAllProfiles: () => Promise<Profile[]>;
+
+  // Emails
+  listMainEmails: () => Promise<MainEmail[]>;
+  createMainEmail: (email: string, password: string) => Promise<MainEmail>;
+  updateMainEmail: (id: string, updates: { email?: string; password?: string }) => Promise<MainEmail>;
+  deleteMainEmail: (id: string) => Promise<boolean>;
+  listSubEmails: (mainEmailId?: string) => Promise<SubEmail[]>;
+  createSubEmail: (mainEmailId: string, email: string) => Promise<SubEmail>;
+  updateSubEmail: (id: string, email: string) => Promise<SubEmail>;
+  deleteSubEmail: (id: string) => Promise<boolean>;
+  getEmailsForSelection: () => Promise<{ mainEmails: MainEmail[]; subEmails: SubEmail[] }>;
 
   // Updater
   checkForUpdates: () => Promise<{ success: boolean; updateInfo?: any; error?: string }>;

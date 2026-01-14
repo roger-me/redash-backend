@@ -54,6 +54,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   adminGetAllModels: () => ipcRenderer.invoke('admin:getAllModels'),
   adminGetAllProfiles: () => ipcRenderer.invoke('admin:getAllProfiles'),
 
+  // Emails
+  listMainEmails: () => ipcRenderer.invoke('emails:listMain'),
+  createMainEmail: (email: string, password: string) => ipcRenderer.invoke('emails:createMain', email, password),
+  updateMainEmail: (id: string, updates: { email?: string; password?: string }) => ipcRenderer.invoke('emails:updateMain', id, updates),
+  deleteMainEmail: (id: string) => ipcRenderer.invoke('emails:deleteMain', id),
+  listSubEmails: (mainEmailId?: string) => ipcRenderer.invoke('emails:listSub', mainEmailId),
+  createSubEmail: (mainEmailId: string, email: string) => ipcRenderer.invoke('emails:createSub', mainEmailId, email),
+  updateSubEmail: (id: string, email: string) => ipcRenderer.invoke('emails:updateSub', id, email),
+  deleteSubEmail: (id: string) => ipcRenderer.invoke('emails:deleteSub', id),
+  getEmailsForSelection: () => ipcRenderer.invoke('emails:getForSelection'),
+
   // Events
   onBrowserClosed: (callback: (profileId: string) => void) => {
     ipcRenderer.on('browser:closed', (_, profileId) => callback(profileId));

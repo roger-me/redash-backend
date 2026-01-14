@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley } from '@phosphor-icons/react';
-import { Model, AppUser, ProfileForStats, Profile } from '../../shared/types';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple } from '@phosphor-icons/react';
+import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
 // Flag PNG imports
@@ -69,7 +69,7 @@ const getAvatarColor = (name: string): string => {
   return avatarColors[Math.abs(hash) % avatarColors.length];
 };
 
-type AdminTab = 'stats' | 'users' | 'models';
+type AdminTab = 'stats' | 'users' | 'models' | 'emails';
 
 interface AdminPageProps {
   models: Model[];
@@ -160,6 +160,20 @@ export default function AdminPage({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [syncing, setSyncing] = useState(false);
+
+  // Email management state
+  const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
+  const [subEmails, setSubEmails] = useState<SubEmail[]>([]);
+  const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
+  const [showMainEmailModal, setShowMainEmailModal] = useState(false);
+  const [editingMainEmail, setEditingMainEmail] = useState<MainEmail | null>(null);
+  const [showSubEmailModal, setShowSubEmailModal] = useState(false);
+  const [editingSubEmail, setEditingSubEmail] = useState<SubEmail | null>(null);
+  const [addingSubEmailTo, setAddingSubEmailTo] = useState<string | null>(null);
+  const [newMainEmail, setNewMainEmail] = useState('');
+  const [newMainPassword, setNewMainPassword] = useState('');
+  const [newSubEmail, setNewSubEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -638,6 +652,154 @@ export default function AdminPage({
     setModelError('');
   };
 
+  // Email handlers
+  const loadEmails = async () => {
+    try {
+      const [mainData, subData] = await Promise.all([
+        window.electronAPI?.listMainEmails(),
+        window.electronAPI?.listSubEmails(),
+      ]);
+      setMainEmails(mainData || []);
+      setSubEmails(subData || []);
+      // Expand all by default
+      setExpandedEmails(new Set((mainData || []).map((e: MainEmail) => e.id)));
+    } catch (err) {
+      console.error('Failed to load emails:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'emails' && mainEmails.length === 0) {
+      loadEmails();
+    }
+  }, [activeTab]);
+
+  const handleCreateMainEmail = async () => {
+    if (!newMainEmail.trim()) {
+      setEmailError('Email is required');
+      return;
+    }
+    if (!newMainPassword.trim()) {
+      setEmailError('Password is required');
+      return;
+    }
+    try {
+      await window.electronAPI?.createMainEmail(newMainEmail, newMainPassword);
+      await loadEmails();
+      setShowMainEmailModal(false);
+      setNewMainEmail('');
+      setNewMainPassword('');
+      setEmailError('');
+    } catch (err: any) {
+      setEmailError(err.message || 'Failed to create email');
+    }
+  };
+
+  const handleUpdateMainEmail = async () => {
+    if (!editingMainEmail) return;
+    const updates: { email?: string; password?: string } = {};
+    if (newMainEmail.trim() && newMainEmail !== editingMainEmail.email) {
+      updates.email = newMainEmail;
+    }
+    if (newMainPassword.trim()) {
+      updates.password = newMainPassword;
+    }
+    if (Object.keys(updates).length === 0) {
+      setEditingMainEmail(null);
+      return;
+    }
+    try {
+      await window.electronAPI?.updateMainEmail(editingMainEmail.id, updates);
+      await loadEmails();
+      setEditingMainEmail(null);
+      setNewMainEmail('');
+      setNewMainPassword('');
+      setEmailError('');
+    } catch (err: any) {
+      setEmailError(err.message || 'Failed to update email');
+    }
+  };
+
+  const handleDeleteMainEmail = async (id: string) => {
+    if (!confirm('Delete this email and all its sub-emails?')) return;
+    try {
+      await window.electronAPI?.deleteMainEmail(id);
+      await loadEmails();
+    } catch (err) {
+      console.error('Failed to delete email:', err);
+    }
+  };
+
+  const handleCreateSubEmail = async () => {
+    if (!addingSubEmailTo) return;
+    if (!newSubEmail.trim()) {
+      setEmailError('Sub-email is required');
+      return;
+    }
+    try {
+      await window.electronAPI?.createSubEmail(addingSubEmailTo, newSubEmail);
+      await loadEmails();
+      setShowSubEmailModal(false);
+      setAddingSubEmailTo(null);
+      setNewSubEmail('');
+      setEmailError('');
+    } catch (err: any) {
+      setEmailError(err.message || 'Failed to create sub-email');
+    }
+  };
+
+  const handleUpdateSubEmail = async () => {
+    if (!editingSubEmail) return;
+    if (!newSubEmail.trim()) {
+      setEmailError('Sub-email is required');
+      return;
+    }
+    try {
+      await window.electronAPI?.updateSubEmail(editingSubEmail.id, newSubEmail);
+      await loadEmails();
+      setEditingSubEmail(null);
+      setNewSubEmail('');
+      setEmailError('');
+    } catch (err: any) {
+      setEmailError(err.message || 'Failed to update sub-email');
+    }
+  };
+
+  const handleDeleteSubEmail = async (id: string) => {
+    if (!confirm('Delete this sub-email?')) return;
+    try {
+      await window.electronAPI?.deleteSubEmail(id);
+      await loadEmails();
+    } catch (err) {
+      console.error('Failed to delete sub-email:', err);
+    }
+  };
+
+  const toggleEmailExpand = (emailId: string) => {
+    setExpandedEmails(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(emailId)) {
+        newSet.delete(emailId);
+      } else {
+        newSet.add(emailId);
+      }
+      return newSet;
+    });
+  };
+
+  const openMainEmailEditModal = (email: MainEmail) => {
+    setEditingMainEmail(email);
+    setNewMainEmail(email.email);
+    setNewMainPassword('');
+    setEmailError('');
+  };
+
+  const openSubEmailEditModal = (subEmail: SubEmail) => {
+    setEditingSubEmail(subEmail);
+    setNewSubEmail(subEmail.email);
+    setEmailError('');
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -693,6 +855,19 @@ export default function AdminPage({
             <Smiley size={16} weight="bold" />
             {t('admin.models')}
           </button>
+          <button
+            onClick={() => setActiveTab('emails')}
+            className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
+            style={{
+              borderRadius: '100px',
+              background: activeTab === 'emails' ? 'var(--bg-secondary)' : 'transparent',
+              color: activeTab === 'emails' ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              boxShadow: activeTab === 'emails' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+            }}
+          >
+            <EnvelopeSimple size={16} weight="bold" />
+            Emails
+          </button>
         </div>
 
         {/* Action buttons based on tab */}
@@ -736,6 +911,16 @@ export default function AdminPage({
             >
               <Plus size={14} weight="bold" />
               {t('admin.newModel')}
+            </button>
+          )}
+          {activeTab === 'emails' && (
+            <button
+              onClick={() => { setShowMainEmailModal(true); setNewMainEmail(''); setNewMainPassword(''); setEmailError(''); }}
+              className="h-9 px-4 flex items-center gap-2 text-sm font-medium transition-colors"
+              style={{ background: 'var(--btn-primary-bg)', borderRadius: '100px', color: 'var(--btn-primary-color)' }}
+            >
+              <Plus size={14} weight="bold" />
+              New Email
             </button>
           )}
         </div>
@@ -1091,6 +1276,74 @@ export default function AdminPage({
         </div>
       )}
 
+      {/* Emails Tab */}
+      {activeTab === 'emails' && (
+        <div className="space-y-2">
+          {mainEmails.length === 0 ? (
+            <div className="p-8 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+              <EnvelopeSimple size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
+              <p style={{ color: 'var(--text-tertiary)' }}>No emails yet</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>Add main emails to organize your sub-emails</p>
+            </div>
+          ) : (
+            mainEmails.map(mainEmail => {
+              const emailSubEmails = subEmails.filter(s => s.mainEmailId === mainEmail.id);
+              const isExpanded = expandedEmails.has(mainEmail.id);
+              return (
+                <div key={mainEmail.id} style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+                  <div
+                    className="flex items-center gap-3 p-4 cursor-pointer"
+                    onClick={() => toggleEmailExpand(mainEmail.id)}
+                  >
+                    {isExpanded ? <CaretDown size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} /> : <CaretRight size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: getAvatarColor(mainEmail.email) }}>
+                      <EnvelopeSimple size={20} weight="bold" color="white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{mainEmail.email}</span>
+                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{emailSubEmails.length} sub-email{emailSubEmails.length !== 1 ? 's' : ''}</p>
+                    </div>
+                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => { setAddingSubEmailTo(mainEmail.id); setShowSubEmailModal(true); setNewSubEmail(''); setEmailError(''); }}
+                        className="p-2 rounded-lg hover:bg-black/10"
+                        style={{ color: 'var(--text-tertiary)' }}
+                        title="Add sub-email"
+                      >
+                        <Plus size={18} />
+                      </button>
+                      <button onClick={() => openMainEmailEditModal(mainEmail)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
+                      <button onClick={() => handleDeleteMainEmail(mainEmail.id)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>
+                    </div>
+                  </div>
+                  {isExpanded && emailSubEmails.length > 0 && (
+                    <div className="px-4 pb-4">
+                      <div className="space-y-1 ml-10">
+                        {emailSubEmails.map(subEmail => (
+                          <div key={subEmail.id} className="flex items-center gap-3 p-3" style={{ background: 'var(--bg-tertiary)', borderRadius: '16px' }}>
+                            <EnvelopeSimple size={16} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
+                            <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>{subEmail.email}</span>
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => openSubEmailEditModal(subEmail)} className="p-1.5 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={14} /></button>
+                              <button onClick={() => handleDeleteSubEmail(subEmail.id)} className="p-1.5 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={14} /></button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {isExpanded && emailSubEmails.length === 0 && (
+                    <div className="px-4 pb-4 ml-10">
+                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No sub-emails yet. Click + to add one.</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
       {/* Create User Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
@@ -1225,6 +1478,50 @@ export default function AdminPage({
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Main Email Modal */}
+      {(showMainEmailModal || editingMainEmail) && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingMainEmail ? 'Edit Email' : 'New Email'}</h2>
+              <button onClick={() => { setShowMainEmailModal(false); setEditingMainEmail(null); setNewMainEmail(''); setNewMainPassword(''); setEmailError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
+                <input type="email" value={newMainEmail} onChange={(e) => setNewMainEmail(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="email@example.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{editingMainEmail ? 'New Password (leave empty to keep)' : 'Password'}</label>
+                <input type="text" value={newMainPassword} onChange={(e) => setNewMainPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="••••••••" />
+              </div>
+              {emailError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
+              <button onClick={editingMainEmail ? handleUpdateMainEmail : handleCreateMainEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{editingMainEmail ? 'Save Changes' : 'Create Email'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create/Edit Sub Email Modal */}
+      {(showSubEmailModal || editingSubEmail) && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingSubEmail ? 'Edit Sub-Email' : 'New Sub-Email'}</h2>
+              <button onClick={() => { setShowSubEmailModal(false); setEditingSubEmail(null); setAddingSubEmailTo(null); setNewSubEmail(''); setEmailError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Sub-Email</label>
+                <input type="email" value={newSubEmail} onChange={(e) => setNewSubEmail(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="sub-email@example.com" autoFocus />
+              </div>
+              {emailError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
+              <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{editingSubEmail ? 'Save Changes' : 'Create Sub-Email'}</button>
             </div>
           </div>
         </div>
