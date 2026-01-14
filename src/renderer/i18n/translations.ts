@@ -174,6 +174,10 @@ export const translations = {
     'admin.clickToUpload': 'Click to upload',
     'admin.enterModelName': 'Enter model name',
     'admin.modelNameRequired': 'Model name is required',
+    'admin.accounts': 'Accounts',
+    'admin.emails': 'Emails',
+    'admin.newEmail': 'New Email',
+    'admin.editEmail': 'Edit Email',
 
     // AI Page
     'ai.title': 'AI',
@@ -421,6 +425,10 @@ export const translations = {
     'admin.clickToUpload': 'Clic para subir',
     'admin.enterModelName': 'Ingresa nombre del modelo',
     'admin.modelNameRequired': 'El nombre del modelo es requerido',
+    'admin.accounts': 'Cuentas',
+    'admin.emails': 'Emails',
+    'admin.newEmail': 'Nuevo Email',
+    'admin.editEmail': 'Editar Email',
 
     // AI Page
     'ai.title': 'IA',

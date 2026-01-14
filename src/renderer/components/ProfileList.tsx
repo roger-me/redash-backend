@@ -1,5 +1,6 @@
 import { Profile, Model } from '../../shared/types';
-import { CaretRight, ChatCircle, File, Check, User, Calendar } from '@phosphor-icons/react';
+import { CaretRight, ChatCircle, File, User, Calendar } from '@phosphor-icons/react';
+import { useLanguage } from '../i18n';
 
 // Flag PNG imports
 import flagUS from '../assets/flags/US.png';
@@ -50,9 +51,6 @@ interface ProfileListProps {
   onClose: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (profile: Profile) => void;
-  onToggleComplete: (id: string, completed: boolean) => void;
-  onToggleStatus: (id: string, status: string) => void;
-  onToggleEnabled: (id: string, enabled: boolean) => void;
   onRenameModel: (model: Model) => void;
   onDeleteModel: (modelId: string) => void;
   onToggleModelExpand: (modelId: string) => void;
@@ -88,7 +86,6 @@ const countryNames: Record<string, string> = {
   'SA': 'Saudi Arabia', 'AE': 'UAE', 'IL': 'Israel', 'ZA': 'South Africa', 'EG': 'Egypt',
 };
 
-const getTodayDate = () => new Date().toISOString().split('T')[0];
 
 const getAccountAgeDays = (purchaseDate?: string) => {
   if (!purchaseDate) return null;
@@ -107,14 +104,13 @@ function ProfileList({
   onClose,
   onDelete,
   onEdit,
-  onToggleComplete,
-  onToggleStatus,
-  onToggleEnabled,
   onRenameModel,
   onDeleteModel,
   onToggleModelExpand,
   onCreateAccountInModel,
 }: ProfileListProps) {
+  const { t } = useLanguage();
+
   // Group profiles by model
   // Sort order: working (0) -> error (1) -> banned (2)
   const getStatusOrder = (status?: string) => {
@@ -163,9 +159,8 @@ function ProfileList({
           {/* Status & Karma Pills */}
           <div className="flex items-center gap-2 mt-2">
             {/* Status pill */}
-            <button
-              onClick={() => onToggleStatus(profile.id, profile.status === 'banned' ? 'working' : 'banned')}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+            <div
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full"
               style={{
                 background: profile.status === 'banned' ? 'rgba(255, 69, 58, 0.15)'
                   : profile.status === 'error' ? 'rgba(255, 159, 10, 0.15)'
@@ -180,49 +175,9 @@ function ProfileList({
                     : 'var(--accent-green)',
                 }}
               >
-                {profile.status === 'banned' ? 'Banned' : profile.status === 'error' ? 'Error' : 'Working'}
+                {profile.status === 'banned' ? t('profile.banned') : profile.status === 'error' ? t('profile.error') : t('profile.working')}
               </span>
-            </button>
-            {/* Enabled/Disabled pill */}
-            <button
-              onClick={() => onToggleEnabled(profile.id, profile.isEnabled === false)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
-              style={{
-                background: profile.isEnabled !== false ? 'rgba(10, 132, 255, 0.15)' : 'rgba(142, 142, 147, 0.12)',
-              }}
-            >
-              <span
-                className="text-xs font-medium"
-                style={{
-                  color: profile.isEnabled !== false ? 'var(--accent-blue)' : 'var(--text-tertiary)',
-                }}
-              >
-                {profile.isEnabled !== false ? 'Enabled' : 'Disabled'}
-              </span>
-            </button>
-            {/* Daily/Done pill */}
-            {(() => {
-              const isCompletedToday = profile.lastCompletedDate === getTodayDate();
-              return (
-                <button
-                  onClick={() => onToggleComplete(profile.id, !isCompletedToday)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
-                  style={{
-                    background: isCompletedToday ? 'rgba(48, 209, 88, 0.15)' : 'rgba(142, 142, 147, 0.12)',
-                  }}
-                >
-                  {isCompletedToday && <Check size={12} weight="bold" color="var(--accent-green)" />}
-                  <span
-                    className="text-xs font-medium"
-                    style={{
-                      color: isCompletedToday ? 'var(--accent-green)' : 'var(--text-tertiary)',
-                    }}
-                  >
-                    {isCompletedToday ? 'Done' : 'Daily'}
-                  </span>
-                </button>
-              );
-            })()}
+            </div>
             {/* Comment Karma */}
             <div
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"

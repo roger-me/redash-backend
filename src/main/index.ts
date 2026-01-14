@@ -1,4 +1,4 @@
-import { app, BrowserWindow, BrowserView, ipcMain, session, WebContents, dialog } from 'electron';
+import { app, BrowserWindow, BrowserView, ipcMain, session, WebContents, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
@@ -1128,6 +1128,11 @@ ipcMain.handle('sheets:syncAll', async () => {
     console.error('Failed to sync all profiles:', error);
     return { success: false, error: (error as Error).message };
   }
+});
+
+// Shell
+ipcMain.handle('shell:openExternal', async (_, url: string) => {
+  await shell.openExternal(url);
 });
 
 // Flipper IPC Handlers

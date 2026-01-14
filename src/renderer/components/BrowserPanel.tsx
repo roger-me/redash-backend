@@ -158,21 +158,21 @@ export default function BrowserPanel({ profileId, profileName, onClose }: Browse
       <div className="h-12 flex items-center gap-2 px-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
         <button
           onClick={() => window.electronAPI?.browserBack()}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
           style={{ color: 'var(--text-tertiary)' }}
         >
           <ArrowLeft size={16} weight="bold" />
         </button>
         <button
           onClick={() => window.electronAPI?.browserForward()}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
           style={{ color: 'var(--text-tertiary)' }}
         >
           <ArrowRight size={16} weight="bold" />
         </button>
         <button
           onClick={() => window.electronAPI?.browserRefresh()}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
           style={{ color: 'var(--text-tertiary)' }}
         >
           <ArrowClockwise size={16} weight="bold" />
@@ -192,7 +192,7 @@ export default function BrowserPanel({ profileId, profileName, onClose }: Browse
         />
         <button
           onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
           style={{ color: 'var(--text-tertiary)' }}
         >
           <X size={16} weight="bold" />

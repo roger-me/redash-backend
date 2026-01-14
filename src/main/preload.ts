@@ -146,4 +146,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Google Sheets
   sheetsSyncAll: () => ipcRenderer.invoke('sheets:syncAll'),
+
+  // Shell
+  openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
 });

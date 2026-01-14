@@ -408,36 +408,6 @@ function AppContent() {
     }
   };
 
-  const handleToggleComplete = async (profileId: string, completed: boolean) => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      await window.electronAPI?.updateProfile(profileId, {
-        lastCompletedDate: completed ? today : undefined,
-      });
-      await loadProfiles();
-    } catch (err) {
-      console.error('Failed to toggle complete:', err);
-    }
-  };
-
-  const handleToggleStatus = async (profileId: string, status: string) => {
-    try {
-      await window.electronAPI?.updateProfile(profileId, { status });
-      await loadProfiles();
-    } catch (err) {
-      console.error('Failed to toggle status:', err);
-    }
-  };
-
-  const handleToggleEnabled = async (profileId: string, enabled: boolean) => {
-    try {
-      await window.electronAPI?.updateProfile(profileId, { isEnabled: enabled });
-      await loadProfiles();
-    } catch (err) {
-      console.error('Failed to toggle enabled:', err);
-    }
-  };
-
   const handleUpdateModel = async (name: string, profilePicture?: string) => {
     if (!editingModel) return;
     try {
@@ -526,7 +496,7 @@ function AppContent() {
         <div className="h-12" style={{ WebkitAppRegion: 'drag' } as any} />
 
         <div
-          className="w-52 flex flex-col pt-5 px-3 pb-3 gap-1 mt-2 flex-1"
+          className="w-52 flex flex-col p-3 gap-1 mt-2 flex-1"
           style={{
             background: 'var(--bg-secondary)',
             borderRadius: '28px',
@@ -535,35 +505,40 @@ function AppContent() {
           {/* Navigation */}
           <button
             onClick={() => setCurrentPage('accounts')}
-            className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
+            className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
             style={{
               background: currentPage === 'accounts' ? 'var(--accent-primary)' : 'transparent',
               color: currentPage === 'accounts' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              borderRadius: '34px',
             }}
           >
             <Users size={20} weight={currentPage === 'accounts' ? 'fill' : 'regular'} />
             <span className="text-sm font-medium">{t('nav.accounts')}</span>
           </button>
 
-          <button
-            onClick={() => setCurrentPage('flipper')}
-            className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
-            style={{
-              background: currentPage === 'flipper' ? 'var(--accent-primary)' : 'transparent',
-              color: currentPage === 'flipper' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-            }}
-          >
-            <Swap size={20} weight={currentPage === 'flipper' ? 'fill' : 'regular'} />
-            <span className="text-sm font-medium">{t('nav.flipper')}</span>
-          </button>
+          {(user?.role === 'admin' || user?.role === 'dev') && (
+            <button
+              onClick={() => setCurrentPage('flipper')}
+              className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
+              style={{
+                background: currentPage === 'flipper' ? 'var(--accent-primary)' : 'transparent',
+                color: currentPage === 'flipper' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                borderRadius: '34px',
+              }}
+            >
+              <Swap size={20} weight={currentPage === 'flipper' ? 'fill' : 'regular'} />
+              <span className="text-sm font-medium">{t('nav.flipper')}</span>
+            </button>
+          )}
 
           {(user?.role === 'admin' || user?.role === 'dev') && (
             <button
               onClick={() => setCurrentPage('admin')}
-              className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
+              className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
               style={{
                 background: currentPage === 'admin' ? 'var(--accent-primary)' : 'transparent',
                 color: currentPage === 'admin' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                borderRadius: '34px',
               }}
             >
               <ShieldCheck size={20} weight={currentPage === 'admin' ? 'fill' : 'regular'} />
@@ -573,10 +548,11 @@ function AppContent() {
 
           <button
             onClick={() => setCurrentPage('settings')}
-            className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
+            className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
             style={{
               background: currentPage === 'settings' ? 'var(--accent-primary)' : 'transparent',
               color: currentPage === 'settings' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              borderRadius: '34px',
             }}
           >
             <Gear size={20} weight={currentPage === 'settings' ? 'fill' : 'regular'} />
@@ -666,9 +642,6 @@ function AppContent() {
                 onClose={handleCloseBrowser}
                 onDelete={handleDeleteProfile}
                 onEdit={setEditingProfile}
-                onToggleComplete={handleToggleComplete}
-                onToggleStatus={handleToggleStatus}
-                onToggleEnabled={handleToggleEnabled}
                 onRenameModel={setEditingModel}
                 onDeleteModel={handleDeleteModel}
                 onToggleModelExpand={handleToggleModelExpand}

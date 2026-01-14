@@ -137,8 +137,8 @@
   --accent-green: #7EECD3;
   --accent-red: #FF6B6B;
   --accent-orange: #F5E946;
-  --border: rgba(94, 238, 240, 0.2);
-  --border-light: rgba(94, 238, 240, 0.3);
+  --border: rgba(94, 238, 240, 0.05);
+  --border-light: rgba(94, 238, 240, 0.08);
   --scrollbar-thumb: rgba(245, 233, 70, 0.3);
   --scrollbar-thumb-hover: rgba(245, 233, 70, 0.5);
   --chip-bg: rgba(189, 147, 249, 0.15);

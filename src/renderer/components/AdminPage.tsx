@@ -490,8 +490,8 @@ export default function AdminPage({
 
     try {
       const result = await window.electronAPI?.adminCreateUser(newUsername, newPassword, newRole);
-      // If basic user with model assignments, save them
-      if (result?.user?.id && newRole === 'basic' && newUserModels.length > 0) {
+      // Save model assignments if any
+      if (result?.user?.id && newUserModels.length > 0) {
         await window.electronAPI?.adminSetUserModelAssignments(result.user.id, newUserModels);
       }
       await loadData();
@@ -529,11 +529,9 @@ export default function AdminPage({
       if (Object.keys(updates).length > 0) {
         await window.electronAPI?.adminUpdateUser(editingUser.id, updates);
       }
-      // Update model assignments for basic users
-      if (editRole === 'basic') {
-        await window.electronAPI?.adminSetUserModelAssignments(editingUser.id, editUserModels);
-        setUserAssignments(prev => ({ ...prev, [editingUser.id]: editUserModels }));
-      }
+      // Update model assignments
+      await window.electronAPI?.adminSetUserModelAssignments(editingUser.id, editUserModels);
+      setUserAssignments(prev => ({ ...prev, [editingUser.id]: editUserModels }));
       await loadData();
       setEditingUser(null);
       setEditError('');
@@ -951,7 +949,7 @@ export default function AdminPage({
             }}
           >
             <Users size={16} weight="bold" />
-            Accounts
+            {t('admin.accounts')}
           </button>
           <button
             onClick={() => setActiveTab('users')}
@@ -987,7 +985,7 @@ export default function AdminPage({
             }}
           >
             <EnvelopeSimple size={16} weight="bold" />
-            Emails
+            {t('admin.emails')}
           </button>
         </div>
 
@@ -998,7 +996,7 @@ export default function AdminPage({
               {canDelete && (
                 <>
                   <button
-                    onClick={() => window.open('https://docs.google.com/spreadsheets/d/1qfzEHUOmh-1WqDpQh0v75RDKPFwGpcRcxsn6HpFFCU8/edit?gid=2124940835#gid=2124940835', '_blank')}
+                    onClick={() => window.electronAPI?.openExternal('https://docs.google.com/spreadsheets/d/1qfzEHUOmh-1WqDpQh0v75RDKPFwGpcRcxsn6HpFFCU8/edit?gid=2124940835#gid=2124940835')}
                     className="h-9 px-3 flex items-center gap-2 transition-colors"
                     style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
                     title="Open Sheet"
@@ -1053,7 +1051,7 @@ export default function AdminPage({
               style={{ background: 'var(--btn-primary-bg)', borderRadius: '100px', color: 'var(--btn-primary-color)' }}
             >
               <Plus size={14} weight="bold" />
-              New Email
+              {t('admin.newEmail')}
             </button>
           )}
         </div>
@@ -1335,13 +1333,13 @@ export default function AdminPage({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{user.username}</span>
-                      {user.id === currentUserId && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-green)', color: 'white' }}>{t('admin.you')}</span>}
+                      {user.id === currentUserId && <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-green)', color: '#000' }}>{t('admin.you')}</span>}
                     </div>
                     <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{user.role === 'dev' ? t('settings.developer') : user.role === 'admin' ? t('settings.administrator') : t('settings.basicUser')}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => openEditModal(user)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
-                    {canDelete && user.id !== currentUserId && <button onClick={() => handleDeleteUser(user.id)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>}
+                    <button onClick={() => openEditModal(user)} className="p-2 rounded-full hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
+                    {canDelete && user.id !== currentUserId && <button onClick={() => handleDeleteUser(user.id)} className="p-2 rounded-full hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>}
                   </div>
                 </div>
 
@@ -1404,8 +1402,8 @@ export default function AdminPage({
                   <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.created')} {new Date(model.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => openModelEditModal(model)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
-                  {canDelete && <button onClick={() => handleDeleteModel(model.id)} className="p-2 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>}
+                  <button onClick={() => openModelEditModal(model)} className="p-2 rounded-full hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={18} /></button>
+                  {canDelete && <button onClick={() => handleDeleteModel(model.id)} className="p-2 rounded-full hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={18} /></button>}
                 </div>
               </div>
             ))
@@ -1456,7 +1454,7 @@ export default function AdminPage({
                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => { setAddingSubEmailTo(mainEmail.id); setShowSubEmailModal(true); setNewSubEmail(''); setEmailError(''); }}
-                        className="p-2 rounded-lg hover:bg-black/10"
+                        className="p-2 rounded-full hover:bg-black/10"
                         style={{ color: 'var(--text-tertiary)' }}
                         title="Add sub-email"
                       >
@@ -1465,7 +1463,7 @@ export default function AdminPage({
                       <div className="relative" data-menu="true">
                         <button
                           onClick={(e) => { e.stopPropagation(); setEmailMenuOpen(emailMenuOpen === `main-${mainEmail.id}` ? null : `main-${mainEmail.id}`); }}
-                          className="p-2 rounded-lg hover:bg-black/10"
+                          className="p-2 rounded-full hover:bg-black/10"
                           style={{ color: 'var(--text-tertiary)' }}
                         >
                           <DotsThree size={18} weight="bold" />
@@ -1501,7 +1499,7 @@ export default function AdminPage({
                         {emailSubEmails.map(subEmail => {
                           const assignedProfiles = getProfilesForSubEmail(subEmail.id);
                           return (
-                            <div key={subEmail.id} className="flex items-center gap-3 py-2 px-1 hover:bg-white/5 border-b border-white/5 last:border-b-0">
+                            <div key={subEmail.id} className="flex items-center gap-3 py-2 px-1 border-b border-white/5 last:border-b-0">
                               <EnvelopeSimple size={16} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
                               <button onClick={() => copyToClipboard(subEmail.email, `sub-${subEmail.id}`)} className="text-sm text-left hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--text-secondary)', minWidth: '180px' }} title="Click to copy">
                                 {copiedId === `sub-${subEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : subEmail.email}
@@ -1526,7 +1524,7 @@ export default function AdminPage({
                               <div className="relative" data-menu="true">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setEmailMenuOpen(emailMenuOpen === `sub-${subEmail.id}` ? null : `sub-${subEmail.id}`); }}
-                                  className="p-1.5 rounded-lg hover:bg-black/10"
+                                  className="p-1.5 rounded-full hover:bg-black/10"
                                   style={{ color: 'var(--text-tertiary)' }}
                                 >
                                   <DotsThree size={16} weight="bold" />
@@ -1607,7 +1605,7 @@ export default function AdminPage({
                   <button onClick={() => setNewRole('dev')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'dev' ? 'rgba(239, 68, 68, 0.3)' : 'var(--chip-bg)', color: newRole === 'dev' ? '#F87171' : 'var(--text-secondary)', borderRadius: '100px' }}><Code size={16} /> Dev</button>
                 </div>
               </div>
-              {newRole === 'basic' && models.length > 0 && (
+              {models.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Models</label>
                   <div className="flex flex-wrap gap-2">
@@ -1670,7 +1668,7 @@ export default function AdminPage({
                 </div>
                 {editingUser.id === currentUserId && <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('admin.cannotChangeOwnRole')}</p>}
               </div>
-              {editRole === 'basic' && models.length > 0 && (
+              {models.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Models</label>
                   <div className="flex flex-wrap gap-2">
@@ -1778,7 +1776,7 @@ export default function AdminPage({
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingMainEmail ? 'Edit Email' : 'New Email'}</h2>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingMainEmail ? t('admin.editEmail') : t('admin.newEmail')}</h2>
               <button onClick={() => { setShowMainEmailModal(false); setEditingMainEmail(null); setNewMainEmail(''); setNewMainPassword(''); setEmailError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">

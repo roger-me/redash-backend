@@ -258,7 +258,7 @@ function FlipperPage() {
                 {!isProcessing && (
                   <button
                     onClick={(e) => { e.stopPropagation(); removeFile(index); }}
-                    className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                    className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
                     style={{ color: 'var(--text-tertiary)' }}
                   >
                     <X size={14} weight="bold" />

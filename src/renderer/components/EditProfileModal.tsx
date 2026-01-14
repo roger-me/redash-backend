@@ -65,9 +65,6 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
   const [password, setPassword] = useState(profile.credentials?.password || '');
   const [country, setCountry] = useState(profile.country || '');
   const [modelId, setModelId] = useState<string | undefined>(profile.modelId);
-  const [status, setStatus] = useState<'working' | 'banned' | 'error'>(
-    profile.status === 'banned' ? 'banned' : profile.status === 'error' ? 'error' : 'working'
-  );
   const [expiresAt, setExpiresAt] = useState<string>(
     profile.expiresAt ? new Date(profile.expiresAt).toISOString().split('T')[0] : ''
   );
@@ -164,7 +161,6 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
 
     onSave(profile.id, {
       name: username.trim(),
-      status,
       modelId,
       proxy,
       credentials: {
@@ -448,57 +444,31 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
             </div>
           )}
 
-          {/* Status & Enabled Row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                {t('profile.status')}
-              </label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: 'none',
-                  borderRadius: '34px',
-                  color: 'var(--text-primary)',
-                  padding: '12px 16px',
-                  width: '100%',
-                  fontSize: '14px',
-                  appearance: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="working">{t('profile.working')}</option>
-                <option value="banned">{t('profile.banned')}</option>
-                <option value="error">{t('profile.error')}</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                {t('profile.renew')} {expiresAt && (() => {
-                  const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                  return <span style={{ color: days <= 0 ? '#F44336' : 'var(--accent-blue)' }}>
-                    ({days <= 0 ? t('profile.expired') : t('profile.daysLeft', { days })})
-                  </span>;
-                })()}
-              </label>
-              <input
-                type="date"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: 'none',
-                  borderRadius: '34px',
-                  color: 'var(--text-primary)',
-                  padding: '12px 16px',
-                  width: '100%',
-                  fontSize: '14px',
-                  colorScheme: 'dark',
-                }}
-              />
-            </div>
+          {/* Renew Date */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              {t('profile.renew')} {expiresAt && (() => {
+                const days = Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                return <span style={{ color: days <= 0 ? '#F44336' : 'var(--accent-blue)' }}>
+                  ({days <= 0 ? t('profile.expired') : t('profile.daysLeft', { days })})
+                </span>;
+              })()}
+            </label>
+            <input
+              type="date"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              style={{
+                background: 'var(--bg-tertiary)',
+                border: 'none',
+                borderRadius: '34px',
+                color: 'var(--text-primary)',
+                padding: '12px 16px',
+                width: '100%',
+                fontSize: '14px',
+                colorScheme: 'dark',
+              }}
+            />
           </div>
 
           {/* Purchase Date & Order Number */}
