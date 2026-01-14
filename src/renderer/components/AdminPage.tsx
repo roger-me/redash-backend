@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -174,6 +174,8 @@ export default function AdminPage({
   const [newMainPassword, setNewMainPassword] = useState('');
   const [newSubEmail, setNewSubEmail] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -655,17 +657,30 @@ export default function AdminPage({
   // Email handlers
   const loadEmails = async () => {
     try {
-      const [mainData, subData] = await Promise.all([
+      const [mainData, subData, profilesData] = await Promise.all([
         window.electronAPI?.listMainEmails(),
         window.electronAPI?.listSubEmails(),
+        window.electronAPI?.adminGetAllProfiles(),
       ]);
       setMainEmails(mainData || []);
       setSubEmails(subData || []);
+      // Update profiles for email assignment display
+      if (profilesData) setProfiles(profilesData);
       // Expand all by default
       setExpandedEmails(new Set((mainData || []).map((e: MainEmail) => e.id)));
     } catch (err) {
       console.error('Failed to load emails:', err);
     }
+  };
+
+  // Get profiles assigned to a sub-email
+  const getProfilesForSubEmail = (subEmailId: string) => {
+    return profiles.filter(p => p.subEmailId === subEmailId);
+  };
+
+  // Get user info for a profile
+  const getUserForProfile = (userId: string) => {
+    return users.find(u => u.id === userId);
   };
 
   useEffect(() => {
@@ -675,6 +690,7 @@ export default function AdminPage({
   }, [activeTab]);
 
   const handleCreateMainEmail = async () => {
+    if (savingEmail) return;
     if (!newMainEmail.trim()) {
       setEmailError('Email is required');
       return;
@@ -683,6 +699,7 @@ export default function AdminPage({
       setEmailError('Password is required');
       return;
     }
+    setSavingEmail(true);
     try {
       await window.electronAPI?.createMainEmail(newMainEmail, newMainPassword);
       await loadEmails();
@@ -692,22 +709,33 @@ export default function AdminPage({
       setEmailError('');
     } catch (err: any) {
       setEmailError(err.message || 'Failed to create email');
+    } finally {
+      setSavingEmail(false);
     }
   };
 
   const handleUpdateMainEmail = async () => {
-    if (!editingMainEmail) return;
+    if (!editingMainEmail || savingEmail) return;
+    if (!newMainEmail.trim()) {
+      setEmailError('Email is required');
+      return;
+    }
+    if (!newMainPassword.trim()) {
+      setEmailError('Password is required');
+      return;
+    }
     const updates: { email?: string; password?: string } = {};
-    if (newMainEmail.trim() && newMainEmail !== editingMainEmail.email) {
+    if (newMainEmail.trim() !== editingMainEmail.email) {
       updates.email = newMainEmail;
     }
-    if (newMainPassword.trim()) {
+    if (newMainPassword.trim() !== editingMainEmail.password) {
       updates.password = newMainPassword;
     }
     if (Object.keys(updates).length === 0) {
       setEditingMainEmail(null);
       return;
     }
+    setSavingEmail(true);
     try {
       await window.electronAPI?.updateMainEmail(editingMainEmail.id, updates);
       await loadEmails();
@@ -717,6 +745,8 @@ export default function AdminPage({
       setEmailError('');
     } catch (err: any) {
       setEmailError(err.message || 'Failed to update email');
+    } finally {
+      setSavingEmail(false);
     }
   };
 
@@ -731,29 +761,61 @@ export default function AdminPage({
   };
 
   const handleCreateSubEmail = async () => {
-    if (!addingSubEmailTo) return;
+    if (!addingSubEmailTo || savingEmail) return;
     if (!newSubEmail.trim()) {
       setEmailError('Sub-email is required');
       return;
     }
+    setSavingEmail(true);
     try {
-      await window.electronAPI?.createSubEmail(addingSubEmailTo, newSubEmail);
+      // Parse multiple emails (separated by newlines, commas, or spaces)
+      const emails = newSubEmail
+        .split(/[\n,\s]+/)
+        .map(e => e.trim())
+        .filter(e => e.length > 0 && e.includes('@'));
+
+      if (emails.length === 0) {
+        setEmailError('No valid emails found');
+        setSavingEmail(false);
+        return;
+      }
+
+      let created = 0;
+      let errors: string[] = [];
+
+      for (const email of emails) {
+        try {
+          await window.electronAPI?.createSubEmail(addingSubEmailTo, email);
+          created++;
+        } catch (err: any) {
+          errors.push(`${email}: ${err.message}`);
+        }
+      }
+
       await loadEmails();
-      setShowSubEmailModal(false);
-      setAddingSubEmailTo(null);
-      setNewSubEmail('');
-      setEmailError('');
+
+      if (errors.length > 0 && created === 0) {
+        setEmailError(errors.join('\n'));
+      } else {
+        setShowSubEmailModal(false);
+        setAddingSubEmailTo(null);
+        setNewSubEmail('');
+        setEmailError('');
+      }
     } catch (err: any) {
       setEmailError(err.message || 'Failed to create sub-email');
+    } finally {
+      setSavingEmail(false);
     }
   };
 
   const handleUpdateSubEmail = async () => {
-    if (!editingSubEmail) return;
+    if (!editingSubEmail || savingEmail) return;
     if (!newSubEmail.trim()) {
       setEmailError('Sub-email is required');
       return;
     }
+    setSavingEmail(true);
     try {
       await window.electronAPI?.updateSubEmail(editingSubEmail.id, newSubEmail);
       await loadEmails();
@@ -762,6 +824,8 @@ export default function AdminPage({
       setEmailError('');
     } catch (err: any) {
       setEmailError(err.message || 'Failed to update sub-email');
+    } finally {
+      setSavingEmail(false);
     }
   };
 
@@ -790,8 +854,14 @@ export default function AdminPage({
   const openMainEmailEditModal = (email: MainEmail) => {
     setEditingMainEmail(email);
     setNewMainEmail(email.email);
-    setNewMainPassword('');
+    setNewMainPassword(email.password);
     setEmailError('');
+  };
+
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
   };
 
   const openSubEmailEditModal = (subEmail: SubEmail) => {
@@ -1299,8 +1369,17 @@ export default function AdminPage({
                     <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: getAvatarColor(mainEmail.email) }}>
                       <EnvelopeSimple size={20} weight="bold" color="white" />
                     </div>
-                    <div className="flex-1">
-                      <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{mainEmail.email}</span>
+                    <div className="flex-1" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => copyToClipboard(mainEmail.email, `email-${mainEmail.id}`)} className="font-medium hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--text-primary)' }} title="Click to copy">
+                          {copiedId === `email-${mainEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : mainEmail.email}
+                          {copiedId !== `email-${mainEmail.id}` && <Copy size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
+                        </button>
+                        <button onClick={() => copyToClipboard(mainEmail.password, `pass-${mainEmail.id}`)} className="text-sm hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--text-tertiary)' }} title="Click to copy password">
+                          {copiedId === `pass-${mainEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : mainEmail.password}
+                          {copiedId !== `pass-${mainEmail.id}` && <Copy size={12} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
+                        </button>
+                      </div>
                       <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{emailSubEmails.length} sub-email{emailSubEmails.length !== 1 ? 's' : ''}</p>
                     </div>
                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
@@ -1319,16 +1398,37 @@ export default function AdminPage({
                   {isExpanded && emailSubEmails.length > 0 && (
                     <div className="px-4 pb-4">
                       <div className="space-y-1 ml-10">
-                        {emailSubEmails.map(subEmail => (
-                          <div key={subEmail.id} className="flex items-center gap-3 p-3" style={{ background: 'var(--bg-tertiary)', borderRadius: '16px' }}>
-                            <EnvelopeSimple size={16} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
-                            <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>{subEmail.email}</span>
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => openSubEmailEditModal(subEmail)} className="p-1.5 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={14} /></button>
-                              <button onClick={() => handleDeleteSubEmail(subEmail.id)} className="p-1.5 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={14} /></button>
+                        {emailSubEmails.map(subEmail => {
+                          const assignedProfiles = getProfilesForSubEmail(subEmail.id);
+                          return (
+                            <div key={subEmail.id} className="flex items-center gap-3 p-3" style={{ background: 'var(--bg-tertiary)', borderRadius: '16px' }}>
+                              <EnvelopeSimple size={16} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
+                              <button onClick={() => copyToClipboard(subEmail.email, `sub-${subEmail.id}`)} className="text-sm text-left hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--text-secondary)', minWidth: '180px' }} title="Click to copy">
+                                {copiedId === `sub-${subEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : subEmail.email}
+                                {copiedId !== `sub-${subEmail.id}` && <Copy size={12} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
+                              </button>
+                              <div className="flex-1 flex items-center gap-2 flex-wrap">
+                                {assignedProfiles.map((profile) => {
+                                  const user = profile.userId ? getUserForProfile(profile.userId) : undefined;
+                                  return (
+                                    <div key={profile.id} className="flex items-center gap-1">
+                                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
+                                        {user?.username || 'Unknown'}
+                                      </span>
+                                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(33, 150, 243, 0.15)', color: '#2196F3' }}>
+                                        {profile.name}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => openSubEmailEditModal(subEmail)} className="p-1.5 rounded-lg hover:bg-black/10" style={{ color: 'var(--text-tertiary)' }}><PencilSimple size={14} /></button>
+                                <button onClick={() => handleDeleteSubEmail(subEmail.id)} className="p-1.5 rounded-lg hover:bg-black/10" style={{ color: 'var(--accent-red)' }}><Trash size={14} /></button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1497,11 +1597,11 @@ export default function AdminPage({
                 <input type="email" value={newMainEmail} onChange={(e) => setNewMainEmail(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="email@example.com" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{editingMainEmail ? 'New Password (leave empty to keep)' : 'Password'}</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Password</label>
                 <input type="text" value={newMainPassword} onChange={(e) => setNewMainPassword(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="••••••••" />
               </div>
               {emailError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
-              <button onClick={editingMainEmail ? handleUpdateMainEmail : handleCreateMainEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{editingMainEmail ? 'Save Changes' : 'Create Email'}</button>
+              <button onClick={editingMainEmail ? handleUpdateMainEmail : handleCreateMainEmail} disabled={savingEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1 }}>{savingEmail ? 'Saving...' : (editingMainEmail ? 'Save Changes' : 'Create Email')}</button>
             </div>
           </div>
         </div>
@@ -1512,16 +1612,27 @@ export default function AdminPage({
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingSubEmail ? 'Edit Sub-Email' : 'New Sub-Email'}</h2>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingSubEmail ? 'Edit Sub-Email' : 'Add Sub-Emails'}</h2>
               <button onClick={() => { setShowSubEmailModal(false); setEditingSubEmail(null); setAddingSubEmailTo(null); setNewSubEmail(''); setEmailError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Sub-Email</label>
-                <input type="email" value={newSubEmail} onChange={(e) => setNewSubEmail(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="sub-email@example.com" autoFocus />
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{editingSubEmail ? 'Sub-Email' : 'Sub-Emails (one per line or comma-separated)'}</label>
+                {editingSubEmail ? (
+                  <input type="email" value={newSubEmail} onChange={(e) => setNewSubEmail(e.target.value)} className="w-full h-10 px-3 rounded-lg text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }} placeholder="sub-email@example.com" autoFocus />
+                ) : (
+                  <textarea
+                    value={newSubEmail}
+                    onChange={(e) => setNewSubEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)', minHeight: '120px' }}
+                    placeholder="email1@example.com&#10;email2@example.com&#10;email3@example.com"
+                    autoFocus
+                  />
+                )}
               </div>
-              {emailError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
-              <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)' }}>{editingSubEmail ? 'Save Changes' : 'Create Sub-Email'}</button>
+              {emailError && <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
+              <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} disabled={savingEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1 }}>{savingEmail ? 'Saving...' : (editingSubEmail ? 'Save Changes' : 'Add Sub-Emails')}</button>
             </div>
           </div>
         </div>

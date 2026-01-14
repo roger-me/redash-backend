@@ -46,6 +46,7 @@ export interface Profile {
   createdAt: string;
   deletedAt?: string;
   expiresAt?: string;
+  subEmailId?: string;
 }
 
 export interface AuthUser {
@@ -81,6 +82,7 @@ export interface ProfileForStats {
   postsToday?: number;
   commentsToday?: number;
   expiresAt?: string;
+  subEmailId?: string;
 }
 
 export interface MainEmail {

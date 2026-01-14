@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { Profile, Model } from '../../shared/types';
-import { Desktop, CaretDown, FolderSimple, MinusCircle } from '@phosphor-icons/react';
+import { Profile, Model, MainEmail, SubEmail } from '../../shared/types';
+import { Desktop, CaretDown, FolderSimple, MinusCircle, EnvelopeSimple } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 
 interface EditProfileModalProps {
@@ -80,9 +80,14 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
   );
   const [showCountryMenu, setShowCountryMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
+  const [showEmailMenu, setShowEmailMenu] = useState(false);
+  const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
+  const [subEmails, setSubEmails] = useState<SubEmail[]>([]);
+  const [subEmailId, setSubEmailId] = useState<string | undefined>(profile.subEmailId);
 
   const countryMenuRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const emailMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -92,9 +97,27 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
       if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
         setShowModelMenu(false);
       }
+      if (emailMenuRef.current && !emailMenuRef.current.contains(e.target as Node)) {
+        setShowEmailMenu(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const loadEmails = async () => {
+      try {
+        const result = await window.electronAPI?.getEmailsForSelection();
+        if (result) {
+          setMainEmails(result.mainEmails);
+          setSubEmails(result.subEmails);
+        }
+      } catch (err) {
+        console.error('Failed to load emails:', err);
+      }
+    };
+    loadEmails();
   }, []);
 
   const selectedCountry = countries.find(c => c.code === country);
@@ -154,6 +177,7 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
       orderNumber: orderNumber.trim(),
       isEnabled: !!expiresAt,
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
+      subEmailId,
     });
   };
 
@@ -327,6 +351,78 @@ function EditProfileModal({ profile, models, onClose, onSave }: EditProfileModal
                       <FolderSimple size={14} weight="bold" />
                       <span>{m.name}</span>
                     </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Email Selection */}
+          {mainEmails.length > 0 && (
+            <div className="relative" ref={emailMenuRef}>
+              <label className="block text-xs font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                Email Account
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowEmailMenu(!showEmailMenu)}
+                className="w-full text-left px-3 py-2 text-sm flex items-center gap-2"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: '8px',
+                  color: 'var(--text-primary)',
+                }}
+              >
+                <EnvelopeSimple size={14} weight="bold" color="var(--text-tertiary)" />
+                {subEmailId ? (
+                  (() => {
+                    const subEmail = subEmails.find(s => s.id === subEmailId);
+                    const mainEmail = mainEmails.find(m => m.id === subEmail?.mainEmailId);
+                    return <span className="truncate">{mainEmail?.email} → {subEmail?.email}</span>;
+                  })()
+                ) : (
+                  <span style={{ color: 'var(--text-tertiary)' }}>Select email</span>
+                )}
+                <CaretDown size={12} weight="bold" className="ml-auto" />
+              </button>
+
+              {showEmailMenu && (
+                <div
+                  className="absolute z-50 w-full mt-1 py-1 max-h-64 overflow-y-auto"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setSubEmailId(undefined); setShowEmailMenu(false); }}
+                    className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                    style={{ color: !subEmailId ? 'var(--accent-blue)' : 'var(--text-primary)' }}
+                  >
+                    <MinusCircle size={14} weight="bold" />
+                    <span>No email</span>
+                  </button>
+                  {mainEmails.map(main => (
+                    <div key={main.id}>
+                      <div className="px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                        {main.email}
+                      </div>
+                      {subEmails.filter(s => s.mainEmailId === main.id).map(sub => (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => { setSubEmailId(sub.id); setShowEmailMenu(false); }}
+                          className="w-full px-3 py-2 pl-6 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                          style={{ color: subEmailId === sub.id ? 'var(--accent-blue)' : 'var(--text-primary)' }}
+                        >
+                          <EnvelopeSimple size={14} weight="regular" />
+                          <span>{sub.email}</span>
+                        </button>
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}

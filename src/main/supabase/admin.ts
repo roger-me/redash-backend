@@ -263,5 +263,6 @@ export async function getAllProfiles(): Promise<any[]> {
     totalPosts: p.total_posts || 0,
     totalComments: p.total_comments || 0,
     expiresAt: p.expires_at,
+    subEmailId: p.sub_email_id,
   }));
 }
