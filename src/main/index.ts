@@ -1082,7 +1082,48 @@ ipcMain.handle('sheets:syncAll', async () => {
       return mapped;
     });
 
-    return await googleSheets.syncAllProfilesToSheet(profilesWithModels);
+    // Sync profiles first
+    const profileResult = await googleSheets.syncAllProfilesToSheet(profilesWithModels);
+
+    // Now sync emails to a separate sheet
+    const mainEmails = await emails.listMainEmails();
+    const subEmails = await emails.listSubEmails();
+
+    // Build email entries with assignments
+    const emailEntries: Array<{
+      mainEmail: string;
+      mainEmailPassword: string;
+      subEmail: string;
+      subEmailId: string;
+      assignedUser?: string;
+      assignedBrowser?: string;
+      assignedBrowserId?: string;
+    }> = [];
+
+    for (const mainEmail of mainEmails) {
+      const mainSubEmails = subEmails.filter(s => s.mainEmailId === mainEmail.id);
+
+      for (const subEmail of mainSubEmails) {
+        // Find profile assigned to this sub-email
+        const assignedProfile = profiles.find((p: any) => p.subEmailId === subEmail.id);
+
+        emailEntries.push({
+          mainEmail: mainEmail.email,
+          mainEmailPassword: mainEmail.password,
+          subEmail: subEmail.email,
+          subEmailId: subEmail.id,
+          assignedUser: assignedProfile ? userMap.get(assignedProfile.userId) || '' : '',
+          assignedBrowser: assignedProfile?.name || '',
+          assignedBrowserId: assignedProfile?.id || '',
+        });
+      }
+    }
+
+    if (emailEntries.length > 0) {
+      await googleSheets.syncEmailsToSheet(emailEntries);
+    }
+
+    return profileResult;
   } catch (error) {
     console.error('Failed to sync all profiles:', error);
     return { success: false, error: (error as Error).message };

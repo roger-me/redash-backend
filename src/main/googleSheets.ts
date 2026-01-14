@@ -1,7 +1,7 @@
 import https from 'https';
 
 // Hardcoded webhook URL - automatic sync, no user configuration needed
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyuwwlzMtUIfYvdmeSyJzBOxCV0l2TmfzlUM5s-S0ZOvwmuLGYf660gT0Ee93G1f7iQqA/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyCxpBDddQwNHDfND7O3_L-1TnzSRIFbTk7kdae-G8tmuqxpnNTNFj0RqnNRxQQzKwrSA/exec';
 
 // Send data to webhook with redirect support
 const sendToWebhook = (data: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
@@ -125,6 +125,32 @@ export const testConnection = async (): Promise<{ success: boolean; error?: stri
     action: 'test',
     timestamp: new Date().toISOString(),
   });
+};
+
+// Sync emails to a separate sheet
+export const syncEmailsToSheet = async (emails: Array<{
+  mainEmail: string;
+  mainEmailPassword: string;
+  subEmail: string;
+  subEmailId: string;
+  assignedUser?: string;
+  assignedBrowser?: string;
+  assignedBrowserId?: string;
+}>): Promise<{ success: boolean; error?: string }> => {
+  console.log(`Syncing ${emails.length} email entries to sheet...`);
+
+  const result = await sendToWebhook({
+    action: 'syncEmails',
+    emails: emails,
+  });
+
+  if (!result.success) {
+    console.error('Email sync failed:', result.error);
+    return { success: false, error: result.error };
+  }
+
+  console.log('Email sync completed successfully');
+  return { success: true };
 };
 
 // Sync all profiles to sheet (smart batch upsert - update existing, add new, remove deleted)
