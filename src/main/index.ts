@@ -515,8 +515,7 @@ const showBrowser = (profileId: string) => {
 };
 
 ipcMain.handle('browser:launch', async (_, profileId: string) => {
-  const profiles = loadProfiles();
-  const profile = profiles.find(p => p.id === profileId);
+  const profile = await db.getProfileById(profileId) as Profile | null;
   if (!profile) throw new Error('Profile not found');
 
   // Check if this profile already has a browser open

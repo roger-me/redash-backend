@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, GenderFemale } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -205,6 +205,17 @@ export default function AdminPage({
       calculateStats();
     }
   }, [users, profiles, models]);
+
+  // Load user assignments for all users when users are loaded
+  useEffect(() => {
+    if (users.length > 0) {
+      users.forEach(user => {
+        if (!userAssignments[user.id]) {
+          loadUserAssignments(user.id);
+        }
+      });
+    }
+  }, [users]);
 
   const loadData = async () => {
     try {
@@ -636,7 +647,7 @@ export default function AdminPage({
               boxShadow: activeTab === 'models' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
             }}
           >
-            <GenderFemale size={16} weight="bold" />
+            <Smiley size={16} weight="bold" />
             {t('admin.models')}
           </button>
         </div>
@@ -906,11 +917,8 @@ export default function AdminPage({
             </div>
           ) : (
             users.map(user => (
-              <div key={user.id} className="overflow-hidden" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
-                <div className="flex items-center gap-3 p-4">
-                  <button onClick={() => handleToggleUserExpand(user.id)} className="p-1 hover:opacity-70" style={{ color: 'var(--text-tertiary)' }}>
-                    {expandedUser === user.id ? <CaretDown size={16} /> : <CaretRight size={16} />}
-                  </button>
+              <div key={user.id} className="p-4" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" style={{ background: getAvatarColor(user.username) }}>
                     {user.username.charAt(0).toUpperCase()}
                   </div>
@@ -927,51 +935,35 @@ export default function AdminPage({
                   </div>
                 </div>
 
-                {expandedUser === user.id && user.role === 'basic' && (
-                  <div className="px-4 pb-4 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-                    <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>{t('admin.assignedModels')}</p>
-                    {models.length === 0 ? (
-                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.noModelsAvailable')}</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {models.map(model => {
-                          const isAssigned = (userAssignments[user.id] || []).includes(model.id);
-                          return (
-                            <button
-                              key={model.id}
-                              onClick={() => handleToggleModelAssignment(user.id, model.id)}
-                              className="h-9 px-4 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
-                              style={{ background: isAssigned ? 'var(--accent-blue)' : 'var(--chip-bg)', color: isAssigned ? 'white' : 'var(--text-secondary)' }}
-                            >
-                              {model.name}
-                              {isAssigned && <Check size={14} weight="bold" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                {user.role === 'basic' && models.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3 ml-13">
+                    {models.map(model => {
+                      const isAssigned = (userAssignments[user.id] || []).includes(model.id);
+                      return (
+                        <button
+                          key={model.id}
+                          onClick={() => handleToggleModelAssignment(user.id, model.id)}
+                          className="h-7 px-3 rounded-full text-xs font-medium transition-colors flex items-center"
+                          style={{ background: isAssigned ? '#0A84FF' : 'var(--chip-bg)', color: isAssigned ? 'white' : 'var(--text-secondary)' }}
+                        >
+                          {model.name}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 
-                {expandedUser === user.id && user.role === 'admin' && (
-                  <div className="px-4 pb-4 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
-                    <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-secondary)' }}>{t('admin.fullAccessAllModels')}</p>
-                    {models.length === 0 ? (
-                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.noModelsCreated')}</p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {models.map(model => (
-                          <div
-                            key={model.id}
-                            className="h-9 px-4 rounded-full text-sm font-medium flex items-center gap-2"
-                            style={{ background: 'var(--accent-blue)', color: 'white' }}
-                          >
-                            {model.name}
-                            <Check size={14} weight="bold" />
-                          </div>
-                        ))}
+                {user.role === 'admin' && models.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-3 ml-13">
+                    {models.map(model => (
+                      <div
+                        key={model.id}
+                        className="h-7 px-3 rounded-full text-xs font-medium flex items-center"
+                        style={{ background: '#0A84FF', color: 'white' }}
+                      >
+                        {model.name}
                       </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>

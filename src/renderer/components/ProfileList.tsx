@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
 import { Profile, Model } from '../../shared/types';
-import { CaretRight, FolderSimple, ChatCircle, File, Check, Circle, DotsThreeVertical, PencilSimple, Trash, User, Plus, Calendar } from '@phosphor-icons/react';
+import { CaretRight, ChatCircle, File, Check, User, Calendar } from '@phosphor-icons/react';
 
 // Flag PNG imports
 import flagUS from '../assets/flags/US.png';
@@ -116,31 +115,6 @@ function ProfileList({
   onToggleModelExpand,
   onCreateAccountInModel,
 }: ProfileListProps) {
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [moveMenuProfileId, setMoveMenuProfileId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpenMenuId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleDelete = (profile: Profile) => {
-    setOpenMenuId(null);
-    setDeleteConfirmId(profile.id);
-  };
-
-  const confirmDelete = (id: string) => {
-    onDelete(id);
-    setDeleteConfirmId(null);
-  };
-
   // Group profiles by model
   // Sort order: working (0) -> error (1) -> banned (2)
   const getStatusOrder = (status?: string) => {
@@ -320,52 +294,6 @@ function ProfileList({
             </button>
           )}
 
-          {/* Menu button */}
-          <div className="relative" ref={openMenuId === profile.id ? menuRef : null}>
-            <button
-              onClick={() => {
-                setOpenMenuId(openMenuId === profile.id ? null : profile.id);
-                setMoveMenuProfileId(null);
-              }}
-              className="p-2 rounded-full hover:bg-white/10 transition-colors"
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              <DotsThreeVertical size={16} weight="bold" />
-            </button>
-
-            {/* Dropdown menu */}
-            {openMenuId === profile.id && (
-              <div
-                className="absolute right-0 z-50 min-w-[160px] top-8 overflow-hidden"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-                  borderRadius: '12px',
-                }}
-              >
-                <button
-                  onClick={() => {
-                    setOpenMenuId(null);
-                    onEdit(profile);
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  <PencilSimple size={14} weight="bold" />
-                  Edit
-                </button>
-
-                <button
-                  onClick={() => handleDelete(profile)}
-                  className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5 transition-colors"
-                  style={{ color: 'var(--accent-red)' }}
-                >
-                  <Trash size={14} weight="bold" />
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </div>
     );
@@ -417,22 +345,6 @@ function ProfileList({
                   {model.name}
                 </span>
 
-                {/* New Browser button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCreateAccountInModel(model.id);
-                  }}
-                  className="h-8 px-3 text-xs font-medium rounded-full flex items-center gap-1.5 hover:bg-white/10 transition-colors"
-                  style={{
-                    background: 'var(--chip-bg)',
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  <Plus size={14} weight="bold" />
-                  New
-                </button>
-
                 <CaretRight
                   size={16}
                   weight="bold"
@@ -466,71 +378,6 @@ function ProfileList({
           </div>
         )}
       </div>
-
-      {/* Delete Profile Confirmation Modal */}
-      {deleteConfirmId && (
-        <div
-          className="fixed inset-0 flex items-center justify-center z-50"
-          style={{ background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)' }}
-          onClick={(e) => e.target === e.currentTarget && setDeleteConfirmId(null)}
-        >
-          <div
-            className="w-full max-w-sm p-5"
-            style={{
-              background: 'var(--bg-secondary)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-              borderRadius: '28px',
-            }}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(255, 69, 58, 0.15)' }}
-              >
-                <Trash size={20} weight="bold" color="var(--accent-red)" />
-              </div>
-              <div>
-                <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  Delete Account
-                </h3>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  This action cannot be undone
-                </p>
-              </div>
-            </div>
-
-            <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-              Are you sure you want to delete "{profiles.find(p => p.id === deleteConfirmId)?.name}"?
-            </p>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-2.5 text-sm font-medium transition-colors"
-                style={{
-                  background: 'rgba(142, 142, 147, 0.12)',
-                  color: 'var(--text-primary)',
-                  borderRadius: '100px',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => confirmDelete(deleteConfirmId)}
-                className="flex-1 py-2.5 text-sm font-medium transition-colors"
-                style={{
-                  background: 'var(--accent-red)',
-                  color: '#ffffff',
-                  borderRadius: '100px',
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </>
   );
 }

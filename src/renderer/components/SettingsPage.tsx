@@ -223,7 +223,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                   color: language === 'en' ? '#fff' : 'var(--text-primary)',
                 }}
               >
-                <img src={usFlag} alt="English" className="w-5 h-4 object-cover rounded-sm" /> EN
+                <img src={usFlag} alt="English" className="w-4 h-3 object-contain" /> EN
               </button>
               <button
                 onClick={() => setLanguage('es')}
@@ -233,7 +233,7 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
                   color: language === 'es' ? '#fff' : 'var(--text-primary)',
                 }}
               >
-                <img src={esFlag} alt="Español" className="w-5 h-4 object-cover rounded-sm" /> ES
+                <img src={esFlag} alt="Español" className="w-4 h-3 object-contain" /> ES
               </button>
             </div>
           </div>
