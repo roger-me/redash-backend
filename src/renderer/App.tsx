@@ -44,35 +44,17 @@ function AppContent() {
   const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
   const [theme, setTheme] = useState<string>(() => {
     const saved = localStorage.getItem('theme');
-    // Convert old dark/light values to default
-    if (saved === 'dark' || saved === 'light') return 'default';
+    // Convert old values to new theme names
+    if (saved === 'default' || saved === 'midnight') return 'dark';
+    if (saved === 'paper') return 'light';
     if (saved) return saved;
-    return 'default';
+    return 'dark';
   });
-
-  // Get actual theme (resolve 'default' to midnight/paper based on system preference)
-  const getActualTheme = (t: string) => {
-    if (t === 'default') {
-      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'paper' : 'midnight';
-    }
-    return t;
-  };
 
   // Apply theme to document
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', getActualTheme(theme));
+    document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  // Listen for system theme changes when using default
-  useEffect(() => {
-    if (theme !== 'default') return;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: light)');
-    const handler = () => {
-      document.documentElement.setAttribute('data-theme', getActualTheme('default'));
-    };
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
   }, [theme]);
 
   // Helper to format relative time

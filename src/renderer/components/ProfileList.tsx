@@ -233,7 +233,7 @@ function ProfileList({
                 borderRadius: '100px',
               }}
             >
-              Stop
+              {t('profile.stop')}
             </button>
           ) : (
             <button
@@ -245,7 +245,7 @@ function ProfileList({
                 borderRadius: '100px',
               }}
             >
-              Launch
+              {t('profile.launch')}
             </button>
           )}
 

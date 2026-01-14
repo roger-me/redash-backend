@@ -26,7 +26,8 @@ interface SettingsPageProps {
 }
 
 const THEMES = [
-  { id: 'default', name: 'Default', accent: 'split' },
+  { id: 'light', name: 'Light', accent: '#FFFFFF', border: 'rgba(0,0,0,0.2)' },
+  { id: 'dark', name: 'Dark', accent: '#000000', border: 'rgba(255,255,255,0.2)' },
   { id: 'nord', name: 'Nord', accent: '#88C0D0' },
   { id: 'dracula', name: 'Dracula', accent: '#BD93F9' },
   { id: 'cyberpunk', name: 'Cyberpunk', accent: '#F5E946' },
@@ -197,7 +198,7 @@ export default function SettingsPage({ user, onSignOut, theme, onChangeTheme }: 
             <div>
               <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{t('settings.theme')}</p>
               <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                {THEMES.find(th => th.id === theme)?.name || 'Default'}
+                {THEMES.find(th => th.id === theme)?.name || 'Dark'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -207,11 +208,10 @@ export default function SettingsPage({ user, onSignOut, theme, onChangeTheme }: 
                   onClick={() => onChangeTheme(themeOption.id)}
                   className="w-7 h-7 rounded-full transition-all"
                   style={{
-                    background: themeOption.accent === 'split'
-                      ? 'linear-gradient(135deg, #fff 50%, #000 50%)'
-                      : themeOption.accent,
+                    background: themeOption.accent,
+                    border: themeOption.border ? `1px solid ${themeOption.border}` : 'none',
                     boxShadow: theme === themeOption.id
-                      ? `0 0 0 2px var(--bg-secondary), 0 0 0 4px ${themeOption.accent === 'split' ? 'var(--text-tertiary)' : themeOption.accent}`
+                      ? `0 0 0 2px var(--bg-secondary), 0 0 0 4px ${themeOption.accent}`
                       : 'none',
                   }}
                 />

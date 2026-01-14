@@ -167,6 +167,9 @@ export interface ElectronAPI {
   getAppVersion: () => Promise<string>;
   onUpdaterStatus: (callback: (data: { status: string; version?: string; error?: string; releaseNotes?: string }) => void) => () => void;
   onUpdaterProgress: (callback: (data: { percent: number; transferred: number; total: number; bytesPerSecond: number }) => void) => () => void;
+
+  // Shell
+  openExternal: (url: string) => Promise<void>;
 }
 
 declare global {

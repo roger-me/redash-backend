@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -700,8 +700,8 @@ export default function AdminPage({
       if (profilesData) setProfiles(profilesData);
       // Update users for showing usernames
       if (usersData) setUsers(usersData);
-      // Expand all by default
-      setExpandedEmails(new Set((mainData || []).map((e: MainEmail) => e.id)));
+      // Start collapsed by default
+      setExpandedEmails(new Set());
     } catch (err) {
       console.error('Failed to load emails:', err);
     }
@@ -1106,7 +1106,7 @@ export default function AdminPage({
                     <div style={{ background: 'rgba(128, 128, 128, 0.06)', borderRadius: '20px', overflow: 'hidden' }}>
                       <div
                         className="grid text-xs font-medium py-4 px-5"
-                        style={{ gridTemplateColumns: '1fr repeat(7, 90px) 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
+                        style={{ gridTemplateColumns: '1fr repeat(7, 80px) 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
                       >
                         <div>{t('admin.model')}</div>
                         <div className="text-center">{t('admin.posts')}</div>
@@ -1147,7 +1147,7 @@ export default function AdminPage({
                           <div key={stat.modelId || 'no-model'}>
                             <div
                               className="grid py-4 px-5 items-center cursor-pointer hover:bg-white/5 transition-colors"
-                              style={{ gridTemplateColumns: '1fr repeat(7, 90px) 50px', borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}
+                              style={{ gridTemplateColumns: '1fr repeat(7, 80px) 50px', borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}
                               onClick={() => toggleModelExpand(modelKey)}
                             >
                               <div className="flex items-center gap-2">
@@ -1188,7 +1188,7 @@ export default function AdminPage({
                                     <div
                                       key={profile.id}
                                       className="grid py-3 px-5 pl-12 items-center"
-                                      style={{ gridTemplateColumns: '1fr repeat(7, 90px) 50px', borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none' }}
+                                      style={{ gridTemplateColumns: '1fr repeat(7, 80px) 50px', borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none' }}
                                     >
                                       <div className="flex items-center gap-2">
                                         {profile.country && countryFlagImages[profile.country] && (
@@ -1294,7 +1294,7 @@ export default function AdminPage({
                       {modelStats.length > 1 && (
                         <div
                           className="grid py-4 px-5 items-center"
-                          style={{ gridTemplateColumns: '1fr repeat(6, 90px) 50px', background: 'rgba(128, 128, 128, 0.04)', borderTop: '1px solid var(--border)' }}
+                          style={{ gridTemplateColumns: '1fr repeat(6, 80px) 50px', background: 'rgba(128, 128, 128, 0.04)', borderTop: '1px solid var(--border)' }}
                         >
                           <div className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{t('admin.total')}</div>
                           <div className="text-center text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{modelStats.reduce((sum, m) => sum + m.total, 0)}</div>
@@ -1432,33 +1432,27 @@ export default function AdminPage({
                     onClick={() => toggleEmailExpand(mainEmail.id)}
                   >
                     {isExpanded ? <CaretDown size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} /> : <CaretRight size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: getAvatarColor(mainEmail.email) }}>
-                      <EnvelopeSimple size={20} weight="bold" color="white" />
+                    <div className="flex-1 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <button onClick={() => copyToClipboard(mainEmail.email, `email-${mainEmail.id}`)} className="h-8 px-3 flex items-center gap-2 text-sm hover:opacity-70" style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }} title="Click to copy">
+                        <EnvelopeSimple size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
+                        {copiedId === `email-${mainEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : mainEmail.email}
+                      </button>
+                      <button onClick={() => copyToClipboard(mainEmail.password, `pass-${mainEmail.id}`)} className="h-8 px-3 flex items-center gap-2 text-sm hover:opacity-70" style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }} title="Click to copy password">
+                        <Lock size={14} weight="bold" />
+                        {copiedId === `pass-${mainEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : mainEmail.password}
+                      </button>
                     </div>
-                    <div className="flex-1" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => copyToClipboard(mainEmail.email, `email-${mainEmail.id}`)} className="font-medium hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--text-primary)' }} title="Click to copy">
-                          {copiedId === `email-${mainEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : mainEmail.email}
-                          {copiedId !== `email-${mainEmail.id}` && <Copy size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
-                        </button>
-                        <button onClick={() => copyToClipboard(mainEmail.password, `pass-${mainEmail.id}`)} className="text-sm hover:opacity-70 flex items-center gap-1" style={{ color: 'var(--text-tertiary)' }} title="Click to copy password">
-                          {copiedId === `pass-${mainEmail.id}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : mainEmail.password}
-                          {copiedId !== `pass-${mainEmail.id}` && <Copy size={12} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
-                        </button>
-                      </div>
-                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{emailSubEmails.length} sub-email{emailSubEmails.length !== 1 ? 's' : ''}</p>
-                    </div>
-                    <span className="text-xs px-2 py-1 rounded-full" style={{ background: usedCount === emailSubEmails.length && emailSubEmails.length > 0 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 255, 255, 0.1)', color: usedCount === emailSubEmails.length && emailSubEmails.length > 0 ? '#4CAF50' : 'var(--text-tertiary)' }}>
-                      Used {usedCount}/{emailSubEmails.length}
+                    <span className="text-sm" style={{ color: usedCount === emailSubEmails.length && emailSubEmails.length > 0 ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                      {t('admin.used')} {usedCount}/{emailSubEmails.length}
                     </span>
                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => { setAddingSubEmailTo(mainEmail.id); setShowSubEmailModal(true); setNewSubEmail(''); setEmailError(''); }}
-                        className="p-2 rounded-full hover:bg-black/10"
-                        style={{ color: 'var(--text-tertiary)' }}
-                        title="Add sub-email"
+                        className="h-8 px-3 flex items-center gap-2 text-sm"
+                        style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
                       >
-                        <Plus size={18} />
+                        <Plus size={14} weight="bold" />
+                        {t('admin.newSubEmail')}
                       </button>
                       <div className="relative" data-menu="true">
                         <button
@@ -1560,7 +1554,7 @@ export default function AdminPage({
                   )}
                   {isExpanded && emailSubEmails.length === 0 && (
                     <div className="px-4 pb-4 ml-10">
-                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>No sub-emails yet. Click + to add one.</p>
+                      <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.noSubEmailsYet')}</p>
                     </div>
                   )}
                 </div>
@@ -1600,9 +1594,9 @@ export default function AdminPage({
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.role')}</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setNewRole('basic')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'basic' ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)', color: newRole === 'basic' ? '#60A5FA' : 'var(--text-secondary)', borderRadius: '100px' }}><User size={16} /> {t('admin.basic')}</button>
-                  <button onClick={() => setNewRole('admin')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'admin' ? 'rgba(147, 112, 219, 0.3)' : 'var(--chip-bg)', color: newRole === 'admin' ? '#A78BFA' : 'var(--text-secondary)', borderRadius: '100px' }}><Shield size={16} /> Admin</button>
-                  <button onClick={() => setNewRole('dev')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'dev' ? 'rgba(239, 68, 68, 0.3)' : 'var(--chip-bg)', color: newRole === 'dev' ? '#F87171' : 'var(--text-secondary)', borderRadius: '100px' }}><Code size={16} /> Dev</button>
+                  <button onClick={() => setNewRole('basic')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'basic' ? 'var(--accent-primary)' : 'var(--chip-bg)', color: newRole === 'basic' ? 'var(--accent-text)' : 'var(--text-secondary)', borderRadius: '100px' }}><User size={16} /> {t('admin.basic')}</button>
+                  <button onClick={() => setNewRole('admin')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'admin' ? 'var(--accent-primary)' : 'var(--chip-bg)', color: newRole === 'admin' ? 'var(--accent-text)' : 'var(--text-secondary)', borderRadius: '100px' }}><Shield size={16} /> Admin</button>
+                  <button onClick={() => setNewRole('dev')} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: newRole === 'dev' ? 'var(--accent-primary)' : 'var(--chip-bg)', color: newRole === 'dev' ? 'var(--accent-text)' : 'var(--text-secondary)', borderRadius: '100px' }}><Code size={16} /> Dev</button>
                 </div>
               </div>
               {models.length > 0 && (
@@ -1614,9 +1608,9 @@ export default function AdminPage({
                       return (
                         <button
                           key={model.id}
-                          onClick={() => setNewUserModels(prev => isSelected ? prev.filter(id => id !== model.id) : [...prev, model.id])}
+                          onClick={() => setNewUserModels(prev => prev.includes(model.id) ? prev.filter(id => id !== model.id) : [...prev, model.id])}
                           className="h-8 px-3 text-xs font-medium flex items-center gap-1.5"
-                          style={{ background: isSelected ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)', color: isSelected ? '#60A5FA' : 'var(--text-secondary)', borderRadius: '100px' }}
+                          style={{ background: isSelected ? 'var(--accent-primary)' : 'var(--chip-bg)', color: isSelected ? 'var(--accent-text)' : 'var(--text-secondary)', borderRadius: '100px' }}
                         >
                           {model.name}
                         </button>
@@ -1662,9 +1656,9 @@ export default function AdminPage({
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.role')}</label>
                 <div className="flex gap-2">
-                  <button onClick={() => setEditRole('basic')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'basic' ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)', color: editRole === 'basic' ? '#60A5FA' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><User size={16} /> {t('admin.basic')}</button>
-                  <button onClick={() => setEditRole('admin')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'admin' ? 'rgba(147, 112, 219, 0.3)' : 'var(--chip-bg)', color: editRole === 'admin' ? '#A78BFA' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><Shield size={16} /> Admin</button>
-                  <button onClick={() => setEditRole('dev')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'dev' ? 'rgba(239, 68, 68, 0.3)' : 'var(--chip-bg)', color: editRole === 'dev' ? '#F87171' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><Code size={16} /> Dev</button>
+                  <button onClick={() => setEditRole('basic')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'basic' ? 'var(--accent-primary)' : 'var(--chip-bg)', color: editRole === 'basic' ? 'var(--accent-text)' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><User size={16} /> {t('admin.basic')}</button>
+                  <button onClick={() => setEditRole('admin')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'admin' ? 'var(--accent-primary)' : 'var(--chip-bg)', color: editRole === 'admin' ? 'var(--accent-text)' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><Shield size={16} /> Admin</button>
+                  <button onClick={() => setEditRole('dev')} disabled={editingUser.id === currentUserId} className="flex-1 h-10 text-sm font-medium flex items-center justify-center gap-2" style={{ background: editRole === 'dev' ? 'var(--accent-primary)' : 'var(--chip-bg)', color: editRole === 'dev' ? 'var(--accent-text)' : 'var(--text-secondary)', opacity: editingUser.id === currentUserId ? 0.5 : 1, borderRadius: '100px' }}><Code size={16} /> Dev</button>
                 </div>
                 {editingUser.id === currentUserId && <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>{t('admin.cannotChangeOwnRole')}</p>}
               </div>
@@ -1677,9 +1671,9 @@ export default function AdminPage({
                       return (
                         <button
                           key={model.id}
-                          onClick={() => setEditUserModels(prev => isSelected ? prev.filter(id => id !== model.id) : [...prev, model.id])}
+                          onClick={() => setEditUserModels(prev => prev.includes(model.id) ? prev.filter(id => id !== model.id) : [...prev, model.id])}
                           className="h-8 px-3 text-xs font-medium flex items-center gap-1.5"
-                          style={{ background: isSelected ? 'rgba(59, 130, 246, 0.3)' : 'var(--chip-bg)', color: isSelected ? '#60A5FA' : 'var(--text-secondary)', borderRadius: '100px' }}
+                          style={{ background: isSelected ? 'var(--accent-primary)' : 'var(--chip-bg)', color: isSelected ? 'var(--accent-text)' : 'var(--text-secondary)', borderRadius: '100px' }}
                         >
                           {model.name}
                         </button>
@@ -1800,12 +1794,12 @@ export default function AdminPage({
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingSubEmail ? 'Edit Sub-Email' : 'Add Sub-Emails'}</h2>
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingSubEmail ? t('admin.editSubEmail') : t('admin.addSubEmails')}</h2>
               <button onClick={() => { setShowSubEmailModal(false); setEditingSubEmail(null); setAddingSubEmailTo(null); setNewSubEmail(''); setSelectedProfileForSubEmail(null); setEmailError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{editingSubEmail ? 'Sub-Email' : 'Sub-Emails (one per line or comma-separated)'}</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{editingSubEmail ? t('admin.subEmail') : t('admin.subEmailsLabel')}</label>
                 {editingSubEmail ? (
                   <input type="email" value={newSubEmail} onChange={(e) => setNewSubEmail(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="sub-email@example.com" autoFocus />
                 ) : (
@@ -1821,20 +1815,20 @@ export default function AdminPage({
               </div>
               {editingSubEmail && (
                 <div>
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Assign to Browser</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('admin.assignToBrowser')}</label>
                   <select
                     value={selectedProfileForSubEmail || ''}
                     onChange={(e) => setSelectedProfileForSubEmail(e.target.value || null)}
                     className="w-full h-10 px-3 text-sm"
                     style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
                   >
-                    <option value="">None</option>
+                    <option value="">{t('admin.none')}</option>
                     {profiles.map(profile => {
                       const user = users.find(u => u.id === profile.userId);
                       const isAssignedElsewhere = profile.subEmailId && profile.subEmailId !== editingSubEmail?.id;
                       return (
                         <option key={profile.id} value={profile.id} disabled={isAssignedElsewhere}>
-                          {user?.username || 'Unknown'} - {profile.name}{isAssignedElsewhere ? ' (already assigned)' : ''}
+                          {user?.username || t('admin.unknown')} - {profile.name}{isAssignedElsewhere ? ` ${t('admin.alreadyAssigned')}` : ''}
                         </option>
                       );
                     })}
@@ -1842,7 +1836,7 @@ export default function AdminPage({
                 </div>
               )}
               {emailError && <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
-              <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} disabled={savingEmail} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1, borderRadius: '100px' }}>{savingEmail ? 'Saving...' : (editingSubEmail ? 'Save Changes' : 'Add Sub-Emails')}</button>
+              <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} disabled={savingEmail} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1, borderRadius: '100px' }}>{savingEmail ? t('admin.saving') : (editingSubEmail ? t('admin.saveChanges') : t('admin.addSubEmails'))}</button>
             </div>
           </div>
         </div>

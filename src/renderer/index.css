@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Midnight Theme (default) */
-:root, [data-theme="midnight"] {
+/* Midnight Theme (Dark) */
+:root, [data-theme="midnight"], [data-theme="dark"] {
   --bg-primary: #0D1117;
   --bg-secondary: #161B22;
   --bg-tertiary: #21262D;
@@ -14,8 +14,8 @@
   --text-secondary: rgba(201, 209, 217, 0.7);
   --text-tertiary: #8B949E;
   --text-quaternary: rgba(139, 148, 158, 0.5);
-  --accent-primary: #58A6FF;
-  --accent-text: #ffffff;
+  --accent-primary: #FFFFFF;
+  --accent-text: #0D1117;
   --accent-blue: #58A6FF;
   --accent-purple: #af52de;
   --accent-green: #32d74b;
@@ -61,7 +61,7 @@
 }
 
 /* Paper Theme (Light) */
-[data-theme="paper"] {
+[data-theme="paper"], [data-theme="light"] {
   --bg-primary: #FAFAFA;
   --bg-secondary: #FFFFFF;
   --bg-tertiary: #F0F0F0;
@@ -72,7 +72,7 @@
   --text-secondary: rgba(36, 41, 46, 0.7);
   --text-tertiary: #6A737D;
   --text-quaternary: rgba(106, 115, 125, 0.5);
-  --accent-primary: #0366D6;
+  --accent-primary: #000000;
   --accent-text: #FFFFFF;
   --accent-blue: #0366D6;
   --accent-purple: #6f42c1;
@@ -268,8 +268,8 @@ input, select {
 }
 
 input:focus, select:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-primary) 25%, transparent);
+  border-color: var(--border-light);
+  box-shadow: none;
 }
 
 input::placeholder {
