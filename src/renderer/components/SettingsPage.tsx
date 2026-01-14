@@ -320,16 +320,6 @@ export default function SettingsPage({ user, onSignOut, theme, onToggleTheme }: 
             ) : null}
           </div>
         </div>
-
-        {/* About Section */}
-        <div className="p-5 mt-4" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
-          <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
-            {t('settings.about')}
-          </h2>
-          <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-            {t('settings.aboutDescription')}
-          </p>
-        </div>
       </div>
     </main>
   );

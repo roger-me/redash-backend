@@ -250,6 +250,7 @@ export async function getAllProfiles(): Promise<any[]> {
     credentials: p.credentials,
     accountName: p.account_name,
     purchaseDate: p.purchase_date,
+    orderNumber: p.order_number,
     lastCompletedDate: p.last_completed_date,
     postsToday: p.posts_today || 0,
     commentsToday: p.comments_today || 0,

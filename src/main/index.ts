@@ -14,6 +14,9 @@ import * as admin from './supabase/admin';
 // Updater
 import { initUpdater } from './updater';
 
+// Google Sheets
+import * as googleSheets from './googleSheets';
+
 // Types
 interface Proxy {
   host: string;
@@ -197,16 +200,100 @@ ipcMain.handle('profiles:getById', async (_, profileId: string) => {
 });
 
 ipcMain.handle('profiles:create', async (_, profile: Omit<Profile, 'id' | 'createdAt'>) => {
-  return db.createProfile(profile);
+  const result = await db.createProfile(profile);
+
+  // Sync to Google Sheets
+  if (result) {
+    // Get model name if modelId is set
+    let modelName = '';
+    if ((result as any).modelId) {
+      const models = await db.listModels();
+      modelName = models.find(m => m.id === (result as any).modelId)?.name || '';
+    }
+
+    // Build proxy string from proxy object
+    const proxy = (result as any).proxy;
+    let proxyString = '';
+    if (proxy?.host && proxy?.port) {
+      proxyString = proxy.username && proxy.password
+        ? `${proxy.host}:${proxy.port}:${proxy.username}:${proxy.password}`
+        : `${proxy.host}:${proxy.port}`;
+    }
+
+    googleSheets.addProfileToSheet({
+      id: result.id,
+      name: result.name,
+      email: (result as any).credentials?.email || '',
+      password: (result as any).credentials?.password || '',
+      country: (result as any).country,
+      modelName,
+      status: (result as any).status,
+      purchaseDate: (result as any).purchaseDate,
+      expiresAt: (result as any).expiresAt,
+      orderNumber: (result as any).orderNumber,
+      proxyString,
+      commentKarma: (result as any).commentKarma,
+      postKarma: (result as any).postKarma,
+      createdAt: result.createdAt,
+    }).catch(err => console.error('Failed to sync profile to sheet:', err));
+  }
+
+  return result;
 });
 
 ipcMain.handle('profiles:update', async (_, profileId: string, updates: any) => {
-  return db.updateProfile(profileId, updates);
+  const result = await db.updateProfile(profileId, updates);
+
+  // Sync to Google Sheets
+  if (result) {
+    // Transform updates for sheet format
+    const sheetUpdates: Record<string, any> = { ...updates };
+
+    // Extract email/password from credentials if updated
+    if (updates.credentials) {
+      sheetUpdates.email = updates.credentials.email || '';
+      sheetUpdates.password = updates.credentials.password || '';
+      delete sheetUpdates.credentials;
+    }
+
+    // Build proxy string if proxy is updated
+    if (updates.proxy) {
+      const proxy = updates.proxy;
+      if (proxy.host && proxy.port) {
+        sheetUpdates.proxyString = proxy.username && proxy.password
+          ? `${proxy.host}:${proxy.port}:${proxy.username}:${proxy.password}`
+          : `${proxy.host}:${proxy.port}`;
+      } else {
+        sheetUpdates.proxyString = '';
+      }
+      delete sheetUpdates.proxy;
+    }
+
+    // Get model name if modelId is updated
+    if (updates.modelId !== undefined) {
+      const models = await db.listModels();
+      sheetUpdates.modelName = models.find(m => m.id === updates.modelId)?.name || '';
+      delete sheetUpdates.modelId;
+    }
+
+    googleSheets.updateProfileInSheet(profileId, sheetUpdates)
+      .catch(err => console.error('Failed to sync profile update to sheet:', err));
+  }
+
+  return result;
 });
 
 ipcMain.handle('profiles:delete', async (_, profileId: string) => {
   // Soft delete - don't remove local files yet
-  return db.deleteProfile(profileId);
+  const result = await db.deleteProfile(profileId);
+
+  // Sync to Google Sheets
+  if (result) {
+    googleSheets.deleteProfileFromSheet(profileId)
+      .catch(err => console.error('Failed to sync profile deletion to sheet:', err));
+  }
+
+  return result;
 });
 
 ipcMain.handle('profiles:listDeleted', async () => {
@@ -860,6 +947,69 @@ app.on('window-all-closed', async () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
+  }
+});
+
+// Google Sheets sync all
+ipcMain.handle('sheets:syncAll', async () => {
+  try {
+    const profiles = await admin.getAllProfiles();
+    const models = await db.listModels();
+    const users = await admin.listUsers();
+
+    // Create userId -> username map
+    const userMap = new Map<string, string>();
+    console.log('Users found:', users.length);
+    for (const user of users) {
+      console.log('User:', user.id, '->', user.username);
+      userMap.set(user.id, user.username);
+    }
+
+    // Helper to build proxy string from proxy object
+    const buildProxyString = (proxy: any): string => {
+      if (!proxy) return '';
+      const { host, port, username, password } = proxy;
+      if (!host || !port) return '';
+      if (username && password) {
+        return `${host}:${port}:${username}:${password}`;
+      }
+      return `${host}:${port}`;
+    };
+
+    // Helper to format date (date only, no time)
+    const formatDate = (dateStr: string | undefined): string => {
+      if (!dateStr) return '';
+      return dateStr.split('T')[0]; // Extract YYYY-MM-DD
+    };
+
+    // Map profiles with model names and extracted fields
+    const profilesWithModels = profiles.map((p: any) => {
+      const mapped = {
+        id: p.id,
+        name: p.name,
+        email: p.credentials?.email || '',
+        password: p.credentials?.password || '',
+        country: p.country,
+        modelName: models.find(m => m.id === p.modelId)?.name || '',
+        status: p.status,
+        purchaseDate: p.purchaseDate,
+        expiresAt: p.expiresAt,
+        orderNumber: p.orderNumber,
+        proxyString: buildProxyString(p.proxy),
+        commentKarma: p.commentKarma,
+        postKarma: p.postKarma,
+        createdAt: formatDate(p.createdAt),
+        isBanned: p.status === 'banned',
+        assignedTo: userMap.get(p.userId) || '',
+      };
+      console.log('Profile mapped:', p.name, '| userId:', p.userId, '| assignedTo:', mapped.assignedTo, '| isBanned:', mapped.isBanned, '| createdAt:', mapped.createdAt);
+      return mapped;
+    });
+
+    return await googleSheets.syncAllProfilesToSheet(profilesWithModels);
+  } catch (error) {
+    console.error('Failed to sync all profiles:', error);
+    return { success: false, error: (error as Error).message };
   }
 });
 

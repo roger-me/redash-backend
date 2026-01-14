@@ -155,6 +155,7 @@ export default function AdminPage({
   const [deletedProfiles, setDeletedProfiles] = useState<Profile[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [syncing, setSyncing] = useState(false);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -247,6 +248,23 @@ export default function AdminPage({
       console.error('Failed to refresh data:', err);
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handleSyncToSheet = async () => {
+    setSyncing(true);
+    try {
+      const result = await window.electronAPI?.sheetsSyncAll();
+      if (result?.success) {
+        alert('Synced all browsers to Google Sheet!');
+      } else {
+        alert('Sync failed: ' + (result?.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Failed to sync to sheet:', err);
+      alert('Sync failed');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -656,6 +674,16 @@ export default function AdminPage({
         <div className="flex items-center gap-2">
           {activeTab === 'stats' && (
             <>
+              <button
+                onClick={handleSyncToSheet}
+                disabled={syncing}
+                className="h-9 px-3 flex items-center gap-2 transition-colors"
+                style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)', opacity: syncing ? 0.5 : 1 }}
+                title="Sync all browsers to Google Sheet"
+              >
+                <ArrowsClockwise size={16} weight="bold" style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
+                <span className="text-sm font-medium">Sync Sheet</span>
+              </button>
               <button
                 onClick={handleOpenTrash}
                 className="h-9 px-3 flex items-center gap-2 transition-colors"

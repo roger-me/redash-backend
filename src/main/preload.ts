@@ -132,4 +132,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('updater:progress', handler);
     return () => ipcRenderer.removeListener('updater:progress', handler);
   },
+
+  // Google Sheets
+  sheetsSyncAll: () => ipcRenderer.invoke('sheets:syncAll'),
 });

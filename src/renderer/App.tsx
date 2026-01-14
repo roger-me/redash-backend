@@ -9,12 +9,11 @@ import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Desktop, Users, Swap, Brain, Gear, ShieldCheck } from '@phosphor-icons/react';
-import AIPage from './components/AIPage';
+import { ArrowsClockwise, Desktop, Users, Swap, Gear, ShieldCheck } from '@phosphor-icons/react';
 import SettingsPage from './components/SettingsPage';
 import { LanguageProvider, useLanguage } from './i18n';
 
-type Page = 'accounts' | 'flipper' | 'ai' | 'settings' | 'admin';
+type Page = 'accounts' | 'flipper' | 'settings' | 'admin';
 
 interface AuthUser {
   id: string;
@@ -545,18 +544,6 @@ function AppContent() {
             <span className="text-sm font-medium">{t('nav.flipper')}</span>
           </button>
 
-          <button
-            onClick={() => setCurrentPage('ai')}
-            className="w-full h-10 flex items-center gap-3 px-3 rounded-xl transition-colors"
-            style={{
-              background: currentPage === 'ai' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-              color: currentPage === 'ai' ? 'var(--text-primary)' : 'var(--text-tertiary)',
-            }}
-          >
-            <Brain size={20} weight={currentPage === 'ai' ? 'fill' : 'regular'} />
-            <span className="text-sm font-medium">{t('nav.ai')}</span>
-          </button>
-
           {user?.role === 'admin' && (
             <button
               onClick={() => setCurrentPage('admin')}
@@ -681,7 +668,6 @@ function AppContent() {
           </main>
         )}
         {currentPage === 'flipper' && <FlipperPage />}
-        {currentPage === 'ai' && <AIPage />}
         {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onToggleTheme={toggleTheme} />}
         {currentPage === 'admin' && user?.role === 'admin' && (
           <AdminPage
