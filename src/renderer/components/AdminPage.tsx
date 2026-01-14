@@ -170,6 +170,7 @@ export default function AdminPage({
   const [showSubEmailModal, setShowSubEmailModal] = useState(false);
   const [editingSubEmail, setEditingSubEmail] = useState<SubEmail | null>(null);
   const [addingSubEmailTo, setAddingSubEmailTo] = useState<string | null>(null);
+  const [selectedProfileForSubEmail, setSelectedProfileForSubEmail] = useState<string | null>(null);
   const [newMainEmail, setNewMainEmail] = useState('');
   const [newMainPassword, setNewMainPassword] = useState('');
   const [newSubEmail, setNewSubEmail] = useState('');
@@ -822,10 +823,26 @@ export default function AdminPage({
     }
     setSavingEmail(true);
     try {
+      // Update the sub-email address
       await window.electronAPI?.updateSubEmail(editingSubEmail.id, newSubEmail);
+
+      // Handle profile assignment changes
+      const previouslyAssigned = profiles.find(p => p.subEmailId === editingSubEmail.id);
+
+      // If there was a previous assignment and it's different, remove it
+      if (previouslyAssigned && previouslyAssigned.id !== selectedProfileForSubEmail) {
+        await window.electronAPI?.updateProfile(previouslyAssigned.id, { subEmailId: null });
+      }
+
+      // If a new profile is selected, assign this sub-email to it
+      if (selectedProfileForSubEmail && selectedProfileForSubEmail !== previouslyAssigned?.id) {
+        await window.electronAPI?.updateProfile(selectedProfileForSubEmail, { subEmailId: editingSubEmail.id });
+      }
+
       await loadEmails();
       setEditingSubEmail(null);
       setNewSubEmail('');
+      setSelectedProfileForSubEmail(null);
       setEmailError('');
     } catch (err: any) {
       setEmailError(err.message || 'Failed to update sub-email');
@@ -872,6 +889,9 @@ export default function AdminPage({
   const openSubEmailEditModal = (subEmail: SubEmail) => {
     setEditingSubEmail(subEmail);
     setNewSubEmail(subEmail.email);
+    // Find profile currently assigned to this sub-email
+    const assignedProfile = profiles.find(p => p.subEmailId === subEmail.id);
+    setSelectedProfileForSubEmail(assignedProfile?.id || null);
     setEmailError('');
   };
 
@@ -1364,6 +1384,7 @@ export default function AdminPage({
             mainEmails.map(mainEmail => {
               const emailSubEmails = subEmails.filter(s => s.mainEmailId === mainEmail.id);
               const isExpanded = expandedEmails.has(mainEmail.id);
+              const usedCount = emailSubEmails.filter(s => profiles.some(p => p.subEmailId === s.id)).length;
               return (
                 <div key={mainEmail.id} style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
                   <div
@@ -1387,6 +1408,9 @@ export default function AdminPage({
                       </div>
                       <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{emailSubEmails.length} sub-email{emailSubEmails.length !== 1 ? 's' : ''}</p>
                     </div>
+                    <span className="text-xs px-2 py-1 rounded-full" style={{ background: usedCount === emailSubEmails.length && emailSubEmails.length > 0 ? 'rgba(76, 175, 80, 0.15)' : 'rgba(255, 255, 255, 0.1)', color: usedCount === emailSubEmails.length && emailSubEmails.length > 0 ? '#4CAF50' : 'var(--text-tertiary)' }}>
+                      Used {usedCount}/{emailSubEmails.length}
+                    </span>
                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => { setAddingSubEmailTo(mainEmail.id); setShowSubEmailModal(true); setNewSubEmail(''); setEmailError(''); }}
@@ -1396,9 +1420,9 @@ export default function AdminPage({
                       >
                         <Plus size={18} />
                       </button>
-                      <div className="relative">
+                      <div className="relative" data-menu="true">
                         <button
-                          onClick={() => setEmailMenuOpen(emailMenuOpen === `main-${mainEmail.id}` ? null : `main-${mainEmail.id}`)}
+                          onClick={(e) => { e.stopPropagation(); setEmailMenuOpen(emailMenuOpen === `main-${mainEmail.id}` ? null : `main-${mainEmail.id}`); }}
                           className="p-2 rounded-lg hover:bg-black/10"
                           style={{ color: 'var(--text-tertiary)' }}
                         >
@@ -1442,9 +1466,10 @@ export default function AdminPage({
                               <div className="flex-1 flex items-center gap-2 flex-wrap">
                                 {assignedProfiles.map((profile) => {
                                   const user = profile.userId ? getUserForProfile(profile.userId) : undefined;
+                                  const userColor = getAvatarColor(user?.username || 'Unknown');
                                   return (
                                     <div key={profile.id} className="flex items-center gap-1">
-                                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}>
+                                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${userColor}25`, color: userColor }}>
                                         {user?.username || 'Unknown'}
                                       </span>
                                       <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(33, 150, 243, 0.15)', color: '#2196F3' }}>
@@ -1454,9 +1479,9 @@ export default function AdminPage({
                                   );
                                 })}
                               </div>
-                              <div className="relative">
+                              <div className="relative" data-menu="true">
                                 <button
-                                  onClick={() => setEmailMenuOpen(emailMenuOpen === `sub-${subEmail.id}` ? null : `sub-${subEmail.id}`)}
+                                  onClick={(e) => { e.stopPropagation(); setEmailMenuOpen(emailMenuOpen === `sub-${subEmail.id}` ? null : `sub-${subEmail.id}`); }}
                                   className="p-1.5 rounded-lg hover:bg-black/10"
                                   style={{ color: 'var(--text-tertiary)' }}
                                 >
@@ -1670,7 +1695,7 @@ export default function AdminPage({
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingSubEmail ? 'Edit Sub-Email' : 'Add Sub-Emails'}</h2>
-              <button onClick={() => { setShowSubEmailModal(false); setEditingSubEmail(null); setAddingSubEmailTo(null); setNewSubEmail(''); setEmailError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+              <button onClick={() => { setShowSubEmailModal(false); setEditingSubEmail(null); setAddingSubEmailTo(null); setNewSubEmail(''); setSelectedProfileForSubEmail(null); setEmailError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div>
@@ -1688,6 +1713,28 @@ export default function AdminPage({
                   />
                 )}
               </div>
+              {editingSubEmail && (
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Assign to Browser</label>
+                  <select
+                    value={selectedProfileForSubEmail || ''}
+                    onChange={(e) => setSelectedProfileForSubEmail(e.target.value || null)}
+                    className="w-full h-10 px-3 rounded-lg text-sm"
+                    style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+                  >
+                    <option value="">None</option>
+                    {profiles.map(profile => {
+                      const user = users.find(u => u.id === profile.userId);
+                      const isAssignedElsewhere = profile.subEmailId && profile.subEmailId !== editingSubEmail?.id;
+                      return (
+                        <option key={profile.id} value={profile.id} disabled={isAssignedElsewhere}>
+                          {user?.username || 'Unknown'} - {profile.name}{isAssignedElsewhere ? ' (already assigned)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
               {emailError && <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
               <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} disabled={savingEmail} className="w-full h-10 rounded-lg text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1 }}>{savingEmail ? 'Saving...' : (editingSubEmail ? 'Save Changes' : 'Add Sub-Emails')}</button>
             </div>
