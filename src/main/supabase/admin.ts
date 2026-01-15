@@ -213,6 +213,7 @@ export async function getAllProfilesForStats(): Promise<any[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -253,12 +254,51 @@ export async function getAllModels(): Promise<any[]> {
     profilePicture: m.profile_picture,
     instagram: m.instagram,
     onlyfans: m.onlyfans,
+    contentFolder: m.content_folder,
     createdAt: m.created_at,
     userId: m.user_id,
   }));
 }
 
 export async function getAllProfiles(): Promise<any[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data || []).map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type || 'desktop',
+    modelId: p.model_id,
+    status: p.status,
+    isEnabled: p.is_enabled,
+    commentKarma: p.comment_karma || 0,
+    postKarma: p.post_karma || 0,
+    userId: p.user_id,
+    createdAt: p.created_at,
+    country: p.country,
+    proxy: p.proxy,
+    credentials: p.credentials,
+    accountName: p.account_name,
+    purchaseDate: p.purchase_date,
+    orderNumber: p.order_number,
+    lastCompletedDate: p.last_completed_date,
+    lastPostDate: p.last_post_date,
+    lastCommentDate: p.last_comment_date,
+    postsToday: p.posts_today || 0,
+    commentsToday: p.comments_today || 0,
+    totalPosts: p.total_posts || 0,
+    totalComments: p.total_comments || 0,
+    expiresAt: p.expires_at,
+    subEmailId: p.sub_email_id,
+  }));
+}
+
+// Get all profiles including archived (for Google Sheets sync)
+export async function getAllProfilesForSync(): Promise<any[]> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('profiles')

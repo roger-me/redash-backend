@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, InstagramLogo } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, InstagramLogo, Archive } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -75,8 +75,8 @@ interface AdminPageProps {
   models: Model[];
   currentUserId: string;
   currentUserRole: UserRole;
-  onCreateModel: (name: string, profilePicture?: string, instagram?: string, onlyfans?: string) => Promise<void>;
-  onUpdateModel: (id: string, name: string, profilePicture?: string, instagram?: string, onlyfans?: string) => Promise<void>;
+  onCreateModel: (name: string, profilePicture?: string, instagram?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
+  onUpdateModel: (id: string, name: string, profilePicture?: string, instagram?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
   onDeleteModel: (id: string) => Promise<void>;
   onCreateBrowser: () => void;
   onEditProfile: (profileId: string) => void;
@@ -146,6 +146,7 @@ export default function AdminPage({
   const [modelProfilePicture, setModelProfilePicture] = useState('');
   const [modelInstagram, setModelInstagram] = useState('');
   const [modelOnlyfans, setModelOnlyfans] = useState('');
+  const [modelContentFolder, setModelContentFolder] = useState('');
   const [modelError, setModelError] = useState('');
   const modelFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -432,12 +433,12 @@ export default function AdminPage({
   };
 
   const handleDeleteProfile = async (profileId: string) => {
-    if (!confirm(t('admin.confirmMoveToTrash'))) return;
+    if (!confirm(t('admin.confirmArchive'))) return;
     try {
       await window.electronAPI?.deleteProfile(profileId);
       await handleRefresh();
     } catch (err) {
-      console.error('Failed to delete profile:', err);
+      console.error('Failed to archive profile:', err);
     }
   };
 
@@ -461,13 +462,9 @@ export default function AdminPage({
     }
   };
 
-  const getDaysRemaining = (deletedAt: string): number => {
-    const deleted = new Date(deletedAt);
-    const expiry = new Date(deleted);
-    expiry.setDate(expiry.getDate() + 30);
-    const now = new Date();
-    const diffMs = expiry.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  const formatArchivedDate = (deletedAt: string): string => {
+    const date = new Date(deletedAt);
+    return date.toLocaleDateString();
   };
 
   // User management handlers
@@ -644,12 +641,13 @@ export default function AdminPage({
       return;
     }
     try {
-      await onCreateModel(newModelName.trim(), modelProfilePicture || undefined, modelInstagram || undefined, modelOnlyfans || undefined);
+      await onCreateModel(newModelName.trim(), modelProfilePicture || undefined, modelInstagram || undefined, modelOnlyfans || undefined, modelContentFolder || undefined);
       setShowModelModal(false);
       setNewModelName('');
       setModelProfilePicture('');
       setModelInstagram('');
       setModelOnlyfans('');
+      setModelContentFolder('');
       setModelError('');
     } catch (err: any) {
       setModelError(err.message || 'Failed to create model');
@@ -663,13 +661,13 @@ export default function AdminPage({
       return;
     }
     try {
-      console.log('AdminPage handleUpdateModel:', { modelInstagram, modelOnlyfans });
-      await onUpdateModel(editingModel.id, newModelName.trim(), modelProfilePicture, modelInstagram, modelOnlyfans);
+      await onUpdateModel(editingModel.id, newModelName.trim(), modelProfilePicture, modelInstagram, modelOnlyfans, modelContentFolder);
       setEditingModel(null);
       setNewModelName('');
       setModelProfilePicture('');
       setModelInstagram('');
       setModelOnlyfans('');
+      setModelContentFolder('');
       setModelError('');
     } catch (err: any) {
       setModelError(err.message || 'Failed to update model');
@@ -691,6 +689,7 @@ export default function AdminPage({
     setModelProfilePicture(model.profilePicture || '');
     setModelInstagram(model.instagram || '');
     setModelOnlyfans(model.onlyfans || '');
+    setModelContentFolder(model.contentFolder || '');
     setModelError('');
   };
 
@@ -1301,16 +1300,14 @@ export default function AdminPage({
                                               <PencilSimple size={14} />
                                               {t('admin.edit')}
                                             </button>
-                                            {canDelete && (
-                                              <button
-                                                onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDeleteProfile(profile.id); }}
-                                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
-                                                style={{ color: '#F44336' }}
-                                              >
-                                                <Trash size={14} />
-                                                {t('admin.delete')}
-                                              </button>
-                                            )}
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDeleteProfile(profile.id); }}
+                                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+                                              style={{ color: 'var(--text-tertiary)' }}
+                                            >
+                                              <Archive size={14} />
+                                              {t('admin.archive')}
+                                            </button>
                                           </div>
                                         )}
                                       </div>
@@ -1726,7 +1723,7 @@ export default function AdminPage({
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingModel ? t('model.edit') : t('model.create')}</h2>
-              <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelInstagram(''); setModelOnlyfans(''); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+              <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelInstagram(''); setModelOnlyfans(''); setModelContentFolder(''); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-4 cursor-pointer" onClick={() => modelFileInputRef.current?.click()}>
@@ -1751,6 +1748,10 @@ export default function AdminPage({
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.onlyfans')}</label>
                 <input type="url" value={modelOnlyfans} onChange={(e) => setModelOnlyfans(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="https://onlyfans.com/username" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.contentFolder')}</label>
+                <input type="url" value={modelContentFolder} onChange={(e) => setModelContentFolder(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="https://drive.google.com/..." />
               </div>
               {modelError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{modelError}</p>}
               <button onClick={editingModel ? handleUpdateModel : handleCreateModel} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', borderRadius: '100px' }}>{editingModel ? t('admin.saveChanges') : t('model.create')}</button>
@@ -1782,13 +1783,12 @@ export default function AdminPage({
               ) : (
                 <div className="space-y-2">
                   {deletedProfiles.map(profile => {
-                    const daysLeft = getDaysRemaining(profile.deletedAt || '');
                     return (
-                      <div key={profile.id} className="flex items-center gap-3 p-4" style={{ background: 'var(--bg-tertiary)', borderRadius: '16px' }}>
+                      <div key={profile.id} className="flex items-center gap-3 p-4" style={{ background: 'var(--bg-tertiary)', borderRadius: '100px' }}>
                         {profile.country && countryFlagImages[profile.country] && <img src={countryFlagImages[profile.country]} alt={profile.country} className="w-5 h-5 object-contain rounded-sm" />}
                         <div className="flex-1">
                           <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{profile.name}</span>
-                          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{daysLeft} {t('admin.daysRemaining')}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('admin.archivedOn')} {formatArchivedDate(profile.deletedAt || '')}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => handleRestoreProfile(profile.id)} className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}><ArrowCounterClockwise size={14} weight="bold" /> {t('admin.restore')}</button>

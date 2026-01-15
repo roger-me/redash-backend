@@ -285,20 +285,28 @@ ipcMain.handle('profiles:update', async (_, profileId: string, updates: any) => 
 });
 
 ipcMain.handle('profiles:delete', async (_, profileId: string) => {
-  // Soft delete - don't remove local files yet
-  const result = await db.deleteProfile(profileId);
-
-  // Sync to Google Sheets
-  if (result) {
-    googleSheets.deleteProfileFromSheet(profileId)
-      .catch(err => console.error('Failed to sync profile deletion to sheet:', err));
+  // Soft delete (archive) - don't remove local files or from sheet
+  console.log('profiles:delete - archiving profile:', profileId);
+  try {
+    const result = await db.deleteProfile(profileId);
+    console.log('profiles:delete - archive result:', result);
+    return result;
+  } catch (err) {
+    console.error('profiles:delete - error:', err);
+    throw err;
   }
-
-  return result;
 });
 
 ipcMain.handle('profiles:listDeleted', async () => {
-  return db.listDeletedProfiles();
+  console.log('profiles:listDeleted - fetching deleted profiles');
+  try {
+    const deleted = await db.listDeletedProfiles();
+    console.log('profiles:listDeleted - found:', deleted.length, 'profiles');
+    return deleted;
+  } catch (err) {
+    console.error('profiles:listDeleted - error:', err);
+    throw err;
+  }
 });
 
 ipcMain.handle('profiles:restore', async (_, profileId: string) => {
@@ -311,7 +319,16 @@ ipcMain.handle('profiles:permanentDelete', async (_, profileId: string) => {
   if (fs.existsSync(profileDataPath)) {
     fs.rmSync(profileDataPath, { recursive: true });
   }
-  return db.permanentDeleteProfile(profileId);
+
+  const result = await db.permanentDeleteProfile(profileId);
+
+  // Remove from Google Sheets only on permanent delete
+  if (result) {
+    googleSheets.deleteProfileFromSheet(profileId)
+      .catch(err => console.error('Failed to sync profile deletion to sheet:', err));
+  }
+
+  return result;
 });
 
 // Embedded browser state
@@ -1020,7 +1037,7 @@ app.on('activate', () => {
 // Google Sheets sync all
 ipcMain.handle('sheets:syncAll', async () => {
   try {
-    const profiles = await admin.getAllProfiles();
+    const profiles = await admin.getAllProfilesForSync();
     const models = await db.listModels();
     const users = await admin.listUsers();
 
@@ -1124,6 +1141,20 @@ ipcMain.handle('sheets:syncAll', async () => {
 
     if (emailEntries.length > 0) {
       await googleSheets.syncEmailsToSheet(emailEntries);
+    }
+
+    // Sync models to a separate sheet
+    console.log('Models found for sync:', models.length);
+    if (models.length > 0) {
+      const modelsData = models.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        instagram: m.instagram || '',
+        onlyfans: m.onlyfans || '',
+        contentFolder: m.contentFolder || '',
+      }));
+      console.log('Models data to sync:', modelsData);
+      await googleSheets.syncModelsToSheet(modelsData);
     }
 
     return profileResult;

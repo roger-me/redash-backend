@@ -18,6 +18,7 @@ export interface Model {
   profilePicture?: string;
   instagram?: string;
   onlyfans?: string;
+  contentFolder?: string;
   createdAt: string;
 }
 

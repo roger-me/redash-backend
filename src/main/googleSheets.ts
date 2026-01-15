@@ -1,7 +1,7 @@
 import https from 'https';
 
 // Hardcoded webhook URL - automatic sync, no user configuration needed
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbxdh_i1tfRAdVcS5F8ZxF1rLW1bnrH0G5s315NJ2k6mGjXLDxLp6dEJRFux6KJTX8PK3A/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbw1e8jrucsvtad64bJu2NEipMCzckGDNknwamBmH3req0pNx_7Y4jF3s_h-JHQOSgnPyw/exec';
 
 // Send data to webhook with redirect support
 const sendToWebhook = (data: Record<string, unknown>): Promise<{ success: boolean; error?: string }> => {
@@ -150,6 +150,30 @@ export const syncEmailsToSheet = async (emails: Array<{
   }
 
   console.log('Email sync completed successfully');
+  return { success: true };
+};
+
+// Sync models to a separate sheet
+export const syncModelsToSheet = async (models: Array<{
+  id: string;
+  name: string;
+  instagram?: string;
+  onlyfans?: string;
+  contentFolder?: string;
+}>): Promise<{ success: boolean; error?: string }> => {
+  console.log(`Syncing ${models.length} models to sheet...`);
+
+  const result = await sendToWebhook({
+    action: 'syncModels',
+    models: models,
+  });
+
+  if (!result.success) {
+    console.error('Models sync failed:', result.error);
+    return { success: false, error: result.error };
+  }
+
+  console.log('Models sync completed successfully');
   return { success: true };
 };
 
