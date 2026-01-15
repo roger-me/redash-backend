@@ -7,6 +7,7 @@ interface CreateProfileModalProps {
   models: Model[];
   initialModelId?: string;
   requireModel?: boolean;
+  takenSubEmailIds?: string[];
   onClose: () => void;
   onCreate: (profile: Omit<Profile, 'id' | 'createdAt'>) => void;
 }
@@ -59,7 +60,7 @@ const countries = [
   { code: 'EG', name: 'Egypt', flag: '🇪🇬' },
 ];
 
-function CreateProfileModal({ models, initialModelId, requireModel, onClose, onCreate }: CreateProfileModalProps) {
+function CreateProfileModal({ models, initialModelId, requireModel, takenSubEmailIds = [], onClose, onCreate }: CreateProfileModalProps) {
   const { t } = useLanguage();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -444,18 +445,27 @@ function CreateProfileModal({ models, initialModelId, requireModel, onClose, onC
                       <div className="px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
                         {main.email}
                       </div>
-                      {subEmails.filter(s => s.mainEmailId === main.id).map(sub => (
-                        <button
-                          key={sub.id}
-                          type="button"
-                          onClick={() => { setSubEmailId(sub.id); setShowEmailMenu(false); }}
-                          className="w-full px-3 py-2 pl-6 text-left text-sm flex items-center gap-2 hover:bg-white/5"
-                          style={{ color: subEmailId === sub.id ? 'var(--accent-blue)' : 'var(--text-primary)' }}
-                        >
-                          <EnvelopeSimple size={14} weight="regular" />
-                          <span>{sub.email}</span>
-                        </button>
-                      ))}
+                      {subEmails.filter(s => s.mainEmailId === main.id).map(sub => {
+                        const isTaken = takenSubEmailIds.includes(sub.id);
+                        return (
+                          <button
+                            key={sub.id}
+                            type="button"
+                            onClick={() => { if (!isTaken) { setSubEmailId(sub.id); setShowEmailMenu(false); } }}
+                            disabled={isTaken}
+                            className="w-full px-3 py-2 pl-6 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                            style={{
+                              color: isTaken ? 'var(--text-tertiary)' : subEmailId === sub.id ? 'var(--accent-blue)' : 'var(--text-primary)',
+                              opacity: isTaken ? 0.5 : 1,
+                              cursor: isTaken ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            <EnvelopeSimple size={14} weight="regular" />
+                            <span>{sub.email}</span>
+                            {isTaken && <span className="ml-auto text-xs">(in use)</span>}
+                          </button>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>

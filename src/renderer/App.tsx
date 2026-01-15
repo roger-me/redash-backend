@@ -692,6 +692,7 @@ function AppContent() {
           models={availableModels}
           initialModelId={createInModelId}
           requireModel={user?.role === 'basic'}
+          takenSubEmailIds={profiles.filter(p => p.subEmailId).map(p => p.subEmailId!)}
           onClose={() => {
             setShowCreateModal(false);
             setCreateInModelId(undefined);
@@ -705,6 +706,7 @@ function AppContent() {
         <EditProfileModal
           profile={editingProfile}
           models={availableModels}
+          takenSubEmailIds={profiles.filter(p => p.subEmailId).map(p => p.subEmailId!)}
           onClose={() => setEditingProfile(null)}
           onSave={handleUpdateProfile}
         />

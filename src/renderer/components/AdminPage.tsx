@@ -922,6 +922,23 @@ export default function AdminPage({
     setTimeout(() => setCopiedId(null), 1500);
   };
 
+  const extractUsername = (url: string): string => {
+    try {
+      // Add protocol if missing
+      let fullUrl = url;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        fullUrl = 'https://' + url;
+      }
+      const urlObj = new URL(fullUrl);
+      const path = urlObj.pathname.replace(/^\/+|\/+$/g, '');
+      return path.split('/')[0] || url;
+    } catch {
+      // Fallback: try to extract after last /
+      const parts = url.split('/');
+      return parts[parts.length - 1] || url;
+    }
+  };
+
   const openSubEmailEditModal = (subEmail: SubEmail) => {
     setEditingSubEmail(subEmail);
     setNewSubEmail(subEmail.email);
@@ -1171,7 +1188,7 @@ export default function AdminPage({
                                     title={modelData.instagram}
                                   >
                                     <InstagramLogo size={12} weight="bold" />
-                                    {copiedId === `ig-${stat.modelId}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : modelData.instagram}
+                                    {copiedId === `ig-${stat.modelId}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : extractUsername(modelData.instagram)}
                                   </button>
                                 )}
                                 {modelData?.onlyfans && (
@@ -1182,7 +1199,7 @@ export default function AdminPage({
                                     title={modelData.onlyfans}
                                   >
                                     <span className="font-bold text-[10px]">OF</span>
-                                    {copiedId === `of-${stat.modelId}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : modelData.onlyfans}
+                                    {copiedId === `of-${stat.modelId}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : extractUsername(modelData.onlyfans)}
                                   </button>
                                 )}
                               </div>
