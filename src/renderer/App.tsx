@@ -8,12 +8,13 @@ import FlipperPage from './components/FlipperPage';
 import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
+import LogsPage from './components/LogsPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Desktop, Users, Swap, Gear, ShieldCheck } from '@phosphor-icons/react';
+import { ArrowsClockwise, Desktop, Users, Swap, Gear, ShieldCheck, ClockCounterClockwise } from '@phosphor-icons/react';
 import SettingsPage from './components/SettingsPage';
 import { LanguageProvider, useLanguage } from './i18n';
 
-type Page = 'accounts' | 'flipper' | 'settings' | 'admin';
+type Page = 'accounts' | 'flipper' | 'settings' | 'admin' | 'logs';
 
 interface AuthUser {
   id: string;
@@ -542,6 +543,21 @@ function AppContent() {
             </button>
           )}
 
+          {user?.role === 'dev' && (
+            <button
+              onClick={() => setCurrentPage('logs')}
+              className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
+              style={{
+                background: currentPage === 'logs' ? 'var(--accent-primary)' : 'transparent',
+                color: currentPage === 'logs' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                borderRadius: '34px',
+              }}
+            >
+              <ClockCounterClockwise size={20} weight={currentPage === 'logs' ? 'fill' : 'regular'} />
+              <span className="text-sm font-medium">{t('nav.logs')}</span>
+            </button>
+          )}
+
           <button
             onClick={() => setCurrentPage('settings')}
             className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
@@ -668,6 +684,7 @@ function AppContent() {
             refreshTrigger={statsRefreshTrigger}
           />
         )}
+        {currentPage === 'logs' && user?.role === 'dev' && <LogsPage />}
       </div>
 
       {/* Browser Panel - Right side */}

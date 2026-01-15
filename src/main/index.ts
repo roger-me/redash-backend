@@ -11,6 +11,7 @@ import { getSession, signInWithEmail, signUp, signOut, resetPassword, signInWith
 import * as db from './supabase/database';
 import * as admin from './supabase/admin';
 import * as emails from './supabase/emails';
+import * as logs from './supabase/logs';
 
 // Updater
 import { initUpdater } from './updater';
@@ -162,7 +163,11 @@ ipcMain.handle('auth:getSession', async () => {
 });
 
 ipcMain.handle('auth:signInWithEmail', async (_, email: string, password: string) => {
-  return signInWithEmail(email, password);
+  const result = await signInWithEmail(email, password);
+  if (result?.user) {
+    logs.logActivity('logged in', 'user', result.user.id, result.user.username).catch(console.error);
+  }
+  return result;
 });
 
 ipcMain.handle('auth:signUp', async (_, email: string, password: string) => {
@@ -202,6 +207,11 @@ ipcMain.handle('profiles:getById', async (_, profileId: string) => {
 
 ipcMain.handle('profiles:create', async (_, profile: Omit<Profile, 'id' | 'createdAt'>) => {
   const result = await db.createProfile(profile);
+
+  // Log activity
+  if (result) {
+    logs.logActivity('created browser', 'profile', result.id, result.name).catch(console.error);
+  }
 
   // Sync to Google Sheets
   if (result) {
@@ -288,8 +298,13 @@ ipcMain.handle('profiles:delete', async (_, profileId: string) => {
   // Soft delete (archive) - don't remove local files or from sheet
   console.log('profiles:delete - archiving profile:', profileId);
   try {
+    // Get profile name before archiving
+    const profile = await db.getProfileById(profileId);
+    const profileName = profile?.name || '';
+
     const result = await db.deleteProfile(profileId);
     console.log('profiles:delete - archive result:', result);
+    logs.logActivity('archived browser', 'profile', profileId, profileName).catch(console.error);
     return result;
   } catch (err) {
     console.error('profiles:delete - error:', err);
@@ -310,10 +325,24 @@ ipcMain.handle('profiles:listDeleted', async () => {
 });
 
 ipcMain.handle('profiles:restore', async (_, profileId: string) => {
-  return db.restoreProfile(profileId);
+  // Get profile name before restoring
+  const allProfiles = await db.listDeletedProfiles();
+  const profile = allProfiles.find((p: any) => p.id === profileId);
+  const profileName = profile?.name || '';
+
+  const result = await db.restoreProfile(profileId);
+  if (result) {
+    logs.logActivity('restored browser', 'profile', profileId, profileName).catch(console.error);
+  }
+  return result;
 });
 
 ipcMain.handle('profiles:permanentDelete', async (_, profileId: string) => {
+  // Get profile name before deleting
+  const allProfiles = await db.listDeletedProfiles();
+  const profile = allProfiles.find((p: any) => p.id === profileId);
+  const profileName = profile?.name || '';
+
   // Clean up local browser data on permanent delete
   const profileDataPath = path.join(getDataPath(), 'profiles', profileId);
   if (fs.existsSync(profileDataPath)) {
@@ -322,8 +351,9 @@ ipcMain.handle('profiles:permanentDelete', async (_, profileId: string) => {
 
   const result = await db.permanentDeleteProfile(profileId);
 
-  // Remove from Google Sheets only on permanent delete
+  // Log activity and remove from Google Sheets only on permanent delete
   if (result) {
+    logs.logActivity('permanently deleted browser', 'profile', profileId, profileName).catch(console.error);
     googleSheets.deleteProfileFromSheet(profileId)
       .catch(err => console.error('Failed to sync profile deletion to sheet:', err));
   }
@@ -778,18 +808,29 @@ ipcMain.handle('models:list', async () => {
 });
 
 ipcMain.handle('models:create', async (_, model: Omit<Model, 'id' | 'createdAt'>) => {
-  return db.createModel(model);
+  const result = await db.createModel(model);
+  if (result) {
+    logs.logActivity('created model', 'model', result.id, result.name).catch(console.error);
+  }
+  return result;
 });
 
 ipcMain.handle('models:update', async (_, modelId: string, updates: Partial<Model>) => {
   console.log('IPC models:update received:', { modelId, updates });
   const result = await db.updateModel(modelId, updates);
   console.log('IPC models:update result:', result);
+  if (result) {
+    logs.logActivity('updated model', 'model', modelId, result.name).catch(console.error);
+  }
   return result;
 });
 
 ipcMain.handle('models:delete', async (_, modelId: string) => {
-  return db.deleteModel(modelId);
+  const result = await db.deleteModel(modelId);
+  if (result) {
+    logs.logActivity('deleted model', 'model', modelId).catch(console.error);
+  }
+  return result;
 });
 
 // Admin IPC Handlers
@@ -803,15 +844,27 @@ ipcMain.handle('admin:listUsers', async () => {
 });
 
 ipcMain.handle('admin:createUser', async (_, username: string, password: string, role: 'dev' | 'admin' | 'basic') => {
-  return admin.createAppUser(username, password, role);
+  const result = await admin.createAppUser(username, password, role);
+  if (result) {
+    logs.logActivity('created user', 'user', result.id, username).catch(console.error);
+  }
+  return result;
 });
 
 ipcMain.handle('admin:updateUser', async (_, userId: string, updates: { username?: string; password?: string; role?: 'dev' | 'admin' | 'basic' }) => {
-  return admin.updateAppUser(userId, updates);
+  const result = await admin.updateAppUser(userId, updates);
+  if (result) {
+    logs.logActivity('updated user', 'user', userId, result.username).catch(console.error);
+  }
+  return result;
 });
 
 ipcMain.handle('admin:deleteUser', async (_, userId: string) => {
-  return admin.deleteAppUser(userId);
+  const result = await admin.deleteAppUser(userId);
+  if (result) {
+    logs.logActivity('deleted user', 'user', userId).catch(console.error);
+  }
+  return result;
 });
 
 ipcMain.handle('admin:getUserModelAssignments', async (_, userId: string) => {
@@ -884,6 +937,24 @@ ipcMain.handle('emails:deleteSub', async (_, id: string) => {
 
 ipcMain.handle('emails:getForSelection', async () => {
   return emails.getEmailsForSelection();
+});
+
+// Activity Logs
+ipcMain.handle('logs:getAll', async (_, limit?: number) => {
+  console.log('logs:getAll called with limit:', limit);
+  try {
+    const result = await logs.getActivityLogs(limit || 100);
+    console.log('logs:getAll result:', result?.length, 'logs');
+    return result;
+  } catch (err) {
+    console.error('logs:getAll error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('logs:add', async (_, action: string, entityType?: string, entityId?: string, entityName?: string, details?: any) => {
+  console.log('logs:add called:', { action, entityType, entityId, entityName });
+  return logs.logActivity(action, entityType, entityId, entityName, details);
 });
 
 // Helper to fetch JSON from Reddit

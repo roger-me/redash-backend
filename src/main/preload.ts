@@ -147,6 +147,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Google Sheets
   sheetsSyncAll: () => ipcRenderer.invoke('sheets:syncAll'),
 
+  // Activity Logs
+  getActivityLogs: (limit?: number) => ipcRenderer.invoke('logs:getAll', limit),
+  logActivity: (action: string, entityType?: string, entityId?: string, entityName?: string, details?: any) =>
+    ipcRenderer.invoke('logs:add', action, entityType, entityId, entityName, details),
+
   // Shell
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
 });

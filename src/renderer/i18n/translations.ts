@@ -5,6 +5,7 @@ export const translations = {
     'nav.flipper': 'Flipper',
     'nav.ai': 'AI',
     'nav.admin': 'Admin',
+    'nav.logs': 'Logs',
     'nav.settings': 'Settings',
 
     // Settings Page
@@ -195,6 +196,25 @@ export const translations = {
     'admin.newEmail': 'New Email',
     'admin.editEmail': 'Edit Email',
 
+    // Logs Page
+    'logs.title': 'Activity Logs',
+    'logs.refresh': 'Refresh',
+    'logs.empty': 'No activity logs yet',
+    'logs.filterAll': 'All Activity',
+    'logs.filterProfiles': 'Browsers',
+    'logs.filterModels': 'Models',
+    'logs.filterUsers': 'Users',
+    'logs.filterEmails': 'Emails',
+    'logs.justNow': 'Just now',
+    'logs.minutesAgo': '{minutes}m ago',
+    'logs.hoursAgo': '{hours}h ago',
+    'logs.daysAgo': '{days}d ago',
+    'logs.redo': 'Redo',
+    'logs.redoTitle': 'Redo Action',
+    'logs.redoConfirm': 'Are you sure you want to redo "{action}" on "{entity}"?',
+    'logs.cancel': 'Cancel',
+    'logs.redoAction': 'Redo',
+
     // AI Page
     'ai.title': 'AI',
     'ai.subtitle': 'Generate Reddit replies',
@@ -275,6 +295,7 @@ export const translations = {
     'nav.flipper': 'Flipper',
     'nav.ai': 'IA',
     'nav.admin': 'Admin',
+    'nav.logs': 'Registros',
     'nav.settings': 'Ajustes',
 
     // Settings Page
@@ -464,6 +485,25 @@ export const translations = {
     'admin.emails': 'Emails',
     'admin.newEmail': 'Nuevo Email',
     'admin.editEmail': 'Editar Email',
+
+    // Logs Page
+    'logs.title': 'Registro de Actividad',
+    'logs.refresh': 'Actualizar',
+    'logs.empty': 'No hay registros de actividad',
+    'logs.filterAll': 'Toda la Actividad',
+    'logs.filterProfiles': 'Navegadores',
+    'logs.filterModels': 'Modelos',
+    'logs.filterUsers': 'Usuarios',
+    'logs.filterEmails': 'Emails',
+    'logs.justNow': 'Ahora mismo',
+    'logs.minutesAgo': 'hace {minutes}m',
+    'logs.hoursAgo': 'hace {hours}h',
+    'logs.daysAgo': 'hace {days}d',
+    'logs.redo': 'Rehacer',
+    'logs.redoTitle': 'Rehacer Acción',
+    'logs.redoConfirm': '¿Estás seguro de que quieres rehacer "{action}" en "{entity}"?',
+    'logs.cancel': 'Cancelar',
+    'logs.redoAction': 'Rehacer',
 
     // AI Page
     'ai.title': 'IA',
