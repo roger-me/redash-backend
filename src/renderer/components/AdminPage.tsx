@@ -1389,24 +1389,7 @@ export default function AdminPage({
                   </div>
                 </div>
 
-                {user.role === 'basic' && (userAssignments[user.id] || []).length > 0 && (
-                  <div className="mt-3 ml-13">
-                    <p className="text-xs mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Assigned models</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {models.filter(model => (userAssignments[user.id] || []).includes(model.id)).map(model => (
-                        <div
-                          key={model.id}
-                          className="h-7 px-3 text-xs font-medium flex items-center"
-                          style={{ background: 'var(--chip-bg)', color: 'var(--text-secondary)', borderRadius: '100px' }}
-                        >
-                          {model.name}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(user.role === 'admin' || user.role === 'dev') && (userAssignments[user.id] || []).length > 0 && (
+                {(userAssignments[user.id] || []).length > 0 && (
                   <div className="mt-3 ml-13">
                     <p className="text-xs mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Assigned models</p>
                     <div className="flex flex-wrap gap-1.5">
