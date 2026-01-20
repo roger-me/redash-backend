@@ -1,6 +1,6 @@
 {
   "name": "redash",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "Browser & Mobile Simulator Manager with Proxy Support",
   "main": "dist/main/main/index.js",
   "scripts": {
