@@ -179,8 +179,11 @@ export default function BrowserPanel({ profileId, profileName, onClose }: Browse
         </button>
         <input
           type="text"
-          value={isStartPage ? '' : url}
-          onChange={(e) => setUrl(e.target.value)}
+          value={url}
+          onChange={(e) => {
+            setUrl(e.target.value);
+            if (isStartPage) setIsStartPage(false);
+          }}
           onKeyPress={handleKeyPress}
           placeholder="Enter URL..."
           className="flex-1 h-8 px-3 text-xs rounded-lg outline-none"

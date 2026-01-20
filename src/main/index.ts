@@ -712,15 +712,18 @@ ipcMain.handle('browser:launch', async (_, profileId: string) => {
 
   // Proxy configuration
   if (profile.proxy) {
+    const proxyUrl = `http://${profile.proxy.host}:${profile.proxy.port}`;
     await profileSession.setProxy({
-      proxyRules: `http://${profile.proxy.host}:${profile.proxy.port}`,
+      proxyRules: proxyUrl,  // Routes all traffic (HTTP and HTTPS) through this proxy
     });
+    console.log(`Proxy configured for profile ${profileId}: ${profile.proxy.host}:${profile.proxy.port}`);
 
     if (profile.proxy.username && profile.proxy.password) {
       proxyCredentials.set(profileId, {
         username: profile.proxy.username,
         password: profile.proxy.password,
       });
+      console.log(`Proxy auth stored for profile ${profileId}`);
     }
   }
 
@@ -1166,21 +1169,39 @@ function createWindow() {
   }
 }
 
-// Global login handler for proxy authentication (fallback)
+// Global login handler for proxy authentication
 app.on('login', (event, webContents, request, authInfo, callback) => {
   if (authInfo.isProxy) {
-    // Find which profile this webContents belongs to
+    // Find which profile this webContents belongs to by checking embedded browsers
+    for (const [profileId, browserState] of embeddedBrowsers.entries()) {
+      // Check if the webContents matches any tab's BrowserView
+      for (const tab of browserState.tabs) {
+        if (tab.view.webContents === webContents || tab.view.webContents.id === webContents.id) {
+          const creds = proxyCredentials.get(profileId);
+          if (creds) {
+            console.log(`Proxy auth for profile ${profileId}: ${creds.username}`);
+            event.preventDefault();
+            callback(creds.username, creds.password);
+            return;
+          }
+        }
+      }
+    }
+
+    // Fallback: check activeSessions (for standalone windows)
     for (const [profileId, session] of activeSessions.entries()) {
-      // Check if it's the main window or a webview in it
-      if (session.window && !session.window.isDestroyed()) {
+      if (session.window && !session.window.isDestroyed() && session.window.webContents === webContents) {
         const creds = proxyCredentials.get(profileId);
         if (creds) {
+          console.log(`Proxy auth (standalone) for profile ${profileId}: ${creds.username}`);
           event.preventDefault();
           callback(creds.username, creds.password);
           return;
         }
       }
     }
+
+    console.log('Proxy auth requested but no matching profile found');
   }
 });
 
