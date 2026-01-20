@@ -48,6 +48,7 @@ export interface Profile {
   profilePicture?: string;
   createdAt: string;
   deletedAt?: string;
+  archivedAt?: string;
   expiresAt?: string;
   subEmailId?: string;
 }
@@ -124,6 +125,9 @@ export interface ElectronAPI {
   listDeletedProfiles: () => Promise<Profile[]>;
   restoreProfile: (id: string) => Promise<boolean>;
   permanentDeleteProfile: (id: string) => Promise<boolean>;
+  archiveProfile: (id: string) => Promise<boolean>;
+  listArchivedProfiles: () => Promise<Profile[]>;
+  unarchiveProfile: (id: string) => Promise<boolean>;
 
   // Browser
   launchBrowser: (profileId: string) => Promise<{ success: boolean }>;

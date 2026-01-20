@@ -214,6 +214,7 @@ export async function getAllProfilesForStats(): Promise<any[]> {
     .from('profiles')
     .select('*')
     .is('deleted_at', null)
+    .is('archived_at', null)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -266,6 +267,7 @@ export async function getAllProfiles(): Promise<any[]> {
     .from('profiles')
     .select('*')
     .is('deleted_at', null)
+    .is('archived_at', null)
     .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data || []).map((p: any) => ({

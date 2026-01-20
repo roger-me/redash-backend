@@ -165,6 +165,8 @@ export default function AdminPage({
   const [lastRefreshLabel, setLastRefreshLabel] = useState<string>('');
   const [showTrash, setShowTrash] = useState(false);
   const [deletedProfiles, setDeletedProfiles] = useState<Profile[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const [archivedProfiles, setArchivedProfiles] = useState<Profile[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [syncing, setSyncing] = useState(false);
@@ -459,6 +461,41 @@ export default function AdminPage({
       await loadDeletedProfiles();
     } catch (err) {
       console.error('Failed to permanently delete profile:', err);
+    }
+  };
+
+  // Archive handlers (hide banned accounts)
+  const loadArchivedProfiles = async () => {
+    try {
+      const archived = await window.electronAPI?.listArchivedProfiles();
+      setArchivedProfiles(archived || []);
+    } catch (err) {
+      console.error('Failed to load archived profiles:', err);
+    }
+  };
+
+  const handleOpenArchived = async () => {
+    await loadArchivedProfiles();
+    setShowArchived(true);
+  };
+
+  const handleArchiveProfile = async (profileId: string) => {
+    if (!confirm(t('admin.confirmArchiveHidden'))) return;
+    try {
+      await window.electronAPI?.archiveProfile(profileId);
+      await handleRefresh();
+    } catch (err) {
+      console.error('Failed to archive profile:', err);
+    }
+  };
+
+  const handleUnarchiveProfile = async (profileId: string) => {
+    try {
+      await window.electronAPI?.unarchiveProfile(profileId);
+      await loadArchivedProfiles();
+      await handleRefresh();
+    } catch (err) {
+      console.error('Failed to unarchive profile:', err);
     }
   };
 
@@ -1029,9 +1066,18 @@ export default function AdminPage({
                     <Table size={16} weight="bold" />
                   </button>
                   <button
+                    onClick={handleOpenArchived}
+                    className="h-9 px-3 flex items-center gap-2 transition-colors"
+                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
+                    title={t('admin.viewArchived')}
+                  >
+                    <Archive size={16} weight="bold" />
+                  </button>
+                  <button
                     onClick={handleOpenTrash}
                     className="h-9 px-3 flex items-center gap-2 transition-colors"
                     style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
+                    title={t('admin.viewTrash')}
                   >
                     <Trash size={16} weight="bold" />
                   </button>
@@ -1318,12 +1364,20 @@ export default function AdminPage({
                                               {t('admin.edit')}
                                             </button>
                                             <button
-                                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDeleteProfile(profile.id); }}
+                                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleArchiveProfile(profile.id); }}
                                               className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
                                               style={{ color: 'var(--text-tertiary)' }}
                                             >
                                               <Archive size={14} />
                                               {t('admin.archive')}
+                                            </button>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleDeleteProfile(profile.id); }}
+                                              className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+                                              style={{ color: '#F44336' }}
+                                            >
+                                              <Trash size={14} />
+                                              {t('admin.delete')}
                                             </button>
                                           </div>
                                         )}
@@ -1793,6 +1847,49 @@ export default function AdminPage({
                         <div className="flex items-center gap-2">
                           <button onClick={() => handleRestoreProfile(profile.id)} className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}><ArrowCounterClockwise size={14} weight="bold" /> {t('admin.restore')}</button>
                           <button onClick={() => handlePermanentDelete(profile.id)} className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}><Trash size={14} weight="bold" /> {t('admin.delete')}</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archived Modal (Hidden/Banned Accounts) */}
+      {showArchived && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-2xl max-h-[80vh] flex flex-col" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+            <div className="flex items-center justify-between p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-3">
+                <Archive size={24} weight="bold" style={{ color: 'var(--text-primary)' }} />
+                <div>
+                  <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{t('admin.archived')}</h2>
+                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>{t('admin.archivedDescription')}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowArchived(false)} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              {archivedProfiles.length === 0 ? (
+                <div className="text-center py-12">
+                  <Archive size={48} weight="light" style={{ color: 'var(--text-tertiary)' }} className="mx-auto mb-3" />
+                  <p style={{ color: 'var(--text-tertiary)' }}>{t('admin.archivedEmpty')}</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {archivedProfiles.map(profile => {
+                    return (
+                      <div key={profile.id} className="flex items-center gap-3 p-4" style={{ background: 'var(--bg-tertiary)', borderRadius: '100px' }}>
+                        {profile.country && countryFlagImages[profile.country] && <img src={countryFlagImages[profile.country]} alt={profile.country} className="w-5 h-5 object-contain rounded-sm" />}
+                        <div className="flex-1">
+                          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{profile.name}</span>
+                          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('admin.archivedOn')} {formatArchivedDate(profile.archivedAt || '')}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleUnarchiveProfile(profile.id)} className="h-8 px-3 flex items-center gap-1 text-sm font-medium rounded-full transition-colors" style={{ background: 'rgba(76, 175, 80, 0.15)', color: '#4CAF50' }}><ArrowCounterClockwise size={14} weight="bold" /> {t('admin.unarchive')}</button>
                         </div>
                       </div>
                     );

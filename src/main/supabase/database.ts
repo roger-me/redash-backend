@@ -50,6 +50,7 @@ export async function listProfiles() {
     .from('profiles')
     .select('*')
     .is('deleted_at', null)
+    .is('archived_at', null)
     .order('created_at', { ascending: false });
 
   if (error) throw new Error(error.message);
@@ -143,6 +144,52 @@ export async function permanentDeleteProfile(id: string) {
   const { error } = await supabase
     .from('profiles')
     .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+// Archive a profile (hide banned accounts but keep in Google Sheet)
+export async function archiveProfile(id: string) {
+  const supabase = getSupabaseClient();
+  console.log('DB archiveProfile - id:', id);
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ archived_at: new Date().toISOString() })
+    .eq('id', id)
+    .select();
+
+  console.log('DB archiveProfile - result:', { data, error });
+  if (error) throw new Error(error.message);
+  return true;
+}
+
+// List archived profiles
+export async function listArchivedProfiles() {
+  const supabase = getSupabaseClient();
+  console.log('DB listArchivedProfiles - fetching...');
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .is('deleted_at', null)
+    .not('archived_at', 'is', null)
+    .order('archived_at', { ascending: false });
+
+  console.log('DB listArchivedProfiles - result:', { count: data?.length, error });
+  if (error) throw new Error(error.message);
+  return (data || []).map(toCamelCase);
+}
+
+// Unarchive a profile
+export async function unarchiveProfile(id: string) {
+  const supabase = getSupabaseClient();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ archived_at: null })
     .eq('id', id);
 
   if (error) throw new Error(error.message);

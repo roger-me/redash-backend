@@ -361,6 +361,45 @@ ipcMain.handle('profiles:permanentDelete', async (_, profileId: string) => {
   return result;
 });
 
+ipcMain.handle('profiles:archive', async (_, profileId: string) => {
+  console.log('profiles:archive - archiving profile:', profileId);
+  try {
+    const profile = await db.getProfileById(profileId);
+    const profileName = profile?.name || '';
+    const result = await db.archiveProfile(profileId);
+    console.log('profiles:archive - result:', result);
+    logs.logActivity('archived browser (hidden)', 'profile', profileId, profileName).catch(console.error);
+    return result;
+  } catch (err) {
+    console.error('profiles:archive - error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('profiles:listArchived', async () => {
+  console.log('profiles:listArchived - fetching archived profiles');
+  try {
+    const archived = await db.listArchivedProfiles();
+    console.log('profiles:listArchived - found:', archived.length, 'profiles');
+    return archived;
+  } catch (err) {
+    console.error('profiles:listArchived - error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('profiles:unarchive', async (_, profileId: string) => {
+  const allProfiles = await db.listArchivedProfiles();
+  const profile = allProfiles.find((p: any) => p.id === profileId);
+  const profileName = profile?.name || '';
+
+  const result = await db.unarchiveProfile(profileId);
+  if (result) {
+    logs.logActivity('unarchived browser', 'profile', profileId, profileName).catch(console.error);
+  }
+  return result;
+});
+
 // Embedded browser state
 interface EmbeddedTab {
   id: string;
