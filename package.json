@@ -1,6 +1,6 @@
 {
   "name": "redash",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "description": "Browser & Mobile Simulator Manager with Proxy Support",
   "main": "dist/main/main/index.js",
   "scripts": {
@@ -32,7 +32,7 @@
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
     "electron": "^28.3.3",
-    "electron-builder": "^24.9.1",
+    "electron-builder": "^26.4.0",
     "postcss": "^8.5.6",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -50,7 +50,6 @@
     },
     "files": [
       "dist/**/*",
-      "node_modules/**/*",
       "package.json"
     ],
     "extraResources": [
@@ -84,8 +83,9 @@
         }
       ],
       "category": "public.app-category.utilities",
-      "identity": null,
-      "icon": "build/icon.icns"
+      "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
     },
     "dmg": {
       "contents": [
