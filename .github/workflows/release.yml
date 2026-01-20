@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-mac:
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
 
@@ -22,8 +22,8 @@ jobs:
 
       - name: Import certificate
         env:
-          CERTIFICATE_BASE64: \${{ secrets.CERTIFICATE_BASE64 }}
-          CERTIFICATE_PASSWORD: \${{ secrets.CERTIFICATE_PASSWORD }}
+          CERTIFICATE_BASE64: ${{ secrets.CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
         run: |
           echo $CERTIFICATE_BASE64 | base64 --decode > certificate.p12
           security create-keychain -p actions build.keychain
@@ -35,7 +35,7 @@ jobs:
 
       - name: Build and publish
         env:
-          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           yarn build
           npx electron-builder --mac --publish always
@@ -56,7 +56,7 @@ jobs:
 
       - name: Build and publish
         env:
-          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           yarn build
           npx electron-builder --win --publish always
