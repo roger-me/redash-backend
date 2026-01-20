@@ -136,12 +136,14 @@ export interface RedditPost {
   url?: string;
   permalink: string;
   thumbnail?: string;
+  previewUrl?: string;
   selftext?: string;
   score: number;
   upvoteRatio?: number;
   numComments: number;
   createdUtc: string;
   fetchedAt: string;
+  driveLink?: string;
 }
 
 export interface ElectronAPI {
@@ -232,6 +234,7 @@ export interface ElectronAPI {
   syncRedditPosts: (profileId: string, username: string) => Promise<{ synced: number; total?: number; error?: string }>;
   listRedditPosts: (modelId: string, startDate?: string, endDate?: string) => Promise<RedditPost[]>;
   getRedditPost: (id: string) => Promise<RedditPost>;
+  updateRedditPost: (id: string, updates: { driveLink?: string }) => Promise<RedditPost>;
 }
 
 declare global {

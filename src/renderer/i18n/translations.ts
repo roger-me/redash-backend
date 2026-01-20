@@ -307,6 +307,7 @@ export const translations = {
     'posts.browser': 'Browser',
     'posts.postedOn': 'Posted on',
     'posts.openOnReddit': 'Open on Reddit',
+    'posts.driveLink': 'Google Drive Link',
   },
   es: {
     // Navigation
@@ -616,6 +617,7 @@ export const translations = {
     'posts.browser': 'Navegador',
     'posts.postedOn': 'Publicado el',
     'posts.openOnReddit': 'Abrir en Reddit',
+    'posts.driveLink': 'Enlace de Google Drive',
   },
 } as const;
 

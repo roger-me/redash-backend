@@ -174,4 +174,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   syncRedditPosts: (profileId: string, username: string) => ipcRenderer.invoke('reddit:syncPosts', profileId, username),
   listRedditPosts: (modelId: string, startDate?: string, endDate?: string) => ipcRenderer.invoke('reddit:listPosts', modelId, startDate, endDate),
   getRedditPost: (id: string) => ipcRenderer.invoke('reddit:getPost', id),
+  updateRedditPost: (id: string, updates: { driveLink?: string }) => ipcRenderer.invoke('reddit:updatePost', id, updates),
 });

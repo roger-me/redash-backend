@@ -230,6 +230,22 @@ export async function syncRedditPosts(profileId: string, username: string) {
   for (const post of posts) {
     const p = post.data;
 
+    // Get best image URL - try multiple sources
+    let previewUrl: string | null = null;
+
+    // 1. Check if URL is a direct image from i.redd.it or imgur
+    if (p.url && (p.url.includes('i.redd.it') || p.url.includes('i.imgur.com'))) {
+      previewUrl = p.url;
+    }
+    // 2. Try preview images
+    else if (p.preview?.images?.[0]?.source?.url) {
+      previewUrl = p.preview.images[0].source.url.replace(/&amp;/g, '&');
+    }
+    // 3. Try url_overridden_by_dest for crossposted content
+    else if (p.url_overridden_by_dest && (p.url_overridden_by_dest.includes('i.redd.it') || p.url_overridden_by_dest.includes('i.imgur.com'))) {
+      previewUrl = p.url_overridden_by_dest;
+    }
+
     // Upsert post
     const { error } = await supabase
       .from('reddit_posts')
@@ -240,7 +256,8 @@ export async function syncRedditPosts(profileId: string, username: string) {
         title: p.title,
         url: p.url || null,
         permalink: p.permalink,
-        thumbnail: p.thumbnail && p.thumbnail !== 'self' && p.thumbnail !== 'default' ? p.thumbnail : null,
+        thumbnail: p.thumbnail && p.thumbnail.startsWith('http') ? p.thumbnail : null,
+        preview_url: previewUrl,
         selftext: p.selftext || null,
         score: p.score || 0,
         upvote_ratio: p.upvote_ratio || null,
@@ -302,6 +319,22 @@ export async function getRedditPost(id: string) {
     .from('reddit_posts')
     .select('*')
     .eq('id', id)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return toCamelCase(data);
+}
+
+// Update a Reddit post (e.g., to add drive_link)
+export async function updateRedditPost(id: string, updates: Record<string, any>) {
+  const supabase = getSupabaseClient();
+  const snakeCaseUpdates = toSnakeCase(updates);
+
+  const { data, error } = await supabase
+    .from('reddit_posts')
+    .update(snakeCaseUpdates)
+    .eq('id', id)
+    .select()
     .single();
 
   if (error) throw new Error(error.message);

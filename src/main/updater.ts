@@ -61,6 +61,16 @@ autoUpdater.on('update-downloaded', (info) => {
 // Initialize updater with main window reference
 export function initUpdater(window: BrowserWindow) {
   mainWindow = window;
+
+  // Auto-check for updates after a short delay (let app fully load first)
+  setTimeout(async () => {
+    try {
+      console.log('Auto-checking for updates...');
+      await autoUpdater.checkForUpdates();
+    } catch (error) {
+      console.error('Auto-update check failed:', error);
+    }
+  }, 3000); // 3 second delay
 }
 
 // IPC Handlers

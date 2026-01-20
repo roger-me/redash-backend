@@ -1,7 +1,31 @@
 import { useState, useEffect, useMemo } from 'react';
-import { CaretLeft, CaretRight, ArrowsClockwise, ArrowUp, ChatCircle, X } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, ArrowsClockwise, ArrowUp, ChatCircle, X, Link as LinkIcon, Check, PencilSimple } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 import { Model, Profile, RedditPost } from '../../shared/types';
+
+// Helper to extract Google Drive file ID and convert to preview URL
+function getDrivePreviewUrl(driveLink: string | undefined): string | null {
+  if (!driveLink) return null;
+
+  // Match various Google Drive URL formats
+  // https://drive.google.com/file/d/FILE_ID/view
+  // https://drive.google.com/open?id=FILE_ID
+  // https://drive.google.com/uc?id=FILE_ID
+  const patterns = [
+    /\/file\/d\/([a-zA-Z0-9_-]+)/,
+    /[?&]id=([a-zA-Z0-9_-]+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = driveLink.match(pattern);
+    if (match && match[1]) {
+      // Use lh3.googleusercontent.com for direct image access
+      return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+  }
+
+  return null;
+}
 
 interface PostsPageProps {
   models: Model[];
@@ -10,11 +34,48 @@ interface PostsPageProps {
 
 function PostsPage({ models, profiles }: PostsPageProps) {
   const { t } = useLanguage();
-  const [selectedModelId, setSelectedModelId] = useState<string>('');
+  const [selectedModelId, setSelectedModelId] = useState<string>(() => {
+    // Load from localStorage or use first model
+    const saved = localStorage.getItem('posts_selectedModelId');
+    if (saved && models.some(m => m.id === saved)) {
+      return saved;
+    }
+    return models[0]?.id || '';
+  });
   const [posts, setPosts] = useState<RedditPost[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedPost, setSelectedPost] = useState<RedditPost | null>(null);
+  const [expandedDay, setExpandedDay] = useState<Date | null>(null);
+  const [editingDriveLink, setEditingDriveLink] = useState(false);
+  const [driveLinkInput, setDriveLinkInput] = useState('');
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [lastSyncLabel, setLastSyncLabel] = useState<string>('');
+
+  // Helper to get relative time
+  const getRelativeTime = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 30) return t('time.now');
+    if (diffSec < 60) return t('time.secondsAgo', { seconds: 30 });
+    if (diffMin < 60) return t('time.minutesAgo', { minutes: diffMin });
+    if (diffHour < 24) return t('time.hoursAgo', { hours: diffHour });
+    return t('time.daysAgo', { days: diffDay });
+  };
+
+  // Update sync label periodically
+  useEffect(() => {
+    if (!lastSyncTime) return;
+    const updateLabel = () => setLastSyncLabel(getRelativeTime(lastSyncTime));
+    updateLabel();
+    const interval = setInterval(updateLabel, 10000);
+    return () => clearInterval(interval);
+  }, [lastSyncTime]);
 
   // Get first and last day of current month
   const monthStart = useMemo(() => {
@@ -54,6 +115,25 @@ function PostsPage({ models, profiles }: PostsPageProps) {
   const monthLabel = useMemo(() => {
     return currentDate.toLocaleDateString('en', { month: 'long', year: 'numeric' });
   }, [currentDate]);
+
+  // Save selected model to localStorage
+  useEffect(() => {
+    if (selectedModelId) {
+      localStorage.setItem('posts_selectedModelId', selectedModelId);
+    }
+  }, [selectedModelId]);
+
+  // Set default model if none selected and models are available
+  useEffect(() => {
+    if (!selectedModelId && models.length > 0) {
+      const saved = localStorage.getItem('posts_selectedModelId');
+      if (saved && models.some(m => m.id === saved)) {
+        setSelectedModelId(saved);
+      } else {
+        setSelectedModelId(models[0].id);
+      }
+    }
+  }, [models, selectedModelId]);
 
   // Get profiles for selected model
   const modelProfiles = useMemo(() => {
@@ -103,6 +183,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
         console.log('Sync result:', result);
       }
       await loadPosts();
+      setLastSyncTime(new Date());
     } catch (err) {
       console.error('Failed to sync posts:', err);
     } finally {
@@ -179,8 +260,32 @@ function PostsPage({ models, profiles }: PostsPageProps) {
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // Handle saving drive link
+  const handleSaveDriveLink = async () => {
+    if (!selectedPost) return;
+
+    try {
+      const updated = await window.electronAPI?.updateRedditPost(selectedPost.id, { driveLink: driveLinkInput || undefined });
+      if (updated) {
+        // Update local state
+        setPosts(prev => prev.map(p => p.id === selectedPost.id ? { ...p, driveLink: driveLinkInput || undefined } : p));
+        setSelectedPost({ ...selectedPost, driveLink: driveLinkInput || undefined });
+      }
+      setEditingDriveLink(false);
+    } catch (err) {
+      console.error('Failed to save drive link:', err);
+    }
+  };
+
+  // When opening post detail modal, initialize drive link input
+  const handleOpenPost = (post: RedditPost) => {
+    setSelectedPost(post);
+    setDriveLinkInput(post.driveLink || '');
+    setEditingDriveLink(false);
+  };
+
   return (
-    <main className="pl-4 pb-6 flex-1 pr-6">
+    <main className="pl-4 pb-6 flex-1 pr-6 flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-3 mb-5 mt-2 px-1">
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
@@ -212,7 +317,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
             <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="h-9 px-4 flex items-center gap-2 transition-colors"
+              className="h-9 px-3 flex items-center gap-2 transition-colors"
               style={{
                 background: 'var(--chip-bg)',
                 color: 'var(--text-primary)',
@@ -225,7 +330,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                 weight="bold"
                 style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }}
               />
-              <span className="text-sm font-medium">{t('posts.sync')}</span>
+              {lastSyncLabel && <span className="text-sm font-medium">{lastSyncLabel}</span>}
             </button>
           )}
 
@@ -269,9 +374,9 @@ function PostsPage({ models, profiles }: PostsPageProps) {
           <p style={{ color: 'var(--text-tertiary)' }}>{t('posts.selectModelPrompt')}</p>
         </div>
       ) : (
-        <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-secondary)' }}>
+        <div className="rounded-xl overflow-hidden flex-1 flex flex-col" style={{ background: 'var(--bg-secondary)' }}>
           {/* Weekday Headers */}
-          <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border-light)' }}>
+          <div className="grid grid-cols-7 border-b flex-shrink-0" style={{ borderColor: 'var(--border-light)' }}>
             {weekDays.map(day => (
               <div
                 key={day}
@@ -284,15 +389,15 @@ function PostsPage({ models, profiles }: PostsPageProps) {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 flex-1" style={{ gridAutoRows: '1fr' }}>
             {calendarDays.map((day, i) => {
               const dayPosts = getPostsForDay(day.date);
-              const hasMultiple = dayPosts.length > 3;
+              const hasMultiple = dayPosts.length > 5;
 
               return (
                 <div
                   key={i}
-                  className="min-h-[100px] p-2 border-b border-r"
+                  className="p-2 border-b border-r overflow-hidden"
                   style={{
                     borderColor: 'var(--border-light)',
                     background: isToday(day.date)
@@ -315,16 +420,16 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                   </div>
 
                   {/* Posts */}
-                  <div className="flex flex-col gap-1">
-                    {dayPosts.slice(0, hasMultiple ? 2 : 3).map(post => {
+                  <div className="flex flex-col gap-1 flex-1 overflow-hidden">
+                    {dayPosts.slice(0, hasMultiple ? 4 : 5).map(post => {
                       const isBanned = isProfileBanned(post.profileId);
                       const profileName = getProfileName(post.profileId);
                       const profileColor = getProfileColor(post.profileId);
                       return (
                         <button
                           key={post.id}
-                          onClick={() => setSelectedPost(post)}
-                          className="w-full px-3 py-1 text-left truncate transition-opacity hover:opacity-80"
+                          onClick={() => handleOpenPost(post)}
+                          className="w-full pl-3 pr-1.5 py-1.5 text-left truncate transition-opacity hover:opacity-80"
                           style={{
                             background: isBanned ? 'var(--accent-red)' : profileColor.bg,
                             color: isBanned ? '#fff' : profileColor.text,
@@ -332,40 +437,119 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                           }}
                         >
                           <div className="flex items-center justify-between text-xs">
-                            <span className="font-semibold">{profileName}</span>
+                            <div className="flex items-center gap-1.5">
+                              {post.driveLink && (
+                                <span
+                                  className="w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold flex-shrink-0"
+                                  style={{ background: 'rgba(255,255,255,0.9)', color: '#4285F4' }}
+                                >
+                                  G
+                                </span>
+                              )}
+                              <span className="font-semibold">{profileName}</span>
+                            </div>
                             <div className="flex items-center gap-1">
-                              <span
-                                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full"
-                                style={{
-                                  background: isBanned ? 'rgba(255,255,255,0.2)' : `hsl(${Math.abs([...post.profileId].reduce((a, c) => c.charCodeAt(0) + ((a << 5) - a), 0)) % 360}, 70%, 70%)`,
-                                }}
-                              >
-                                <ArrowUp size={10} weight="bold" className="flex-shrink-0" />
-                                <span>{formatScore(post.score)}</span>
-                              </span>
-                              <span
-                                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full"
-                                style={{
-                                  background: isBanned ? 'rgba(255,255,255,0.2)' : `hsl(${Math.abs([...post.profileId].reduce((a, c) => c.charCodeAt(0) + ((a << 5) - a), 0)) % 360}, 70%, 70%)`,
-                                }}
-                              >
-                                <ChatCircle size={10} weight="bold" className="flex-shrink-0" />
-                                <span>{post.numComments}</span>
-                              </span>
+                              <ArrowUp size={10} weight="bold" className="flex-shrink-0" />
+                              <span>{formatScore(post.score)}</span>
+                              <span className="opacity-50">·</span>
+                              <ChatCircle size={10} weight="bold" className="flex-shrink-0" />
+                              <span>{post.numComments}</span>
                             </div>
                           </div>
                         </button>
                       );
                     })}
                     {hasMultiple && (
-                      <div className="text-xs px-1" style={{ color: 'var(--text-tertiary)' }}>
-                        +{dayPosts.length - 2} {t('posts.more')}
-                      </div>
+                      <button
+                        onClick={() => setExpandedDay(day.date)}
+                        className="w-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80"
+                        style={{
+                          background: 'var(--chip-bg)',
+                          color: 'var(--text-primary)',
+                          borderRadius: '100px',
+                        }}
+                      >
+                        +{dayPosts.length - 4} {t('posts.more')}
+                      </button>
                     )}
                   </div>
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Expanded Day Modal */}
+      {expandedDay && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setExpandedDay(null)}
+        >
+          <div
+            className="w-[400px] max-h-[80vh] overflow-y-auto p-6 rounded-2xl"
+            style={{ background: 'var(--bg-secondary)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {expandedDay.toLocaleDateString('en', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </h3>
+              <button
+                onClick={() => setExpandedDay(null)}
+                className="p-2 rounded-full transition-colors hover:opacity-80"
+                style={{ background: 'var(--chip-bg)', color: 'var(--text-tertiary)' }}
+              >
+                <X size={16} weight="bold" />
+              </button>
+            </div>
+
+            {/* Posts List */}
+            <div className="flex flex-col gap-2">
+              {getPostsForDay(expandedDay).map(post => {
+                const isBanned = isProfileBanned(post.profileId);
+                const profileName = getProfileName(post.profileId);
+                const profileColor = getProfileColor(post.profileId);
+                return (
+                  <button
+                    key={post.id}
+                    onClick={() => {
+                      setExpandedDay(null);
+                      handleOpenPost(post);
+                    }}
+                    className="w-full pl-3 pr-1.5 py-1.5 text-left truncate transition-opacity hover:opacity-80"
+                    style={{
+                      background: isBanned ? 'var(--accent-red)' : profileColor.bg,
+                      color: isBanned ? '#fff' : profileColor.text,
+                      borderRadius: '100px',
+                    }}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        {post.driveLink && (
+                          <span
+                            className="w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold flex-shrink-0"
+                            style={{ background: 'rgba(255,255,255,0.9)', color: '#4285F4' }}
+                          >
+                            G
+                          </span>
+                        )}
+                        <span className="font-semibold">{profileName}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <ArrowUp size={10} weight="bold" className="flex-shrink-0" />
+                        <span>{formatScore(post.score)}</span>
+                        <span className="opacity-50">·</span>
+                        <ChatCircle size={10} weight="bold" className="flex-shrink-0" />
+                        <span>{post.numComments}</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -422,17 +606,93 @@ function PostsPage({ models, profiles }: PostsPageProps) {
               </div>
             </div>
 
-            {/* Thumbnail */}
-            {selectedPost.thumbnail && (
-              <div className="mb-4">
-                <img
-                  src={selectedPost.thumbnail}
-                  alt="Thumbnail"
-                  className="w-full rounded-xl object-cover"
-                  style={{ maxHeight: '200px' }}
-                />
+            {/* Google Drive Link */}
+            <div className="mb-4 p-3 rounded-xl" style={{ background: 'var(--bg-primary)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <LinkIcon size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
+                  <span className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
+                    {t('posts.driveLink')}
+                  </span>
+                </div>
+                {!editingDriveLink && selectedPost.driveLink && (
+                  <button
+                    onClick={() => setEditingDriveLink(true)}
+                    className="p-1 rounded-full transition-opacity hover:opacity-80"
+                    style={{ color: 'var(--text-tertiary)' }}
+                  >
+                    <PencilSimple size={14} weight="bold" />
+                  </button>
+                )}
               </div>
-            )}
+              {editingDriveLink || !selectedPost.driveLink ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={driveLinkInput}
+                    onChange={(e) => setDriveLinkInput(e.target.value)}
+                    placeholder="https://drive.google.com/file/d/..."
+                    className="flex-1 h-9 px-4 text-sm"
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      border: 'none',
+                      borderRadius: '100px',
+                      outline: 'none',
+                    }}
+                  />
+                  <button
+                    onClick={handleSaveDriveLink}
+                    className="w-9 h-9 flex items-center justify-center transition-opacity hover:opacity-80"
+                    style={{ background: 'var(--accent-primary)', color: 'var(--accent-text)', borderRadius: '100px' }}
+                  >
+                    <Check size={16} weight="bold" />
+                  </button>
+                </div>
+              ) : (
+                <a
+                  href={selectedPost.driveLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm truncate block transition-opacity hover:opacity-80"
+                  style={{ color: 'var(--accent-primary)' }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.electronAPI?.openExternal(selectedPost.driveLink!);
+                  }}
+                >
+                  {selectedPost.driveLink}
+                </a>
+              )}
+            </div>
+
+            {/* Thumbnail/Image - prioritize Google Drive preview */}
+            {(() => {
+              // First try Google Drive preview, then Reddit sources
+              const drivePreview = getDrivePreviewUrl(selectedPost.driveLink);
+              const imageUrl = drivePreview ||
+                selectedPost.previewUrl ||
+                selectedPost.thumbnail ||
+                (selectedPost.url && (
+                  selectedPost.url.includes('i.redd.it') ||
+                  selectedPost.url.includes('i.imgur.com') ||
+                  /\.(jpg|jpeg|png|gif|webp)$/i.test(selectedPost.url)
+                ) ? selectedPost.url : null);
+
+              if (!imageUrl) return null;
+
+              return (
+                <div className="mb-4">
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="w-full rounded-xl object-cover"
+                    style={{ maxHeight: '300px' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+              );
+            })()}
 
             {/* Caption/Selftext */}
             {selectedPost.selftext && (

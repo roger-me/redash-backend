@@ -1042,6 +1042,10 @@ ipcMain.handle('reddit:getPost', async (_, id: string) => {
   return posts.getRedditPost(id);
 });
 
+ipcMain.handle('reddit:updatePost', async (_, id: string, updates: Record<string, any>) => {
+  return posts.updateRedditPost(id, updates);
+});
+
 // Activity Logs
 ipcMain.handle('logs:getAll', async (_, limit?: number) => {
   console.log('logs:getAll called with limit:', limit);
