@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, InstagramLogo, Archive } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -75,8 +75,8 @@ interface AdminPageProps {
   models: Model[];
   currentUserId: string;
   currentUserRole: UserRole;
-  onCreateModel: (name: string, profilePicture?: string, instagram?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
-  onUpdateModel: (id: string, name: string, profilePicture?: string, instagram?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
+  onCreateModel: (name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
+  onUpdateModel: (id: string, name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
   onDeleteModel: (id: string) => Promise<void>;
   onCreateBrowser: () => void;
   onEditProfile: (profileId: string) => void;
@@ -144,7 +144,6 @@ export default function AdminPage({
   const [editingModel, setEditingModel] = useState<Model | null>(null);
   const [newModelName, setNewModelName] = useState('');
   const [modelProfilePicture, setModelProfilePicture] = useState('');
-  const [modelInstagram, setModelInstagram] = useState('');
   const [modelOnlyfans, setModelOnlyfans] = useState('');
   const [modelContentFolder, setModelContentFolder] = useState('');
   const [modelError, setModelError] = useState('');
@@ -678,11 +677,10 @@ export default function AdminPage({
       return;
     }
     try {
-      await onCreateModel(newModelName.trim(), modelProfilePicture || undefined, modelInstagram || undefined, modelOnlyfans || undefined, modelContentFolder || undefined);
+      await onCreateModel(newModelName.trim(), modelProfilePicture || undefined, modelOnlyfans || undefined, modelContentFolder || undefined);
       setShowModelModal(false);
       setNewModelName('');
       setModelProfilePicture('');
-      setModelInstagram('');
       setModelOnlyfans('');
       setModelContentFolder('');
       setModelError('');
@@ -698,11 +696,10 @@ export default function AdminPage({
       return;
     }
     try {
-      await onUpdateModel(editingModel.id, newModelName.trim(), modelProfilePicture, modelInstagram, modelOnlyfans, modelContentFolder);
+      await onUpdateModel(editingModel.id, newModelName.trim(), modelProfilePicture, modelOnlyfans, modelContentFolder);
       setEditingModel(null);
       setNewModelName('');
       setModelProfilePicture('');
-      setModelInstagram('');
       setModelOnlyfans('');
       setModelContentFolder('');
       setModelError('');
@@ -724,7 +721,6 @@ export default function AdminPage({
     setEditingModel(model);
     setNewModelName(model.name);
     setModelProfilePicture(model.profilePicture || '');
-    setModelInstagram(model.instagram || '');
     setModelOnlyfans(model.onlyfans || '');
     setModelContentFolder(model.contentFolder || '');
     setModelError('');
@@ -1226,28 +1222,6 @@ export default function AdminPage({
                                 {isExpanded ? <CaretDown size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} /> : <CaretRight size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />}
                                 <FolderSimple size={16} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
                                 <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{stat.modelName}</span>
-                                {modelData?.instagram && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); copyToClipboard(modelData.instagram!, `ig-${stat.modelId}`); }}
-                                    className="h-6 px-2 flex items-center gap-1 text-xs"
-                                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
-                                    title={modelData.instagram}
-                                  >
-                                    <InstagramLogo size={12} weight="bold" />
-                                    {copiedId === `ig-${stat.modelId}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : extractUsername(modelData.instagram)}
-                                  </button>
-                                )}
-                                {modelData?.onlyfans && (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); copyToClipboard(modelData.onlyfans!, `of-${stat.modelId}`); }}
-                                    className="h-6 px-2 flex items-center gap-1 text-xs"
-                                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
-                                    title={modelData.onlyfans}
-                                  >
-                                    <span className="font-bold text-[10px]">OF</span>
-                                    {copiedId === `of-${stat.modelId}` ? <span style={{ color: 'var(--accent-green)' }}>Copied!</span> : extractUsername(modelData.onlyfans)}
-                                  </button>
-                                )}
                               </div>
                               <div className="text-center text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                                 {stat.totalPosts}
@@ -1777,7 +1751,7 @@ export default function AdminPage({
           <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingModel ? t('model.edit') : t('model.create')}</h2>
-              <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelInstagram(''); setModelOnlyfans(''); setModelContentFolder(''); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+              <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelOnlyfans(''); setModelContentFolder(''); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-4 cursor-pointer" onClick={() => modelFileInputRef.current?.click()}>
@@ -1794,10 +1768,6 @@ export default function AdminPage({
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.name')}</label>
                 <input type="text" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder={t('admin.enterModelName')} autoFocus />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.instagram')}</label>
-                <input type="url" value={modelInstagram} onChange={(e) => setModelInstagram(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="https://instagram.com/username" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.onlyfans')}</label>

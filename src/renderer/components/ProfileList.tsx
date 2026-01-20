@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Profile, Model } from '../../shared/types';
-import { CaretRight, ChatCircle, File, User, Calendar, Copy } from '@phosphor-icons/react';
+import { CaretRight, ChatCircle, File, User, Calendar, Copy, EnvelopeSimple, Key } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 
 // Flag PNG imports
@@ -226,6 +226,38 @@ function ProfileList({
               );
             })()}
           </div>
+
+          {/* Email & Password */}
+          {(profile.credentials?.email || profile.credentials?.password) && (
+            <div className="flex items-center gap-2 mt-2">
+              {profile.credentials?.email && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); copyToClipboard(profile.credentials!.email!, `email-${profile.id}`); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(142, 142, 147, 0.12)' }}
+                  title="Click to copy email"
+                >
+                  <EnvelopeSimple size={12} weight="bold" color="var(--text-tertiary)" />
+                  <span className="text-xs font-medium" style={{ color: copiedId === `email-${profile.id}` ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
+                    {copiedId === `email-${profile.id}` ? t('common.copied') : profile.credentials.email}
+                  </span>
+                </button>
+              )}
+              {profile.credentials?.password && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); copyToClipboard(profile.credentials!.password!, `pwd-${profile.id}`); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                  style={{ background: 'rgba(142, 142, 147, 0.12)' }}
+                  title="Click to copy password"
+                >
+                  <Key size={12} weight="bold" color="var(--text-tertiary)" />
+                  <span className="text-xs font-medium" style={{ color: copiedId === `pwd-${profile.id}` ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
+                    {copiedId === `pwd-${profile.id}` ? t('common.copied') : profile.credentials.password}
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -307,16 +339,6 @@ function ProfileList({
                 <span className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
                   {model.name}
                 </span>
-                {model.instagram && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); copyToClipboard(model.instagram!, `ig-${model.id}`); }}
-                    className="h-7 px-2.5 flex items-center gap-1.5 text-xs font-medium"
-                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
-                    title={model.instagram}
-                  >
-                    {copiedId === `ig-${model.id}` ? <span style={{ color: 'var(--accent-green)' }}>{t('common.copied')}</span> : <><span>Instagram</span><Copy size={12} /></>}
-                  </button>
-                )}
                 {model.onlyfans && (
                   <button
                     onClick={(e) => { e.stopPropagation(); copyToClipboard(model.onlyfans!, `of-${model.id}`); }}

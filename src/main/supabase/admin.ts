@@ -238,6 +238,7 @@ export async function getAllProfilesForStats(): Promise<any[]> {
     expiresAt: p.expires_at,
     lastPostDate: p.last_post_date,
     lastCommentDate: p.last_comment_date,
+    credentials: p.credentials,
   }));
 }
 

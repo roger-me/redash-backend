@@ -90,6 +90,7 @@ export interface ProfileForStats {
   commentsToday?: number;
   expiresAt?: string;
   subEmailId?: string;
+  credentials?: Credentials;
 }
 
 export interface MainEmail {
