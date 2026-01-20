@@ -213,6 +213,14 @@ export async function syncRedditPosts(profileId: string, username: string) {
   const cleanUsername = username.replace(/^u\//, '').trim();
   if (!cleanUsername) return { synced: 0, error: 'Invalid username' };
 
+  // Get profile status to store with posts
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('status')
+    .eq('id', profileId)
+    .single();
+  const isBanned = profile?.status === 'banned';
+
   console.log('Fetching Reddit posts for:', cleanUsername);
 
   // Fetch posts from Reddit (up to 100)
@@ -264,6 +272,8 @@ export async function syncRedditPosts(profileId: string, username: string) {
         num_comments: p.num_comments || 0,
         created_utc: new Date(p.created_utc * 1000).toISOString(),
         fetched_at: new Date().toISOString(),
+        account_name: cleanUsername,
+        is_banned: isBanned,
       }, {
         onConflict: 'profile_id,reddit_id',
       });

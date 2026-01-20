@@ -217,16 +217,17 @@ function PostsPage({ models, profiles }: PostsPageProps) {
     return profiles.find(p => p.id === profileId);
   };
 
-  // Get profile name for a post
-  const getProfileName = (profileId: string): string => {
+  // Get profile name for a post (with fallback to stored account name)
+  const getProfileName = (profileId: string, accountName?: string): string => {
     const profile = getProfile(profileId);
-    return profile?.name || 'Unknown';
+    return profile?.name || accountName || 'Unknown';
   };
 
-  // Check if profile is banned
-  const isProfileBanned = (profileId: string): boolean => {
+  // Check if profile is banned (with fallback to stored status)
+  const isProfileBanned = (profileId: string, isBannedFallback?: boolean): boolean => {
     const profile = getProfile(profileId);
-    return profile?.status === 'banned';
+    if (profile) return profile.status === 'banned';
+    return isBannedFallback ?? false;
   };
 
   const isToday = (date: Date) => {
@@ -422,8 +423,8 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                   {/* Posts */}
                   <div className="flex flex-col gap-1 flex-1 overflow-hidden">
                     {dayPosts.slice(0, hasMultiple ? 4 : 5).map(post => {
-                      const isBanned = isProfileBanned(post.profileId);
-                      const profileName = getProfileName(post.profileId);
+                      const isBanned = isProfileBanned(post.profileId, post.isBanned);
+                      const profileName = getProfileName(post.profileId, post.accountName);
                       const profileColor = getProfileColor(post.profileId);
                       return (
                         <button
@@ -509,8 +510,8 @@ function PostsPage({ models, profiles }: PostsPageProps) {
             {/* Posts List */}
             <div className="flex flex-col gap-2">
               {getPostsForDay(expandedDay).map(post => {
-                const isBanned = isProfileBanned(post.profileId);
-                const profileName = getProfileName(post.profileId);
+                const isBanned = isProfileBanned(post.profileId, post.isBanned);
+                const profileName = getProfileName(post.profileId, post.accountName);
                 const profileColor = getProfileColor(post.profileId);
                 return (
                   <button
@@ -711,8 +712,8 @@ function PostsPage({ models, profiles }: PostsPageProps) {
               <div className="flex justify-between text-sm">
                 <span style={{ color: 'var(--text-tertiary)' }}>{t('posts.browser')}</span>
                 <div className="flex items-center gap-2">
-                  <span style={{ color: 'var(--text-primary)' }}>{getProfileName(selectedPost.profileId)}</span>
-                  {isProfileBanned(selectedPost.profileId) && (
+                  <span style={{ color: 'var(--text-primary)' }}>{getProfileName(selectedPost.profileId, selectedPost.accountName)}</span>
+                  {isProfileBanned(selectedPost.profileId, selectedPost.isBanned) && (
                     <span
                       className="px-2 py-0.5 text-xs font-medium rounded-full"
                       style={{ background: 'var(--accent-red)', color: '#fff' }}

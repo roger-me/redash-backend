@@ -144,6 +144,8 @@ export interface RedditPost {
   createdUtc: string;
   fetchedAt: string;
   driveLink?: string;
+  accountName?: string;
+  isBanned?: boolean;
 }
 
 export interface ElectronAPI {

@@ -4,7 +4,7 @@ import { BrowserWindow, ipcMain } from 'electron';
 let mainWindow: BrowserWindow | null = null;
 
 // Configure auto-updater
-autoUpdater.autoDownload = false;
+autoUpdater.autoDownload = true;  // Automatically download when update is available
 autoUpdater.autoInstallOnAppQuit = true;
 
 // Send status to renderer
@@ -56,6 +56,11 @@ autoUpdater.on('update-downloaded', (info) => {
     status: 'downloaded',
     version: info.version,
   });
+
+  // Auto-install after a short delay to let user see the notification
+  setTimeout(() => {
+    autoUpdater.quitAndInstall(false, true);
+  }, 2000);
 });
 
 // Initialize updater with main window reference
