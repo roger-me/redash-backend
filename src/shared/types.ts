@@ -107,6 +107,43 @@ export interface SubEmail {
   createdAt: string;
 }
 
+export interface Subreddit {
+  id: string;
+  modelId: string;
+  name: string;
+  notes?: string;
+  displayOrder: number;
+  createdAt: string;
+}
+
+export interface ScheduledPost {
+  id: string;
+  subredditId: string;
+  profileId: string;
+  scheduledDate: string;
+  contentLink?: string;
+  caption?: string;
+  isPosted: boolean;
+  createdAt: string;
+}
+
+export interface RedditPost {
+  id: string;
+  profileId: string;
+  redditId: string;
+  subreddit: string;
+  title: string;
+  url?: string;
+  permalink: string;
+  thumbnail?: string;
+  selftext?: string;
+  score: number;
+  upvoteRatio?: number;
+  numComments: number;
+  createdUtc: string;
+  fetchedAt: string;
+}
+
 export interface ElectronAPI {
   // Auth
   getSession: () => Promise<AuthResult>;
@@ -178,6 +215,23 @@ export interface ElectronAPI {
 
   // Shell
   openExternal: (url: string) => Promise<void>;
+
+  // Subreddits
+  listSubreddits: (modelId: string) => Promise<Subreddit[]>;
+  createSubreddit: (modelId: string, name: string, notes?: string) => Promise<Subreddit>;
+  updateSubreddit: (id: string, updates: { name?: string; notes?: string; displayOrder?: number }) => Promise<Subreddit>;
+  deleteSubreddit: (id: string) => Promise<boolean>;
+
+  // Scheduled Posts
+  listScheduledPosts: (modelId: string, profileId: string, startDate: string, endDate: string) => Promise<ScheduledPost[]>;
+  createScheduledPost: (subredditId: string, profileId: string, scheduledDate: string, contentLink?: string, caption?: string) => Promise<ScheduledPost>;
+  updateScheduledPost: (id: string, updates: { contentLink?: string; caption?: string; isPosted?: boolean }) => Promise<ScheduledPost>;
+  deleteScheduledPost: (id: string) => Promise<boolean>;
+
+  // Reddit Posts (actual)
+  syncRedditPosts: (profileId: string, username: string) => Promise<{ synced: number; total?: number; error?: string }>;
+  listRedditPosts: (modelId: string, startDate?: string, endDate?: string) => Promise<RedditPost[]>;
+  getRedditPost: (id: string) => Promise<RedditPost>;
 }
 
 declare global {

@@ -9,12 +9,13 @@ import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
 import LogsPage from './components/LogsPage';
+import PostsPage from './components/PostsPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Desktop, Users, Swap, Gear, ShieldCheck, ClockCounterClockwise } from '@phosphor-icons/react';
+import { ArrowsClockwise, Desktop, Users, Swap, Gear, ShieldCheck, ClockCounterClockwise, CalendarBlank } from '@phosphor-icons/react';
 import SettingsPage from './components/SettingsPage';
 import { LanguageProvider, useLanguage } from './i18n';
 
-type Page = 'accounts' | 'flipper' | 'settings' | 'admin' | 'logs';
+type Page = 'accounts' | 'flipper' | 'settings' | 'admin' | 'logs' | 'posts';
 
 interface AuthUser {
   id: string;
@@ -511,6 +512,19 @@ function AppContent() {
             <span className="text-sm font-medium">{t('nav.accounts')}</span>
           </button>
 
+          <button
+            onClick={() => setCurrentPage('posts')}
+            className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
+            style={{
+              background: currentPage === 'posts' ? 'var(--accent-primary)' : 'transparent',
+              color: currentPage === 'posts' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              borderRadius: '34px',
+            }}
+          >
+            <CalendarBlank size={20} weight={currentPage === 'posts' ? 'fill' : 'regular'} />
+            <span className="text-sm font-medium">{t('nav.posts')}</span>
+          </button>
+
           {(user?.role === 'admin' || user?.role === 'dev') && (
             <button
               onClick={() => setCurrentPage('flipper')}
@@ -664,6 +678,7 @@ function AppContent() {
           </main>
         )}
         {currentPage === 'flipper' && <FlipperPage />}
+        {currentPage === 'posts' && <PostsPage models={availableModels} profiles={profiles} />}
         {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onChangeTheme={setTheme} />}
         {currentPage === 'admin' && (user?.role === 'admin' || user?.role === 'dev') && (
           <AdminPage

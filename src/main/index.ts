@@ -12,6 +12,7 @@ import * as db from './supabase/database';
 import * as admin from './supabase/admin';
 import * as emails from './supabase/emails';
 import * as logs from './supabase/logs';
+import * as posts from './supabase/posts';
 
 // Updater
 import { initUpdater } from './updater';
@@ -976,6 +977,69 @@ ipcMain.handle('emails:deleteSub', async (_, id: string) => {
 
 ipcMain.handle('emails:getForSelection', async () => {
   return emails.getEmailsForSelection();
+});
+
+// Subreddits
+ipcMain.handle('subreddits:list', async (_, modelId: string) => {
+  return posts.listSubreddits(modelId);
+});
+
+ipcMain.handle('subreddits:create', async (_, modelId: string, name: string, notes?: string) => {
+  return posts.createSubreddit(modelId, name, notes);
+});
+
+ipcMain.handle('subreddits:update', async (_, id: string, updates: { name?: string; notes?: string; displayOrder?: number }) => {
+  return posts.updateSubreddit(id, updates);
+});
+
+ipcMain.handle('subreddits:delete', async (_, id: string) => {
+  return posts.deleteSubreddit(id);
+});
+
+// Scheduled Posts
+ipcMain.handle('posts:list', async (_, modelId: string, profileId: string, startDate: string, endDate: string) => {
+  return posts.listScheduledPosts(modelId, profileId, startDate, endDate);
+});
+
+ipcMain.handle('posts:create', async (_, subredditId: string, profileId: string, scheduledDate: string, contentLink?: string, caption?: string) => {
+  return posts.createScheduledPost(subredditId, profileId, scheduledDate, contentLink, caption);
+});
+
+ipcMain.handle('posts:update', async (_, id: string, updates: { contentLink?: string; caption?: string; isPosted?: boolean }) => {
+  return posts.updateScheduledPost(id, updates);
+});
+
+ipcMain.handle('posts:delete', async (_, id: string) => {
+  return posts.deleteScheduledPost(id);
+});
+
+// Reddit Posts (actual)
+ipcMain.handle('reddit:syncPosts', async (_, profileId: string, username: string) => {
+  console.log('reddit:syncPosts called with:', { profileId, username });
+  try {
+    const result = await posts.syncRedditPosts(profileId, username);
+    console.log('reddit:syncPosts result:', result);
+    return result;
+  } catch (err) {
+    console.error('reddit:syncPosts error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('reddit:listPosts', async (_, modelId: string, startDate?: string, endDate?: string) => {
+  console.log('reddit:listPosts called with:', { modelId, startDate, endDate });
+  try {
+    const result = await posts.listRedditPosts(modelId, startDate, endDate);
+    console.log('reddit:listPosts result count:', result?.length);
+    return result;
+  } catch (err) {
+    console.error('reddit:listPosts error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('reddit:getPost', async (_, id: string) => {
+  return posts.getRedditPost(id);
 });
 
 // Activity Logs

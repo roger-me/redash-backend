@@ -157,4 +157,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Shell
   openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
+
+  // Subreddits
+  listSubreddits: (modelId: string) => ipcRenderer.invoke('subreddits:list', modelId),
+  createSubreddit: (modelId: string, name: string, notes?: string) => ipcRenderer.invoke('subreddits:create', modelId, name, notes),
+  updateSubreddit: (id: string, updates: { name?: string; notes?: string; displayOrder?: number }) => ipcRenderer.invoke('subreddits:update', id, updates),
+  deleteSubreddit: (id: string) => ipcRenderer.invoke('subreddits:delete', id),
+
+  // Scheduled Posts
+  listScheduledPosts: (modelId: string, profileId: string, startDate: string, endDate: string) => ipcRenderer.invoke('posts:list', modelId, profileId, startDate, endDate),
+  createScheduledPost: (subredditId: string, profileId: string, scheduledDate: string, contentLink?: string, caption?: string) => ipcRenderer.invoke('posts:create', subredditId, profileId, scheduledDate, contentLink, caption),
+  updateScheduledPost: (id: string, updates: { contentLink?: string; caption?: string; isPosted?: boolean }) => ipcRenderer.invoke('posts:update', id, updates),
+  deleteScheduledPost: (id: string) => ipcRenderer.invoke('posts:delete', id),
+
+  // Reddit Posts (actual)
+  syncRedditPosts: (profileId: string, username: string) => ipcRenderer.invoke('reddit:syncPosts', profileId, username),
+  listRedditPosts: (modelId: string, startDate?: string, endDate?: string) => ipcRenderer.invoke('reddit:listPosts', modelId, startDate, endDate),
+  getRedditPost: (id: string) => ipcRenderer.invoke('reddit:getPost', id),
 });

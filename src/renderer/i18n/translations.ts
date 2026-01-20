@@ -7,6 +7,7 @@ export const translations = {
     'nav.admin': 'Admin',
     'nav.logs': 'Logs',
     'nav.settings': 'Settings',
+    'nav.posts': 'Posts',
 
     // Settings Page
     'settings.title': 'Settings',
@@ -295,6 +296,17 @@ export const translations = {
     'time.minutesAgo': '{minutes}m ago',
     'time.hoursAgo': '{hours}h ago',
     'time.daysAgo': '{days}d ago',
+
+    // Posts Page
+    'posts.title': 'Posts',
+    'posts.selectModel': 'Select Model',
+    'posts.selectModelPrompt': 'Select a model to view posts',
+    'posts.sync': 'Sync',
+    'posts.more': 'more',
+    'posts.caption': 'Caption',
+    'posts.browser': 'Browser',
+    'posts.postedOn': 'Posted on',
+    'posts.openOnReddit': 'Open on Reddit',
   },
   es: {
     // Navigation
@@ -304,6 +316,7 @@ export const translations = {
     'nav.admin': 'Admin',
     'nav.logs': 'Registros',
     'nav.settings': 'Ajustes',
+    'nav.posts': 'Posts',
 
     // Settings Page
     'settings.title': 'Ajustes',
@@ -592,6 +605,17 @@ export const translations = {
     'time.minutesAgo': 'hace {minutes}m',
     'time.hoursAgo': 'hace {hours}h',
     'time.daysAgo': 'hace {days}d',
+
+    // Posts Page
+    'posts.title': 'Posts',
+    'posts.selectModel': 'Seleccionar Modelo',
+    'posts.selectModelPrompt': 'Selecciona un modelo para ver los posts',
+    'posts.sync': 'Sincronizar',
+    'posts.more': 'más',
+    'posts.caption': 'Descripción',
+    'posts.browser': 'Navegador',
+    'posts.postedOn': 'Publicado el',
+    'posts.openOnReddit': 'Abrir en Reddit',
   },
 } as const;
 
