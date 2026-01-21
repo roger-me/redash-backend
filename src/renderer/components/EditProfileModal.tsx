@@ -61,6 +61,7 @@ const countries = [
 
 function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onSave }: EditProfileModalProps) {
   const { t } = useLanguage();
+  const [fullProfile, setFullProfile] = useState<Profile>(profile);
   const [username, setUsername] = useState(profile.credentials?.username || profile.name || '');
   const [email, setEmail] = useState(profile.credentials?.email || '');
   const [password, setPassword] = useState(profile.credentials?.password || '');
@@ -71,17 +72,45 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
   );
   const [purchaseDate, setPurchaseDate] = useState(profile.purchaseDate || '');
   const [orderNumber, setOrderNumber] = useState(profile.orderNumber || '');
-  const [proxyString, setProxyString] = useState(
-    profile.proxy
-      ? `${profile.proxy.host}:${profile.proxy.port}${profile.proxy.username ? `:${profile.proxy.username}` : ''}${profile.proxy.password ? `:${profile.proxy.password}` : ''}`
-      : ''
-  );
+  // Initialize proxyString from profile prop (already contains proxy when from AdminPage's getAllProfiles)
+  const [proxyString, setProxyString] = useState(() => {
+    if (profile.proxy) {
+      const proxy = profile.proxy;
+      return `${proxy.host}:${proxy.port}${proxy.username ? `:${proxy.username}` : ''}${proxy.password ? `:${proxy.password}` : ''}`;
+    }
+    return '';
+  });
   const [showCountryMenu, setShowCountryMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [showEmailMenu, setShowEmailMenu] = useState(false);
   const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
   const [subEmails, setSubEmails] = useState<SubEmail[]>([]);
   const [subEmailId, setSubEmailId] = useState<string | undefined>(profile.subEmailId);
+  const [selectedMainEmailId, setSelectedMainEmailId] = useState<string | undefined>();
+
+  // Fetch full profile data on mount to ensure we have all fields including proxy
+  useEffect(() => {
+    const loadFullProfile = async () => {
+      try {
+        const data = await window.electronAPI?.getProfileById(profile.id);
+        if (data) {
+          setFullProfile(data);
+          // Update proxyString with fetched data
+          if (data.proxy) {
+            const proxy = data.proxy;
+            setProxyString(`${proxy.host}:${proxy.port}${proxy.username ? `:${proxy.username}` : ''}${proxy.password ? `:${proxy.password}` : ''}`);
+          }
+          // Update other fields that might be missing
+          if (data.purchaseDate && !purchaseDate) setPurchaseDate(data.purchaseDate);
+          if (data.orderNumber && !orderNumber) setOrderNumber(data.orderNumber);
+          if (data.subEmailId && !subEmailId) setSubEmailId(data.subEmailId);
+        }
+      } catch (err) {
+        console.error('Failed to load full profile:', err);
+      }
+    };
+    loadFullProfile();
+  }, [profile.id]);
 
   const countryMenuRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
@@ -126,7 +155,17 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
       return;
     }
 
-    if (!email.trim()) {
+    // Get email address from selection or text input
+    let emailAddress = email.trim();
+    if (subEmailId) {
+      const selectedSubEmail = subEmails.find(s => s.id === subEmailId);
+      emailAddress = selectedSubEmail?.email || email.trim();
+    } else if (selectedMainEmailId) {
+      const selectedMainEmail = mainEmails.find(m => m.id === selectedMainEmailId);
+      emailAddress = selectedMainEmail?.email || email.trim();
+    }
+
+    if (!emailAddress) {
       alert(t('validation.enterEmail'));
       return;
     }
@@ -160,13 +199,12 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
       }
     }
 
-    onSave(profile.id, {
+    const updates: any = {
       name: username.trim(),
       modelId,
-      proxy,
       credentials: {
         username: username.trim(),
-        email: email.trim(),
+        email: emailAddress,
         password: password.trim() || undefined,
       },
       country,
@@ -174,8 +212,17 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
       orderNumber: orderNumber.trim(),
       isEnabled: !!expiresAt,
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
-      subEmailId,
-    });
+      subEmailId: subEmailId || undefined,
+    };
+
+    // Include proxy: use parsed proxy if available, otherwise keep existing profile proxy
+    if (proxy) {
+      updates.proxy = proxy;
+    } else if (fullProfile.proxy) {
+      updates.proxy = fullProfile.proxy;
+    }
+
+    onSave(profile.id, updates);
   };
 
   return (
@@ -222,21 +269,95 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
                   fontSize: '14px',
                 }}
               />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('profile.email')}
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: 'none',
-                  borderRadius: '34px',
-                  color: 'var(--text-primary)',
-                  padding: '12px 16px',
-                  width: '100%',
-                  fontSize: '14px',
-                }}
-              />
+              {/* Email Selection */}
+              <div className="relative" ref={emailMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowEmailMenu(!showEmailMenu)}
+                  className="w-full text-left text-sm flex items-center gap-2"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    border: 'none',
+                    borderRadius: '34px',
+                    color: 'var(--text-primary)',
+                    padding: '12px 16px',
+                  }}
+                >
+                  {subEmailId ? (
+                    <span className="truncate">{subEmails.find(s => s.id === subEmailId)?.email}</span>
+                  ) : selectedMainEmailId ? (
+                    <span className="truncate">{mainEmails.find(m => m.id === selectedMainEmailId)?.email}</span>
+                  ) : email ? (
+                    <span className="truncate">{email}</span>
+                  ) : (
+                    <span style={{ color: 'var(--text-tertiary)' }}>{t('profile.selectEmail')}</span>
+                  )}
+                  <CaretDown size={12} weight="bold" className="ml-auto" />
+                </button>
+
+                {showEmailMenu && (
+                  <div
+                    className="absolute z-50 w-full mt-1 py-1 max-h-64 overflow-y-auto"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+                    }}
+                  >
+                    {mainEmails.map(main => {
+                      const mainSubEmails = subEmails.filter(s => s.mainEmailId === main.id);
+                      return (
+                        <div key={main.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedMainEmailId(main.id);
+                              setSubEmailId(undefined);
+                              setEmail(main.email);
+                              setShowEmailMenu(false);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm font-medium flex items-center gap-2 hover:bg-white/5"
+                            style={{
+                              color: selectedMainEmailId === main.id && !subEmailId ? 'var(--accent-blue)' : 'var(--text-primary)',
+                            }}
+                          >
+                            <EnvelopeSimple size={14} weight="bold" />
+                            <span>{main.email}</span>
+                          </button>
+                          {mainSubEmails.map(sub => {
+                            const isTaken = takenSubEmailIds.includes(sub.id) && sub.id !== profile.subEmailId;
+                            return (
+                              <button
+                                key={sub.id}
+                                type="button"
+                                onClick={() => {
+                                  if (!isTaken) {
+                                    setSubEmailId(sub.id);
+                                    setSelectedMainEmailId(undefined);
+                                    setEmail(sub.email);
+                                    setShowEmailMenu(false);
+                                  }
+                                }}
+                                disabled={isTaken}
+                                className="w-full px-3 py-2 pl-6 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                                style={{
+                                  color: isTaken ? 'var(--text-tertiary)' : subEmailId === sub.id ? 'var(--accent-blue)' : 'var(--text-primary)',
+                                  opacity: isTaken ? 0.5 : 1,
+                                  cursor: isTaken ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                <EnvelopeSimple size={14} weight="regular" />
+                                <span>{sub.email}</span>
+                                {isTaken && <span className="ml-auto text-xs">(in use)</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               <input
                 type="text"
                 value={password}
@@ -365,89 +486,6 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
                       <FolderSimple size={14} weight="bold" />
                       <span>{m.name}</span>
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Email Selection */}
-          {mainEmails.length > 0 && (
-            <div className="relative" ref={emailMenuRef}>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-                Email Account
-                <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> {t('profile.optional')}</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowEmailMenu(!showEmailMenu)}
-                className="w-full text-left text-sm flex items-center gap-2"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  border: 'none',
-                  borderRadius: '34px',
-                  color: 'var(--text-primary)',
-                  padding: '12px 16px',
-                }}
-              >
-                <EnvelopeSimple size={14} weight="bold" color="var(--text-tertiary)" />
-                {subEmailId ? (
-                  (() => {
-                    const subEmail = subEmails.find(s => s.id === subEmailId);
-                    const mainEmail = mainEmails.find(m => m.id === subEmail?.mainEmailId);
-                    return <span className="truncate">{mainEmail?.email} → {subEmail?.email}</span>;
-                  })()
-                ) : (
-                  <span style={{ color: 'var(--text-tertiary)' }}>Select email</span>
-                )}
-                <CaretDown size={12} weight="bold" className="ml-auto" />
-              </button>
-
-              {showEmailMenu && (
-                <div
-                  className="absolute z-50 w-full mt-1 py-1 max-h-64 overflow-y-auto"
-                  style={{
-                    background: 'var(--bg-tertiary)',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => { setSubEmailId(undefined); setShowEmailMenu(false); }}
-                    className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
-                    style={{ color: !subEmailId ? 'var(--accent-blue)' : 'var(--text-primary)' }}
-                  >
-                    <MinusCircle size={14} weight="bold" />
-                    <span>No email</span>
-                  </button>
-                  {mainEmails.map(main => (
-                    <div key={main.id}>
-                      <div className="px-3 py-2 text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>
-                        {main.email}
-                      </div>
-                      {subEmails.filter(s => s.mainEmailId === main.id).map(sub => {
-                        const isTaken = takenSubEmailIds.includes(sub.id) && sub.id !== profile.subEmailId;
-                        return (
-                          <button
-                            key={sub.id}
-                            type="button"
-                            onClick={() => { if (!isTaken) { setSubEmailId(sub.id); setShowEmailMenu(false); } }}
-                            disabled={isTaken}
-                            className="w-full px-3 py-2 pl-6 text-left text-sm flex items-center gap-2 hover:bg-white/5"
-                            style={{
-                              color: isTaken ? 'var(--text-tertiary)' : subEmailId === sub.id ? 'var(--accent-blue)' : 'var(--text-primary)',
-                              opacity: isTaken ? 0.5 : 1,
-                              cursor: isTaken ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            <EnvelopeSimple size={14} weight="regular" />
-                            <span>{sub.email}</span>
-                            {isTaken && <span className="ml-auto text-xs">(in use)</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
                   ))}
                 </div>
               )}

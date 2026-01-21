@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
-import { CaretLeft, CaretRight, ArrowsClockwise, ArrowUp, ChatCircle, X, Link as LinkIcon, Check, PencilSimple } from '@phosphor-icons/react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { CaretLeft, CaretRight, ArrowsClockwise, ArrowUp, ChatCircle, X, Link as LinkIcon, Check, PencilSimple, CaretDown, Users, FolderSimple } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
-import { Model, Profile, RedditPost } from '../../shared/types';
+import { Model, Profile, RedditPost, AppUser } from '../../shared/types';
 
 // Helper to extract Google Drive file ID and convert to preview URL
 function getDrivePreviewUrl(driveLink: string | undefined): string | null {
@@ -30,17 +30,23 @@ function getDrivePreviewUrl(driveLink: string | undefined): string | null {
 interface PostsPageProps {
   models: Model[];
   profiles: Profile[];
+  user: AppUser | null;
 }
 
-function PostsPage({ models, profiles }: PostsPageProps) {
+function PostsPage({ models, profiles, user }: PostsPageProps) {
   const { t } = useLanguage();
-  const [selectedModelId, setSelectedModelId] = useState<string>(() => {
-    // Load from localStorage or use first model
-    const saved = localStorage.getItem('posts_selectedModelId');
-    if (saved && models.some(m => m.id === saved)) {
-      return saved;
+  const [selectedModelIds, setSelectedModelIds] = useState<string[]>(() => {
+    // Load from localStorage or default to all models
+    const saved = localStorage.getItem('posts_selectedModelIds');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(id => models.some(m => m.id === id));
+        }
+      } catch {}
     }
-    return models[0]?.id || '';
+    return [];
   });
   const [posts, setPosts] = useState<RedditPost[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -51,6 +57,13 @@ function PostsPage({ models, profiles }: PostsPageProps) {
   const [driveLinkInput, setDriveLinkInput] = useState('');
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [lastSyncLabel, setLastSyncLabel] = useState<string>('');
+  const [archivedProfiles, setArchivedProfiles] = useState<Profile[]>([]);
+  const [users, setUsers] = useState<AppUser[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [showUserFilter, setShowUserFilter] = useState(false);
+  const [showModelMenu, setShowModelMenu] = useState(false);
+  const userFilterRef = useRef<HTMLDivElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
 
   // Helper to get relative time
   const getRelativeTime = (date: Date): string => {
@@ -116,39 +129,75 @@ function PostsPage({ models, profiles }: PostsPageProps) {
     return currentDate.toLocaleDateString('en', { month: 'long', year: 'numeric' });
   }, [currentDate]);
 
-  // Save selected model to localStorage
+  // Save selected models to localStorage
   useEffect(() => {
-    if (selectedModelId) {
-      localStorage.setItem('posts_selectedModelId', selectedModelId);
-    }
-  }, [selectedModelId]);
+    localStorage.setItem('posts_selectedModelIds', JSON.stringify(selectedModelIds));
+  }, [selectedModelIds]);
 
-  // Set default model if none selected and models are available
+  // Toggle model selection
+  const toggleModelSelection = (modelId: string) => {
+    setSelectedModelIds(prev =>
+      prev.includes(modelId)
+        ? prev.filter(id => id !== modelId)
+        : [...prev, modelId]
+    );
+  };
+
+  // Load archived profiles for status lookup
   useEffect(() => {
-    if (!selectedModelId && models.length > 0) {
-      const saved = localStorage.getItem('posts_selectedModelId');
-      if (saved && models.some(m => m.id === saved)) {
-        setSelectedModelId(saved);
-      } else {
-        setSelectedModelId(models[0].id);
+    const loadArchivedProfiles = async () => {
+      try {
+        const archived = await window.electronAPI?.listArchivedProfiles();
+        setArchivedProfiles(archived || []);
+      } catch (err) {
+        console.error('Failed to load archived profiles:', err);
       }
-    }
-  }, [models, selectedModelId]);
+    };
+    loadArchivedProfiles();
+  }, []);
 
-  // Get profiles for selected model
-  const modelProfiles = useMemo(() => {
-    if (!selectedModelId) return [];
-    return profiles.filter(p => p.modelId === selectedModelId);
-  }, [profiles, selectedModelId]);
-
-  // Load posts when model changes
+  // Load users for dev user filter
   useEffect(() => {
-    if (!selectedModelId) {
-      setPosts([]);
-      return;
-    }
+    if (user?.role !== 'dev') return;
+    const loadUsers = async () => {
+      try {
+        const usersList = await window.electronAPI?.adminListUsers();
+        setUsers(usersList || []);
+        // Default: select current user
+        if (user && usersList) {
+          setSelectedUserIds([user.id]);
+        }
+      } catch (err) {
+        console.error('Failed to load users:', err);
+      }
+    };
+    loadUsers();
+  }, [user]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userFilterRef.current && !userFilterRef.current.contains(e.target as Node)) {
+        setShowUserFilter(false);
+      }
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
+        setShowModelMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Get profiles for selected models
+  const modelProfiles = useMemo(() => {
+    if (selectedModelIds.length === 0) return profiles;
+    return profiles.filter(p => p.modelId && selectedModelIds.includes(p.modelId));
+  }, [profiles, selectedModelIds]);
+
+  // Load posts when date changes (always load all, filter in frontend)
+  useEffect(() => {
     loadPosts();
-  }, [selectedModelId, currentDate]);
+  }, [currentDate]);
 
   const loadPosts = async () => {
     try {
@@ -157,8 +206,9 @@ function PostsPage({ models, profiles }: PostsPageProps) {
       startDate.setMonth(startDate.getMonth() - 1);
       const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 2, 0);
 
+      // Load all posts, filter by model in frontend
       const data = await window.electronAPI?.listRedditPosts(
-        selectedModelId,
+        undefined,
         startDate.toISOString(),
         endDate.toISOString()
       );
@@ -169,10 +219,10 @@ function PostsPage({ models, profiles }: PostsPageProps) {
   };
 
   const handleSync = async () => {
-    if (isSyncing || !selectedModelId) return;
+    if (isSyncing || modelProfiles.length === 0) return;
     setIsSyncing(true);
 
-    console.log('Syncing posts for model:', selectedModelId);
+    console.log('Syncing posts for models:', selectedModelIds);
     console.log('Model profiles:', modelProfiles);
 
     try {
@@ -199,7 +249,19 @@ function PostsPage({ models, profiles }: PostsPageProps) {
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
-  // Get posts for a specific day
+  // Get profile for a post (including archived profiles)
+  const getProfile = (profileId: string): Profile | undefined => {
+    return profiles.find(p => p.id === profileId) || archivedProfiles.find(p => p.id === profileId);
+  };
+
+  // Get user for a profile
+  const getUserForProfile = (profileId: string): AppUser | undefined => {
+    const profile = getProfile(profileId);
+    if (!profile?.userId) return undefined;
+    return users.find(u => u.id === profile.userId);
+  };
+
+  // Get posts for a specific day (with model and user filters)
   const getPostsForDay = (date: Date): RedditPost[] => {
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
@@ -208,13 +270,32 @@ function PostsPage({ models, profiles }: PostsPageProps) {
 
     return posts.filter(post => {
       const postDate = new Date(post.createdUtc);
-      return postDate >= dayStart && postDate <= dayEnd;
+      if (postDate < dayStart || postDate > dayEnd) return false;
+
+      const profile = getProfile(post.profileId);
+
+      // Apply model filter
+      if (selectedModelIds.length > 0) {
+        if (!profile?.modelId || !selectedModelIds.includes(profile.modelId)) return false;
+      }
+
+      // Apply user filter for dev users
+      if (user?.role === 'dev' && selectedUserIds.length > 0) {
+        if (!profile?.userId) return false;
+        return selectedUserIds.includes(profile.userId);
+      }
+
+      return true;
     });
   };
 
-  // Get profile for a post
-  const getProfile = (profileId: string): Profile | undefined => {
-    return profiles.find(p => p.id === profileId);
+  // Toggle user selection
+  const toggleUserSelection = (userId: string) => {
+    setSelectedUserIds(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
   };
 
   // Get profile name for a post (with fallback to stored account name)
@@ -294,31 +375,121 @@ function PostsPage({ models, profiles }: PostsPageProps) {
         </h1>
 
         {/* Model Selector */}
-        <select
-          value={selectedModelId}
-          onChange={(e) => setSelectedModelId(e.target.value)}
-          className="h-9 px-4 text-sm font-medium"
-          style={{
-            background: 'var(--chip-bg)',
-            color: 'var(--text-primary)',
-            border: 'none',
-            borderRadius: '100px',
-            outline: 'none',
-          }}
-        >
-          <option value="">{t('posts.selectModel')}</option>
-          {models.map(model => (
-            <option key={model.id} value={model.id}>{model.name}</option>
-          ))}
-        </select>
+        <div className="relative" ref={modelMenuRef}>
+          <button
+            onClick={() => setShowModelMenu(!showModelMenu)}
+            className="h-8 px-3 flex items-center gap-1.5 text-sm font-medium"
+            style={{
+              background: 'var(--chip-bg)',
+              color: 'var(--text-primary)',
+              borderRadius: '100px',
+            }}
+          >
+            <FolderSimple size={14} weight="bold" />
+            <span>{selectedModelIds.length === 0 ? 'All' : selectedModelIds.length === 1 ? models.find(m => m.id === selectedModelIds[0])?.name : `${selectedModelIds.length}`}</span>
+            <CaretDown size={10} weight="bold" />
+          </button>
+
+          {showModelMenu && (
+            <div
+              className="absolute z-50 mt-1 py-1 min-w-[160px]"
+              style={{
+                background: 'var(--bg-tertiary)',
+                borderRadius: '12px',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+              }}
+            >
+              {models.map(model => (
+                <button
+                  key={model.id}
+                  onClick={() => toggleModelSelection(model.id)}
+                  className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  <div
+                    className="w-4 h-4 rounded flex items-center justify-center text-xs"
+                    style={{
+                      background: selectedModelIds.includes(model.id) ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                      color: selectedModelIds.includes(model.id) ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                    }}
+                  >
+                    {selectedModelIds.includes(model.id) && <Check size={10} weight="bold" />}
+                  </div>
+                  <FolderSimple size={14} weight="bold" />
+                  <span>{model.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* User Filter (Dev only) */}
+        {user?.role === 'dev' && users.length > 0 && (
+          <div className="relative" ref={userFilterRef}>
+            <button
+              onClick={() => setShowUserFilter(!showUserFilter)}
+              className="h-8 px-3 flex items-center gap-1.5 text-sm font-medium"
+              style={{
+                background: 'var(--chip-bg)',
+                color: 'var(--text-primary)',
+                borderRadius: '100px',
+              }}
+            >
+              <Users size={14} weight="bold" />
+              <span>{selectedUserIds.length === 0 ? 'All' : selectedUserIds.length === 1 ? users.find(u => u.id === selectedUserIds[0])?.username : `${selectedUserIds.length}`}</span>
+              <CaretDown size={10} weight="bold" />
+            </button>
+
+            {showUserFilter && (
+              <div
+                className="absolute z-50 mt-1 py-1 min-w-[160px]"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+                }}
+              >
+                {users.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={() => toggleUserSelection(u.id)}
+                    className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <div
+                      className="w-4 h-4 rounded flex items-center justify-center text-xs"
+                      style={{
+                        background: selectedUserIds.includes(u.id) ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                        color: selectedUserIds.includes(u.id) ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                      }}
+                    >
+                      {selectedUserIds.includes(u.id) && <Check size={10} weight="bold" />}
+                    </div>
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                      style={{
+                        background: `hsl(${Math.abs(u.id.charCodeAt(0) * 50) % 360}, 70%, 80%)`,
+                        color: `hsl(${Math.abs(u.id.charCodeAt(0) * 50) % 360}, 70%, 25%)`,
+                      }}
+                    >
+                      {u.username.charAt(0).toUpperCase()}
+                    </div>
+                    <span>{u.username}</span>
+                    {u.id === user.id && <span className="ml-auto text-xs" style={{ color: 'var(--text-tertiary)' }}>(me)</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           {/* Sync Button */}
-          {selectedModelId && (
+          {modelProfiles.length > 0 && (
             <button
               onClick={handleSync}
               disabled={isSyncing}
-              className="h-9 px-3 flex items-center gap-2 transition-colors"
+              className="h-8 px-3 flex items-center gap-2 transition-colors"
               style={{
                 background: 'var(--chip-bg)',
                 color: 'var(--text-primary)',
@@ -327,7 +498,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
               }}
             >
               <ArrowsClockwise
-                size={16}
+                size={14}
                 weight="bold"
                 style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }}
               />
@@ -367,15 +538,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
       `}</style>
 
       {/* Content */}
-      {!selectedModelId ? (
-        <div className="rounded-xl p-12 text-center" style={{
-          background: 'var(--bg-secondary)',
-          border: '1px dashed var(--border-light)'
-        }}>
-          <p style={{ color: 'var(--text-tertiary)' }}>{t('posts.selectModelPrompt')}</p>
-        </div>
-      ) : (
-        <div className="rounded-xl overflow-hidden flex-1 flex flex-col" style={{ background: 'var(--bg-secondary)' }}>
+      <div className="rounded-xl overflow-hidden flex-1 flex flex-col" style={{ background: 'var(--bg-secondary)' }}>
           {/* Weekday Headers */}
           <div className="grid grid-cols-7 border-b flex-shrink-0" style={{ borderColor: 'var(--border-light)' }}>
             {weekDays.map(day => (
@@ -426,11 +589,12 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                       const isBanned = isProfileBanned(post.profileId, post.isBanned);
                       const profileName = getProfileName(post.profileId, post.accountName);
                       const profileColor = getProfileColor(post.profileId);
+                      const postUser = user?.role === 'dev' ? getUserForProfile(post.profileId) : undefined;
                       return (
                         <button
                           key={post.id}
                           onClick={() => handleOpenPost(post)}
-                          className="w-full pl-3 pr-1.5 py-1.5 text-left truncate transition-opacity hover:opacity-80"
+                          className="w-full py-1 px-2.5 text-left truncate transition-opacity hover:opacity-80"
                           style={{
                             background: isBanned ? 'var(--accent-red)' : profileColor.bg,
                             color: isBanned ? '#fff' : profileColor.text,
@@ -439,13 +603,16 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                         >
                           <div className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-1.5">
-                              {post.driveLink && (
-                                <span
-                                  className="w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold flex-shrink-0"
-                                  style={{ background: 'rgba(255,255,255,0.9)', color: '#4285F4' }}
+                              {postUser && (
+                                <div
+                                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                                  style={{
+                                    background: isBanned ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)',
+                                    color: isBanned ? '#fff' : profileColor.text,
+                                  }}
                                 >
-                                  G
-                                </span>
+                                  {postUser.username.charAt(0).toUpperCase()}
+                                </div>
                               )}
                               <span className="font-semibold">{profileName}</span>
                             </div>
@@ -463,7 +630,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                     {hasMultiple && (
                       <button
                         onClick={() => setExpandedDay(day.date)}
-                        className="w-full px-3 py-1 text-xs font-medium transition-opacity hover:opacity-80"
+                        className="w-full p-1 text-xs font-medium transition-opacity hover:opacity-80"
                         style={{
                           background: 'var(--chip-bg)',
                           color: 'var(--text-primary)',
@@ -478,8 +645,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
               );
             })}
           </div>
-        </div>
-      )}
+      </div>
 
       {/* Expanded Day Modal */}
       {expandedDay && (
@@ -513,6 +679,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                 const isBanned = isProfileBanned(post.profileId, post.isBanned);
                 const profileName = getProfileName(post.profileId, post.accountName);
                 const profileColor = getProfileColor(post.profileId);
+                const postUser = user?.role === 'dev' ? getUserForProfile(post.profileId) : undefined;
                 return (
                   <button
                     key={post.id}
@@ -520,7 +687,7 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                       setExpandedDay(null);
                       handleOpenPost(post);
                     }}
-                    className="w-full pl-3 pr-1.5 py-1.5 text-left truncate transition-opacity hover:opacity-80"
+                    className="w-full py-1 px-2.5 text-left truncate transition-opacity hover:opacity-80"
                     style={{
                       background: isBanned ? 'var(--accent-red)' : profileColor.bg,
                       color: isBanned ? '#fff' : profileColor.text,
@@ -529,13 +696,16 @@ function PostsPage({ models, profiles }: PostsPageProps) {
                   >
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5">
-                        {post.driveLink && (
-                          <span
-                            className="w-4 h-4 flex items-center justify-center rounded-full text-[9px] font-bold flex-shrink-0"
-                            style={{ background: 'rgba(255,255,255,0.9)', color: '#4285F4' }}
+                        {postUser && (
+                          <div
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
+                            style={{
+                              background: isBanned ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)',
+                              color: isBanned ? '#fff' : profileColor.text,
+                            }}
                           >
-                            G
-                          </span>
+                            {postUser.username.charAt(0).toUpperCase()}
+                          </div>
                         )}
                         <span className="font-semibold">{profileName}</span>
                       </div>

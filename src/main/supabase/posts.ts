@@ -285,16 +285,21 @@ export async function syncRedditPosts(profileId: string, username: string) {
   return { synced, total: posts.length };
 }
 
-// Get Reddit posts for a model (all profiles in that model)
-export async function listRedditPosts(modelId: string, startDate?: string, endDate?: string) {
+// Get Reddit posts for a model (all profiles in that model), or all posts if no model specified
+export async function listRedditPosts(modelId?: string, startDate?: string, endDate?: string) {
   const supabase = getSupabaseClient();
 
-  // Get all profile IDs for this model
-  const { data: profiles, error: profError } = await supabase
+  // Get profile IDs - filter by model if specified, otherwise get all
+  let profileQuery = supabase
     .from('profiles')
     .select('id')
-    .eq('model_id', modelId)
     .is('deleted_at', null);
+
+  if (modelId) {
+    profileQuery = profileQuery.eq('model_id', modelId);
+  }
+
+  const { data: profiles, error: profError } = await profileQuery;
 
   if (profError) throw new Error(profError.message);
   if (!profiles || profiles.length === 0) return [];

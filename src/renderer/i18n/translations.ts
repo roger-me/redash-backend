@@ -7,7 +7,7 @@ export const translations = {
     'nav.admin': 'Admin',
     'nav.logs': 'Logs',
     'nav.settings': 'Settings',
-    'nav.posts': 'Posts',
+    'nav.posts': 'Calendar',
 
     // Settings Page
     'settings.title': 'Settings',
@@ -79,11 +79,13 @@ export const translations = {
     'profile.daysLeft': '{days} days',
     'profile.launch': 'Launch',
     'profile.stop': 'Stop',
+    'profile.selectEmail': 'Select email',
     'common.copied': 'Copied!',
 
     // Validation
     'validation.enterUsername': 'Please enter a username',
     'validation.enterEmail': 'Please enter an email',
+    'validation.selectEmail': 'Please select an email',
     'validation.selectCountry': 'Please select a country',
     'validation.selectModel': 'Please select a model',
     'validation.enterOrderNumber': 'Please enter an order number',
@@ -162,6 +164,7 @@ export const translations = {
     'admin.renew': 'Renew',
     'admin.total': 'Total',
     'admin.edit': 'Edit',
+    'admin.moveToUser': 'Move to user',
     'admin.delete': 'Delete',
     'admin.archive': 'Archive',
     'admin.confirmArchive': 'Archive this browser? It will be moved to trash.',
@@ -317,7 +320,7 @@ export const translations = {
     'nav.admin': 'Admin',
     'nav.logs': 'Registros',
     'nav.settings': 'Ajustes',
-    'nav.posts': 'Posts',
+    'nav.posts': 'Calendario',
 
     // Settings Page
     'settings.title': 'Ajustes',
@@ -389,11 +392,13 @@ export const translations = {
     'profile.daysLeft': '{days} días',
     'profile.launch': 'Abrir',
     'profile.stop': 'Cerrar',
+    'profile.selectEmail': 'Seleccionar correo',
     'common.copied': 'Copiado!',
 
     // Validation
     'validation.enterUsername': 'Por favor ingresa un nombre de usuario',
     'validation.enterEmail': 'Por favor ingresa un correo electrónico',
+    'validation.selectEmail': 'Por favor selecciona un correo',
     'validation.selectCountry': 'Por favor selecciona un país',
     'validation.selectModel': 'Por favor selecciona un modelo',
     'validation.enterOrderNumber': 'Por favor ingresa un número de orden',
@@ -472,6 +477,7 @@ export const translations = {
     'admin.renew': 'Renovar',
     'admin.total': 'Total',
     'admin.edit': 'Editar',
+    'admin.moveToUser': 'Mover a usuario',
     'admin.delete': 'Eliminar',
     'admin.archive': 'Archivar',
     'admin.confirmArchive': '¿Archivar este navegador? Se moverá a la papelera.',

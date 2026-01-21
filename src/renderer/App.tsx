@@ -31,11 +31,14 @@ function AppContent() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>('accounts');
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [archivedProfiles, setArchivedProfiles] = useState<Profile[]>([]);
+  const [deletedProfiles, setDeletedProfiles] = useState<Profile[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const [assignedModelIds, setAssignedModelIds] = useState<string[]>([]);
   const [activeBrowsers, setActiveBrowsers] = useState<string[]>([]);
   const [activeBrowserProfile, setActiveBrowserProfile] = useState<Profile | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForUserId, setCreateForUserId] = useState<string | undefined>(undefined);
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
@@ -136,6 +139,14 @@ function AppContent() {
     if (!isAuthenticated || !user) return;
 
     const init = async () => {
+      // Load archived and deleted profiles for email tracking
+      const [archivedData, deletedData] = await Promise.all([
+        window.electronAPI?.listArchivedProfiles(),
+        window.electronAPI?.listDeletedProfiles(),
+      ]);
+      setArchivedProfiles(archivedData || []);
+      setDeletedProfiles(deletedData || []);
+
       // Admin/Dev users get all data, basic users get filtered data
       if (user.role === 'admin' || user.role === 'dev') {
         const [profilesData, modelsData] = await Promise.all([
@@ -678,7 +689,7 @@ function AppContent() {
           </main>
         )}
         {currentPage === 'flipper' && <FlipperPage />}
-        {currentPage === 'posts' && <PostsPage models={availableModels} profiles={profiles} />}
+        {currentPage === 'posts' && <PostsPage models={availableModels} profiles={profiles} user={user} />}
         {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onChangeTheme={setTheme} />}
         {currentPage === 'admin' && (user?.role === 'admin' || user?.role === 'dev') && (
           <AdminPage
@@ -688,7 +699,7 @@ function AppContent() {
             onCreateModel={handleAdminCreateModel}
             onUpdateModel={handleAdminUpdateModel}
             onDeleteModel={handleDeleteModel}
-            onCreateBrowser={() => setShowCreateModal(true)}
+            onCreateBrowser={(userId) => { setCreateForUserId(userId); setShowCreateModal(true); }}
             onEditProfile={async (profileId) => {
               const profile = await window.electronAPI?.getProfileById(profileId);
               if (profile) setEditingProfile(profile);
@@ -722,10 +733,12 @@ function AppContent() {
           models={availableModels}
           initialModelId={createInModelId}
           requireModel={user?.role === 'basic'}
-          takenSubEmailIds={profiles.filter(p => p.subEmailId).map(p => p.subEmailId!)}
+          takenSubEmailIds={[...profiles, ...archivedProfiles, ...deletedProfiles].filter(p => p.subEmailId).map(p => p.subEmailId!)}
+          forUserId={createForUserId}
           onClose={() => {
             setShowCreateModal(false);
             setCreateInModelId(undefined);
+            setCreateForUserId(undefined);
           }}
           onCreate={handleCreateProfile}
         />
@@ -736,7 +749,7 @@ function AppContent() {
         <EditProfileModal
           profile={editingProfile}
           models={availableModels}
-          takenSubEmailIds={profiles.filter(p => p.subEmailId).map(p => p.subEmailId!)}
+          takenSubEmailIds={[...profiles, ...archivedProfiles, ...deletedProfiles].filter(p => p.subEmailId).map(p => p.subEmailId!)}
           onClose={() => setEditingProfile(null)}
           onSave={handleUpdateProfile}
         />

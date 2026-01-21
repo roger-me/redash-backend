@@ -128,7 +128,12 @@ For schema changes (new columns, constraints, migrations), run SQL in the **Supa
 
 ## Claude Commands
 
-### "release update"
+### "release vX.X.X" or "tag and release vX.X.X"
+When the user says "release vX.X.X" or "tag and release vX.X.X" (e.g., "release v1.2.0"), automatically:
+1. Run `git add -A && git commit -m "vX.X.X" && git tag vX.X.X && git push origin main --tags`
+2. GitHub Actions will build and publish the release automatically
+
+### "release update" (local build)
 When the user says "release update", automatically:
 1. Run `yarn package` to build for macOS
 2. Run `npx electron-builder --win` to build for Windows

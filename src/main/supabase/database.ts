@@ -59,13 +59,16 @@ export async function listProfiles() {
 
 export async function createProfile(profile: Record<string, any>) {
   const supabase = getSupabaseClient();
-  const userId = getCurrentUserId();
+  const currentUserId = getCurrentUserId();
 
-  if (!userId) throw new Error('Not authenticated');
+  if (!currentUserId) throw new Error('Not authenticated');
+
+  // Use passed userId if provided (for admin creating profiles for other users), otherwise use current user
+  const targetUserId = profile.userId || currentUserId;
 
   const dbProfile = {
     ...toSnakeCase(profile),
-    user_id: userId,
+    user_id: targetUserId,
   };
 
   const { data, error } = await supabase

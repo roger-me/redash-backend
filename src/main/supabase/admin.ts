@@ -239,6 +239,10 @@ export async function getAllProfilesForStats(): Promise<any[]> {
     lastPostDate: p.last_post_date,
     lastCommentDate: p.last_comment_date,
     credentials: p.credentials,
+    proxy: p.proxy,
+    purchaseDate: p.purchase_date,
+    orderNumber: p.order_number,
+    subEmailId: p.sub_email_id,
   }));
 }
 

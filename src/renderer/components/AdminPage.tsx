@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive } from '@phosphor-icons/react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, CaretLeft, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive, UserSwitch } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -78,7 +78,7 @@ interface AdminPageProps {
   onCreateModel: (name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
   onUpdateModel: (id: string, name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
   onDeleteModel: (id: string) => Promise<void>;
-  onCreateBrowser: () => void;
+  onCreateBrowser: (userId?: string) => void;
   onEditProfile: (profileId: string) => void;
   onSyncKarma: () => Promise<void>;
   refreshTrigger?: number;
@@ -169,6 +169,7 @@ export default function AdminPage({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [syncing, setSyncing] = useState(false);
+  const [showMoveSubmenu, setShowMoveSubmenu] = useState<string | null>(null);
 
   // Email management state
   const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
@@ -195,10 +196,11 @@ export default function AdminPage({
       if (target.closest('[data-menu="true"]')) return;
       if (openMenuId) setOpenMenuId(null);
       if (emailMenuOpen) setEmailMenuOpen(null);
+      if (showMoveSubmenu) setShowMoveSubmenu(null);
     };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
-  }, [openMenuId, emailMenuOpen]);
+  }, [openMenuId, emailMenuOpen, showMoveSubmenu]);
 
   const getRelativeTime = (date: Date): string => {
     const now = new Date();
@@ -254,12 +256,6 @@ export default function AdminPage({
       handleRefresh();
     }
   }, [refreshTrigger]);
-
-  useEffect(() => {
-    if (users.length > 0 && profiles.length >= 0) {
-      calculateStats();
-    }
-  }, [users, profiles, models]);
 
   // Load user assignments for all users when users are loaded
   useEffect(() => {
@@ -348,7 +344,7 @@ export default function AdminPage({
     });
   };
 
-  const calculateStats = () => {
+  const calculateStats = useCallback(() => {
     const stats: UserStats[] = users.map(user => {
       const userProfiles = profiles.filter(p => p.userId === user.id);
       const modelGroups = new Map<string | null, ProfileForStats[]>();
@@ -417,7 +413,14 @@ export default function AdminPage({
       });
     });
     setExpandedModels(allModelKeys);
-  };
+  }, [users, profiles, models, t]);
+
+  // Recalculate stats when profiles change
+  useEffect(() => {
+    if (users.length > 0 && profiles.length >= 0) {
+      calculateStats();
+    }
+  }, [users, profiles, models, calculateStats]);
 
   const loadDeletedProfiles = async () => {
     try {
@@ -495,6 +498,22 @@ export default function AdminPage({
       await handleRefresh();
     } catch (err) {
       console.error('Failed to unarchive profile:', err);
+    }
+  };
+
+  const handleMoveProfileToUser = async (profileId: string, targetUserId: string) => {
+    try {
+      await window.electronAPI?.updateProfile(profileId, { userId: targetUserId });
+
+      // Optimistically update local state immediately
+      setProfiles(prev => prev.map(p =>
+        p.id === profileId ? { ...p, userId: targetUserId } : p
+      ));
+
+      setOpenMenuId(null);
+      setShowMoveSubmenu(null);
+    } catch (err) {
+      console.error('Failed to move profile:', err);
     }
   };
 
@@ -750,7 +769,18 @@ export default function AdminPage({
 
   // Get profiles assigned to a sub-email
   const getProfilesForSubEmail = (subEmailId: string) => {
-    return profiles.filter(p => p.subEmailId === subEmailId);
+    // Include archived and deleted profiles to show email is still assigned
+    // Deduplicate by profile ID first, then by display key (userId + name) to avoid visual duplicates
+    const allProfiles = [...profiles, ...archivedProfiles, ...deletedProfiles];
+    const uniqueById = allProfiles.filter((p, index, self) =>
+      self.findIndex(x => x.id === p.id) === index
+    );
+    const matchingProfiles = uniqueById.filter(p => p.subEmailId === subEmailId);
+    // Deduplicate by display key (userId + name) to avoid showing same user/browser combo multiple times
+    const uniqueByDisplay = matchingProfiles.filter((p, index, self) =>
+      self.findIndex(x => x.userId === p.userId && x.name === p.name) === index
+    );
+    return uniqueByDisplay;
   };
 
   // Get user info for a profile
@@ -761,6 +791,9 @@ export default function AdminPage({
   useEffect(() => {
     if (activeTab === 'emails') {
       loadEmails();
+      // Also load archived/deleted profiles to check email assignments
+      loadArchivedProfiles();
+      loadDeletedProfiles();
     }
   }, [activeTab]);
 
@@ -895,8 +928,12 @@ export default function AdminPage({
       // Update the sub-email address
       await window.electronAPI?.updateSubEmail(editingSubEmail.id, newSubEmail);
 
-      // Handle profile assignment changes
-      const previouslyAssigned = profiles.find(p => p.subEmailId === editingSubEmail.id);
+      // Handle profile assignment changes (including archived/deleted profiles)
+      const allProfilesForAssignment = [...profiles, ...archivedProfiles, ...deletedProfiles];
+      const uniqueProfilesForAssignment = allProfilesForAssignment.filter((p, index, self) =>
+        self.findIndex(x => x.id === p.id) === index
+      );
+      const previouslyAssigned = uniqueProfilesForAssignment.find(p => p.subEmailId === editingSubEmail.id);
 
       // If there was a previous assignment and it's different, remove it
       if (previouslyAssigned && previouslyAssigned.id !== selectedProfileForSubEmail) {
@@ -975,8 +1012,12 @@ export default function AdminPage({
   const openSubEmailEditModal = (subEmail: SubEmail) => {
     setEditingSubEmail(subEmail);
     setNewSubEmail(subEmail.email);
-    // Find profile currently assigned to this sub-email
-    const assignedProfile = profiles.find(p => p.subEmailId === subEmail.id);
+    // Find profile currently assigned to this sub-email (including archived/deleted)
+    const allProfiles = [...profiles, ...archivedProfiles, ...deletedProfiles];
+    const uniqueProfiles = allProfiles.filter((p, index, self) =>
+      self.findIndex(x => x.id === p.id) === index
+    );
+    const assignedProfile = uniqueProfiles.find(p => p.subEmailId === subEmail.id);
     setSelectedProfileForSubEmail(assignedProfile?.id || null);
     setEmailError('');
   };
@@ -1160,7 +1201,7 @@ export default function AdminPage({
                     </span>
                   </div>
                   <button
-                    onClick={onCreateBrowser}
+                    onClick={() => onCreateBrowser(user.id)}
                     className="h-9 px-3 flex items-center gap-2 transition-colors"
                     style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)' }}
                   >
@@ -1337,6 +1378,41 @@ export default function AdminPage({
                                               <PencilSimple size={14} />
                                               {t('admin.edit')}
                                             </button>
+                                            <div className="relative">
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); setShowMoveSubmenu(showMoveSubmenu === profile.id ? null : profile.id); }}
+                                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+                                                style={{ color: 'var(--text-primary)' }}
+                                              >
+                                                <UserSwitch size={14} />
+                                                {t('admin.moveToUser')}
+                                                <CaretLeft size={12} className="ml-auto" />
+                                              </button>
+                                              {showMoveSubmenu === profile.id && (
+                                                <div
+                                                  data-menu="true"
+                                                  className="absolute right-full top-0 mr-1 py-1 z-[10000]"
+                                                  style={{ background: 'var(--bg-secondary)', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)', minWidth: '140px' }}
+                                                >
+                                                  {users.filter(u => u.id !== profile.userId).map(targetUser => (
+                                                    <button
+                                                      key={targetUser.id}
+                                                      onClick={(e) => { e.stopPropagation(); handleMoveProfileToUser(profile.id, targetUser.id); }}
+                                                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
+                                                      style={{ color: 'var(--text-primary)' }}
+                                                    >
+                                                      <div
+                                                        className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                                                        style={{ background: getAvatarColor(targetUser.username), color: '#000' }}
+                                                      >
+                                                        {targetUser.username.charAt(0).toUpperCase()}
+                                                      </div>
+                                                      {targetUser.username}
+                                                    </button>
+                                                  ))}
+                                                </div>
+                                              )}
+                                            </div>
                                             <button
                                               onClick={(e) => { e.stopPropagation(); setOpenMenuId(null); handleArchiveProfile(profile.id); }}
                                               className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/10 transition-colors"
@@ -1481,7 +1557,9 @@ export default function AdminPage({
             mainEmails.map(mainEmail => {
               const emailSubEmails = subEmails.filter(s => s.mainEmailId === mainEmail.id);
               const isExpanded = expandedEmails.has(mainEmail.id);
-              const usedCount = emailSubEmails.filter(s => profiles.some(p => p.subEmailId === s.id)).length;
+              const allProfiles = [...profiles, ...archivedProfiles, ...deletedProfiles];
+              const uniqueProfiles = allProfiles.filter((p, index, self) => self.findIndex(x => x.id === p.id) === index);
+              const usedCount = emailSubEmails.filter(s => uniqueProfiles.some(p => p.subEmailId === s.id)).length;
               return (
                 <div key={mainEmail.id} style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
                   <div
@@ -1855,7 +1933,12 @@ export default function AdminPage({
                       <div key={profile.id} className="flex items-center gap-3 p-4" style={{ background: 'var(--bg-tertiary)', borderRadius: '100px' }}>
                         {profile.country && countryFlagImages[profile.country] && <img src={countryFlagImages[profile.country]} alt={profile.country} className="w-5 h-5 object-contain rounded-sm" />}
                         <div className="flex-1">
-                          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{profile.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{profile.name}</span>
+                            {profile.status === 'banned' && (
+                              <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{ background: 'rgba(244, 67, 54, 0.15)', color: '#F44336' }}>{t('profile.banned')}</span>
+                            )}
+                          </div>
                           <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{t('admin.archivedOn')} {formatArchivedDate(profile.archivedAt || '')}</p>
                         </div>
                         <div className="flex items-center gap-2">
