@@ -151,6 +151,72 @@ export interface RedditPost {
   isBanned?: boolean;
 }
 
+export interface Backup {
+  id: string;
+  name: string;
+  description?: string;
+  createdBy?: string;
+  createdAt: string;
+  backupType: 'manual' | 'auto' | 'pre-delete' | 'imported';
+  fileSize?: number;
+  tablesIncluded: string[];
+  recordCounts: Record<string, number>;
+  metadata?: Record<string, any>;
+}
+
+export interface BackupWithData extends Backup {
+  data: BackupData;
+}
+
+export interface BackupData {
+  appUsers: any[];
+  userModelAssignments: any[];
+  profiles: any[];
+  models: any[];
+  mainEmails: any[];
+  subEmails: any[];
+  scheduledPosts: any[];
+  redditPosts: any[];
+  subreddits: any[];
+}
+
+export interface DeletedItem {
+  id: string;
+  type: 'profile';
+  name: string;
+  deletedAt: string;
+  data: Record<string, any>;
+}
+
+export interface RestoreOptions {
+  profiles: boolean;
+  models: boolean;
+  users: boolean;
+  emails: boolean;
+  posts: boolean;
+  overwriteExisting: boolean;
+}
+
+export interface SelectiveRestoreOptions {
+  profileIds: string[];
+  modelIds: string[];
+  userIds: string[];
+  mainEmailIds: string[];
+  subEmailIds: string[];
+  overwriteExisting: boolean;
+}
+
+export interface RestoreResult {
+  restored: Record<string, number>;
+  errors: string[];
+}
+
+export interface BackupStats {
+  totalBackups: number;
+  latestBackup: Backup | null;
+  totalSize: number;
+}
+
 export interface ElectronAPI {
   // Auth
   getSession: () => Promise<AuthResult>;
@@ -240,6 +306,20 @@ export interface ElectronAPI {
   listRedditPosts: (modelId: string, startDate?: string, endDate?: string) => Promise<RedditPost[]>;
   getRedditPost: (id: string) => Promise<RedditPost>;
   updateRedditPost: (id: string, updates: { driveLink?: string }) => Promise<RedditPost>;
+
+  // Backups
+  createBackup: (name: string, description?: string) => Promise<Backup>;
+  listBackups: () => Promise<Backup[]>;
+  getBackup: (id: string) => Promise<BackupWithData>;
+  deleteBackup: (id: string) => Promise<boolean>;
+  restoreBackup: (id: string, options: RestoreOptions) => Promise<RestoreResult>;
+  restoreSelectedItems: (id: string, options: SelectiveRestoreOptions) => Promise<RestoreResult>;
+  exportBackup: (id: string) => Promise<string | null>;
+  importBackup: () => Promise<Backup | null>;
+  getDeletedItems: () => Promise<DeletedItem[]>;
+  restoreDeletedItem: (type: 'profile', id: string) => Promise<boolean>;
+  permanentDeleteItem: (type: 'profile', id: string) => Promise<boolean>;
+  getBackupStats: () => Promise<BackupStats>;
 }
 
 declare global {

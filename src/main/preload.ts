@@ -175,4 +175,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listRedditPosts: (modelId: string, startDate?: string, endDate?: string) => ipcRenderer.invoke('reddit:listPosts', modelId, startDate, endDate),
   getRedditPost: (id: string) => ipcRenderer.invoke('reddit:getPost', id),
   updateRedditPost: (id: string, updates: { driveLink?: string }) => ipcRenderer.invoke('reddit:updatePost', id, updates),
+
+  // Backups
+  createBackup: (name: string, description?: string) => ipcRenderer.invoke('backups:create', name, description),
+  listBackups: () => ipcRenderer.invoke('backups:list'),
+  getBackup: (id: string) => ipcRenderer.invoke('backups:get', id),
+  deleteBackup: (id: string) => ipcRenderer.invoke('backups:delete', id),
+  restoreBackup: (id: string, options: { profiles: boolean; models: boolean; users: boolean; emails: boolean; posts: boolean; overwriteExisting: boolean }) =>
+    ipcRenderer.invoke('backups:restore', id, options),
+  restoreSelectedItems: (id: string, options: { profileIds: string[]; modelIds: string[]; userIds: string[]; mainEmailIds: string[]; subEmailIds: string[]; overwriteExisting: boolean }) =>
+    ipcRenderer.invoke('backups:restoreSelected', id, options),
+  exportBackup: (id: string) => ipcRenderer.invoke('backups:export', id),
+  importBackup: () => ipcRenderer.invoke('backups:import'),
+  getDeletedItems: () => ipcRenderer.invoke('backups:getDeletedItems'),
+  restoreDeletedItem: (type: 'profile', id: string) => ipcRenderer.invoke('backups:restoreItem', type, id),
+  permanentDeleteItem: (type: 'profile', id: string) => ipcRenderer.invoke('backups:permanentDelete', type, id),
+  getBackupStats: () => ipcRenderer.invoke('backups:getStats'),
 });

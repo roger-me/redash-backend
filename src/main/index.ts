@@ -13,6 +13,7 @@ import * as admin from './supabase/admin';
 import * as emails from './supabase/emails';
 import * as logs from './supabase/logs';
 import * as posts from './supabase/posts';
+import * as backups from './supabase/backups';
 
 // Updater
 import { initUpdater } from './updater';
@@ -1156,6 +1157,155 @@ ipcMain.handle('logs:getAll', async (_, limit?: number) => {
 ipcMain.handle('logs:add', async (_, action: string, entityType?: string, entityId?: string, entityName?: string, details?: any) => {
   console.log('logs:add called:', { action, entityType, entityId, entityName });
   return logs.logActivity(action, entityType, entityId, entityName, details);
+});
+
+// Backups
+ipcMain.handle('backups:create', async (_, name: string, description?: string) => {
+  console.log('backups:create called:', { name, description });
+  try {
+    const result = await backups.createBackup(name, description);
+    await logs.logActivity('backup_created', 'backup', result.id, name);
+    return result;
+  } catch (err) {
+    console.error('backups:create error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:list', async () => {
+  console.log('backups:list called');
+  try {
+    return await backups.listBackups();
+  } catch (err) {
+    console.error('backups:list error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:get', async (_, id: string) => {
+  console.log('backups:get called:', id);
+  try {
+    return await backups.getBackup(id);
+  } catch (err) {
+    console.error('backups:get error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:delete', async (_, id: string) => {
+  console.log('backups:delete called:', id);
+  try {
+    const result = await backups.deleteBackup(id);
+    await logs.logActivity('backup_deleted', 'backup', id);
+    return result;
+  } catch (err) {
+    console.error('backups:delete error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:restore', async (_, id: string, options: backups.RestoreOptions) => {
+  console.log('backups:restore called:', { id, options });
+  try {
+    const result = await backups.restoreFromBackup(id, options);
+    await logs.logActivity('backup_restored', 'backup', id, undefined, { options, result });
+    return result;
+  } catch (err) {
+    console.error('backups:restore error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:restoreSelected', async (_, id: string, options: backups.SelectiveRestoreOptions) => {
+  console.log('backups:restoreSelected called:', { id, options });
+  try {
+    const result = await backups.restoreSelectedItems(id, options);
+    await logs.logActivity('backup_restored_selective', 'backup', id, undefined, { options, result });
+    return result;
+  } catch (err) {
+    console.error('backups:restoreSelected error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:export', async (_, id: string) => {
+  console.log('backups:export called:', id);
+  try {
+    const backup = await backups.getBackup(id);
+    const result = await dialog.showSaveDialog({
+      title: 'Export Backup',
+      defaultPath: `redash-backup-${backup.name.replace(/[^a-z0-9]/gi, '-')}-${new Date().toISOString().split('T')[0]}.json`,
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+    });
+    if (result.canceled || !result.filePath) return null;
+    await backups.exportBackupToFile(id, result.filePath);
+    return result.filePath;
+  } catch (err) {
+    console.error('backups:export error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:import', async () => {
+  console.log('backups:import called');
+  try {
+    const result = await dialog.showOpenDialog({
+      title: 'Import Backup',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile'],
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const imported = await backups.importBackupFromFile(result.filePaths[0]);
+    await logs.logActivity('backup_imported', 'backup', imported.id, imported.name);
+    return imported;
+  } catch (err) {
+    console.error('backups:import error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:getDeletedItems', async () => {
+  console.log('backups:getDeletedItems called');
+  try {
+    return await backups.getDeletedItems();
+  } catch (err) {
+    console.error('backups:getDeletedItems error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:restoreItem', async (_, type: 'profile', id: string) => {
+  console.log('backups:restoreItem called:', { type, id });
+  try {
+    const result = await backups.restoreDeletedItem(type, id);
+    await logs.logActivity('item_restored', type, id);
+    return result;
+  } catch (err) {
+    console.error('backups:restoreItem error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:permanentDelete', async (_, type: 'profile', id: string) => {
+  console.log('backups:permanentDelete called:', { type, id });
+  try {
+    const result = await backups.permanentDeleteItem(type, id);
+    await logs.logActivity('item_permanently_deleted', type, id);
+    return result;
+  } catch (err) {
+    console.error('backups:permanentDelete error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('backups:getStats', async () => {
+  console.log('backups:getStats called');
+  try {
+    return await backups.getBackupStats();
+  } catch (err) {
+    console.error('backups:getStats error:', err);
+    throw err;
+  }
 });
 
 // Helper to fetch JSON from Reddit

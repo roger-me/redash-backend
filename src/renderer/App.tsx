@@ -10,12 +10,13 @@ import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
 import LogsPage from './components/LogsPage';
 import PostsPage from './components/PostsPage';
+import BackupsPage from './components/BackupsPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Desktop, Users, Swap, Gear, ShieldCheck, ClockCounterClockwise, CalendarBlank } from '@phosphor-icons/react';
+import { ArrowsClockwise, Desktop, Users, Swap, Gear, ShieldCheck, ClockCounterClockwise, CalendarBlank, Archive } from '@phosphor-icons/react';
 import SettingsPage from './components/SettingsPage';
 import { LanguageProvider, useLanguage } from './i18n';
 
-type Page = 'accounts' | 'flipper' | 'settings' | 'admin' | 'logs' | 'posts';
+type Page = 'accounts' | 'flipper' | 'settings' | 'admin' | 'logs' | 'posts' | 'backups';
 
 interface AuthUser {
   id: string;
@@ -591,6 +592,21 @@ function AppContent() {
             </button>
           )}
 
+          {user?.role === 'dev' && (
+            <button
+              onClick={() => setCurrentPage('backups')}
+              className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
+              style={{
+                background: currentPage === 'backups' ? 'var(--accent-primary)' : 'transparent',
+                color: currentPage === 'backups' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                borderRadius: '34px',
+              }}
+            >
+              <Archive size={20} weight={currentPage === 'backups' ? 'fill' : 'regular'} />
+              <span className="text-sm font-medium">{t('nav.backups')}</span>
+            </button>
+          )}
+
           <button
             onClick={() => setCurrentPage('settings')}
             className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
@@ -720,6 +736,7 @@ function AppContent() {
           />
         )}
         {currentPage === 'logs' && user?.role === 'dev' && <LogsPage />}
+        {currentPage === 'backups' && user?.role === 'dev' && <BackupsPage />}
       </div>
 
       {/* Browser Panel - Right side */}
