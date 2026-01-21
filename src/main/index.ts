@@ -20,6 +20,14 @@ import { initUpdater } from './updater';
 // Google Sheets
 import * as googleSheets from './googleSheets';
 
+// Fingerprinting
+import { generateFingerprint, generateSpoofingScript, DeviceFingerprint } from './fingerprint';
+
+// Disable WebRTC completely to prevent IP leaks
+app.commandLine.appendSwitch('disable-features', 'WebRTC');
+app.commandLine.appendSwitch('disable-webrtc');
+app.commandLine.appendSwitch('enforce-webrtc-ip-permission-check', 'true');
+
 // Types
 interface Proxy {
   host: string;
@@ -36,7 +44,9 @@ interface Profile {
   browser: 'chromium' | 'firefox' | 'webkit';
   proxy?: Proxy;
   device?: string;
+  country?: string;
   createdAt: string;
+  fingerprint?: DeviceFingerprint;
 }
 
 interface ActiveSession {
@@ -101,6 +111,7 @@ const mobileDevices: Record<string, { userAgent: string; width: number; height: 
 // State
 const activeSessions: Map<string, ActiveSession> = new Map();
 const proxyCredentials: Map<string, { username: string; password: string }> = new Map();
+const webContentsFingerprints: Map<number, DeviceFingerprint> = new Map(); // webContents.id -> fingerprint
 let mainWindow: BrowserWindow | null = null;
 
 // Paths
@@ -417,6 +428,8 @@ interface EmbeddedBrowserState {
   tabCounter: number;
   session: Electron.Session;
   proxyCheckDone: boolean;
+  fingerprint: DeviceFingerprint;
+  spoofingScript: string;
 }
 
 // Map of profileId -> browser state (supports multiple browsers)
@@ -476,13 +489,27 @@ const createEmbeddedTab = (profileId: string, url: string = 'about:blank'): Embe
   if (!mainWindow || !state) return null;
 
   const id = `tab-${++state.tabCounter}`;
+
+  // Preload script path for fingerprint injection
+  const preloadPath = path.join(__dirname, 'fingerprint-inject.js');
+  console.log(`[Fingerprint] Using preload script: ${preloadPath}`);
+
   const view = new BrowserView({
     webPreferences: {
       session: state.session,
       contextIsolation: true,
       nodeIntegration: false,
+      preload: preloadPath,
+      webSecurity: true,
     },
   });
+
+  // Disable WebRTC IP leak for this webContents
+  view.webContents.setWebRTCIPHandlingPolicy('disable_non_proxied_udp');
+
+  // Store fingerprint for this webContents so preload can access it
+  webContentsFingerprints.set(view.webContents.id, state.fingerprint);
+  console.log(`[Fingerprint] Stored fingerprint for webContents ${view.webContents.id}: ${state.fingerprint.deviceModel}`);
 
   const tab: EmbeddedTab = { id, view, title: 'New Tab', url };
   state.tabs.push(tab);
@@ -513,6 +540,19 @@ const createEmbeddedTab = (profileId: string, url: string = 'about:blank'): Embe
       state.proxyCheckDone = true;
       checkEmbeddedProxyStatus(profileId);
     }
+  });
+
+  // Backup: Also inject via executeJavaScript in case preload didn't work
+  view.webContents.on('dom-ready', () => {
+    if (state.spoofingScript) {
+      view.webContents.executeJavaScript(state.spoofingScript, true).catch(() => {});
+    }
+  });
+
+  // Clean up fingerprint map when webContents is destroyed
+  view.webContents.on('destroyed', () => {
+    webContentsFingerprints.delete(view.webContents.id);
+    console.log(`[Fingerprint] Cleaned up fingerprint for webContents ${view.webContents.id}`);
   });
 
   view.webContents.loadURL(url);
@@ -700,12 +740,6 @@ ipcMain.handle('browser:launch', async (_, profileId: string) => {
     return { success: true };
   }
 
-  // Get user agent
-  let userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-  if (profile.type === 'mobile' && profile.device && mobileDevices[profile.device]) {
-    userAgent = mobileDevices[profile.device].userAgent;
-  }
-
   // Create session
   const partitionName = `persist:profile-${profileId}`;
   const profileSession = session.fromPartition(partitionName);
@@ -727,9 +761,57 @@ ipcMain.handle('browser:launch', async (_, profileId: string) => {
     }
   }
 
+  // Generate fingerprint first to use in user agent
+  let fingerprint: DeviceFingerprint;
+  if (profile.fingerprint) {
+    fingerprint = profile.fingerprint as DeviceFingerprint;
+    console.log(`[Fingerprint] Using stored fingerprint for ${profileId}: ${fingerprint.deviceModel}, timezone: ${fingerprint.timezone}`);
+  } else {
+    fingerprint = generateFingerprint(profileId, profile.country);
+    console.log(`[Fingerprint] Generated new fingerprint for ${profileId}: ${fingerprint.deviceModel}, timezone: ${fingerprint.timezone}`);
+    // Save fingerprint to database for persistence
+    db.updateProfile(profileId, { fingerprint }).catch(err => {
+      console.error('Failed to save fingerprint:', err);
+    });
+  }
+
+  // Set user agent to match the fingerprint (Android device)
+  const userAgent = `Mozilla/5.0 (Linux; Android 13; ${fingerprint.deviceModel}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36`;
   profileSession.setUserAgent(userAgent);
+  console.log(`[Fingerprint] User-Agent set to: ${fingerprint.deviceModel}`);
+
+  // Force English language for all requests
+  profileSession.webRequest.onBeforeSendHeaders(
+    { urls: ['*://*/*'] },
+    (details, callback) => {
+      details.requestHeaders['Accept-Language'] = 'en-US,en;q=0.9';
+      callback({ requestHeaders: details.requestHeaders });
+    }
+  );
+
+  // Set spellchecker to English
+  profileSession.setSpellCheckerLanguages(['en-US']);
+
+  // Disable WebRTC IP leak - only use proxy IP
+  profileSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media') {
+      callback(false); // Block camera/mic by default
+    } else {
+      callback(true);
+    }
+  });
+
+  // Force WebRTC to use proxy only (disable local IP leak)
+  profileSession.webRequest.onBeforeRequest(
+    { urls: ['*://*/'] },
+    (details, callback) => {
+      callback({});
+    }
+  );
 
   // Create browser state
+  const spoofingScript = generateSpoofingScript(fingerprint);
+
   const browserState: EmbeddedBrowserState = {
     profileId,
     profile,
@@ -738,6 +820,8 @@ ipcMain.handle('browser:launch', async (_, profileId: string) => {
     tabCounter: 0,
     session: profileSession,
     proxyCheckDone: false,
+    fingerprint,
+    spoofingScript,
   };
   embeddedBrowsers.set(profileId, browserState);
 
@@ -838,6 +922,13 @@ ipcMain.handle('browser:active', () => {
 
 ipcMain.handle('devices:list', () => {
   return Object.keys(mobileDevices);
+});
+
+// Fingerprint IPC handler for preload script
+ipcMain.on('fingerprint:get', (event) => {
+  const fingerprint = webContentsFingerprints.get(event.sender.id);
+  console.log(`[Fingerprint] IPC request from webContents ${event.sender.id}, found: ${fingerprint ? fingerprint.deviceModel : 'none'}`);
+  event.returnValue = fingerprint || null;
 });
 
 // Model IPC Handlers (Supabase)

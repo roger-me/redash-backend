@@ -51,6 +51,7 @@ export interface Profile {
   archivedAt?: string;
   expiresAt?: string;
   subEmailId?: string;
+  fingerprint?: Record<string, any>;
 }
 
 export type UserRole = 'dev' | 'admin' | 'basic';
