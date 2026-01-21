@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Profile, Model } from '../../shared/types';
-import { CaretRight, ChatCircle, File, User, Calendar, Copy, EnvelopeSimple, Key } from '@phosphor-icons/react';
+import { CaretRight, User, Copy, EnvelopeSimple, Key, VideoCamera, Star, Calendar, RedditLogo } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 
 // Flag PNG imports
@@ -112,6 +112,22 @@ function ProfileList({
 }: ProfileListProps) {
   const { t } = useLanguage();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [openKarmaId, setOpenKarmaId] = useState<string | null>(null);
+  const [openRedditId, setOpenRedditId] = useState<string | null>(null);
+  const [openRedgifsId, setOpenRedgifsId] = useState<string | null>(null);
+
+  // Close popups when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setOpenKarmaId(null);
+      setOpenRedditId(null);
+      setOpenRedgifsId(null);
+    };
+    if (openKarmaId || openRedditId || openRedgifsId) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openKarmaId, openRedditId, openRedgifsId]);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -144,6 +160,7 @@ function ProfileList({
       >
         {/* Main content */}
         <div className="flex-1 min-w-0">
+          {/* Username · Karma · Age */}
           <div className="flex items-center gap-2">
             {profile.country && (countryFlagImages[profile.country] || countryFlagsEmoji[profile.country]) && (
               countryFlagImages[profile.country] ? (
@@ -162,10 +179,55 @@ function ProfileList({
             <span className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
               {profile.name}
             </span>
+            <span style={{ color: 'var(--text-tertiary)' }}>·</span>
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setOpenKarmaId(openKarmaId === profile.id ? null : profile.id); }}
+                className="flex items-center gap-1 text-sm hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                <Star size={12} weight="fill" color="var(--text-tertiary)" />
+                {(profile.commentKarma || 0) + (profile.postKarma || 0)}
+              </button>
+              {openKarmaId === profile.id && (
+                <div
+                  className="absolute top-full left-0 mt-1 py-2 px-3 z-50 whitespace-nowrap"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Comments</span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{profile.commentKarma || 0}</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>Posts</span>
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{profile.postKarma || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {(() => {
+              const ageDays = getAccountAgeDays(profile.purchaseDate);
+              if (ageDays === null) return null;
+              return (
+                <>
+                  <span style={{ color: 'var(--text-tertiary)' }}>·</span>
+                  <span className="flex items-center gap-1 text-sm" style={{ color: 'var(--text-secondary)' }} title={`Account age: ${ageDays} days`}>
+                    <Calendar size={12} weight="bold" color="var(--text-tertiary)" />
+                    {ageDays}d
+                  </span>
+                </>
+              );
+            })()}
           </div>
 
-          {/* Status & Karma Pills */}
-          <div className="flex items-center gap-2 mt-2">
+          {/* Status, Email, Password, RedGifs - all on same line */}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
             {/* Status pill */}
             <div
               className="flex items-center gap-1 px-2.5 py-1 rounded-full"
@@ -186,78 +248,97 @@ function ProfileList({
                 {profile.status === 'banned' ? t('profile.banned') : profile.status === 'error' ? t('profile.error') : t('profile.working')}
               </span>
             </div>
-            {/* Comment Karma */}
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-              style={{ background: 'rgba(142, 142, 147, 0.12)' }}
-              title="Comment Karma"
-            >
-              <ChatCircle size={12} weight="bold" color="var(--text-tertiary)" />
-              <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                {profile.commentKarma || 0}
-              </span>
-            </div>
-            {/* Post Karma */}
-            <div
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-              style={{ background: 'rgba(142, 142, 147, 0.12)' }}
-              title="Post Karma"
-            >
-              <File size={12} weight="bold" color="var(--text-tertiary)" />
-              <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                {profile.postKarma || 0}
-              </span>
-            </div>
-            {/* Account Age */}
-            {(() => {
-              const ageDays = getAccountAgeDays(profile.purchaseDate);
-              if (ageDays === null) return null;
-              return (
-                <div
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+            {/* Reddit credentials */}
+            {(profile.credentials?.email || profile.credentials?.password) && (
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setOpenRedditId(openRedditId === profile.id ? null : profile.id); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
                   style={{ background: 'rgba(142, 142, 147, 0.12)' }}
-                  title={`Account age: ${ageDays} days`}
                 >
-                  <Calendar size={12} weight="bold" color="var(--text-tertiary)" />
+                  <RedditLogo size={12} weight="bold" color="var(--text-tertiary)" />
                   <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    {ageDays}d
+                    Reddit
                   </span>
-                </div>
-              );
-            })()}
+                </button>
+                {openRedditId === profile.id && (
+                  <div
+                    className="absolute top-full left-0 mt-1 py-1 z-50 min-w-[140px]"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                    }}
+                  >
+                    {profile.credentials?.email && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); copyToClipboard(profile.credentials!.email!, `email-${profile.id}`); }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        <EnvelopeSimple size={14} weight="bold" color="var(--text-tertiary)" />
+                        <span className="flex-1 truncate">{copiedId === `email-${profile.id}` ? t('common.copied') : profile.credentials.email}</span>
+                      </button>
+                    )}
+                    {profile.credentials?.password && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); copyToClipboard(profile.credentials!.password!, `pwd-${profile.id}`); }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        <Key size={14} weight="bold" color="var(--text-tertiary)" />
+                        <span className="flex-1 truncate">{copiedId === `pwd-${profile.id}` ? t('common.copied') : profile.credentials.password}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {/* RedGifs */}
+            {profile.redgifsUsername && (
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setOpenRedgifsId(openRedgifsId === profile.id ? null : profile.id); }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
+                  style={{ background: 'rgba(142, 142, 147, 0.12)' }}
+                >
+                  <VideoCamera size={12} weight="bold" color="var(--text-tertiary)" />
+                  <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                    RedGifs
+                  </span>
+                </button>
+                {openRedgifsId === profile.id && (
+                  <div
+                    className="absolute top-full right-0 mt-1 py-1 z-50 min-w-[140px]"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                    }}
+                  >
+                    <button
+                      onClick={(e) => { e.stopPropagation(); copyToClipboard(profile.redgifsUsername!, `rg-user-${profile.id}`); }}
+                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      <User size={14} weight="bold" color="var(--text-tertiary)" />
+                      <span className="flex-1 truncate">{copiedId === `rg-user-${profile.id}` ? t('common.copied') : profile.redgifsUsername}</span>
+                    </button>
+                    {profile.redgifsPassword && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); copyToClipboard(profile.redgifsPassword!, `rg-pwd-${profile.id}`); }}
+                        className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        <Key size={14} weight="bold" color="var(--text-tertiary)" />
+                        <span className="flex-1 truncate">{copiedId === `rg-pwd-${profile.id}` ? t('common.copied') : profile.redgifsPassword}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-
-          {/* Email & Password */}
-          {(profile.credentials?.email || profile.credentials?.password) && (
-            <div className="flex items-center gap-2 mt-2">
-              {profile.credentials?.email && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); copyToClipboard(profile.credentials!.email!, `email-${profile.id}`); }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{ background: 'rgba(142, 142, 147, 0.12)' }}
-                  title="Click to copy email"
-                >
-                  <EnvelopeSimple size={12} weight="bold" color="var(--text-tertiary)" />
-                  <span className="text-xs font-medium" style={{ color: copiedId === `email-${profile.id}` ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
-                    {copiedId === `email-${profile.id}` ? t('common.copied') : profile.credentials.email}
-                  </span>
-                </button>
-              )}
-              {profile.credentials?.password && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); copyToClipboard(profile.credentials!.password!, `pwd-${profile.id}`); }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{ background: 'rgba(142, 142, 147, 0.12)' }}
-                  title="Click to copy password"
-                >
-                  <Key size={12} weight="bold" color="var(--text-tertiary)" />
-                  <span className="text-xs font-medium" style={{ color: copiedId === `pwd-${profile.id}` ? 'var(--accent-green)' : 'var(--text-secondary)' }}>
-                    {copiedId === `pwd-${profile.id}` ? t('common.copied') : profile.credentials.password}
-                  </span>
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Actions */}

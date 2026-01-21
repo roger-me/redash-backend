@@ -62,10 +62,10 @@
 
 /* Paper Theme (Light) */
 [data-theme="paper"], [data-theme="light"] {
-  --bg-primary: #FAFAFA;
+  --bg-primary: #F2F2F2;
   --bg-secondary: #FFFFFF;
-  --bg-tertiary: #F0F0F0;
-  --bg-hover: #E5E5E5;
+  --bg-tertiary: #E8E8E8;
+  --bg-hover: #DEDEDE;
   --bg-hover-light: rgba(0, 0, 0, 0.05);
   --bg-active: rgba(0, 0, 0, 0.08);
   --text-primary: #24292E;
@@ -79,14 +79,14 @@
   --accent-green: #28a745;
   --accent-red: #d73a49;
   --accent-orange: #f66a0a;
-  --border: rgba(106, 115, 125, 0.2);
-  --border-light: rgba(106, 115, 125, 0.3);
+  --border: rgba(106, 115, 125, 0.15);
+  --border-light: rgba(106, 115, 125, 0.25);
   --scrollbar-thumb: rgba(106, 115, 125, 0.3);
   --scrollbar-thumb-hover: rgba(106, 115, 125, 0.5);
-  --chip-bg: rgba(106, 115, 125, 0.1);
+  --chip-bg: rgba(106, 115, 125, 0.12);
   --btn-primary-bg: #24292E;
   --btn-primary-color: #FFFFFF;
-  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-color: rgba(0, 0, 0, 0.08);
 }
 
 /* Dracula Theme */

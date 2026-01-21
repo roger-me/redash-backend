@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { CaretLeft, CaretRight, ArrowsClockwise, ArrowUp, ChatCircle, X, Link as LinkIcon, Check, PencilSimple, CaretDown, Users, FolderSimple } from '@phosphor-icons/react';
+import { CaretLeft, CaretRight, ArrowsClockwise, ArrowUp, ChatCircle, X, Link as LinkIcon, Check, PencilSimple, CaretDown, Users, FolderSimple, Globe } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 import { Model, Profile, RedditPost, AppUser } from '../../shared/types';
 
@@ -61,10 +61,13 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
   const [archivedProfiles, setArchivedProfiles] = useState<Profile[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedBrowserIds, setSelectedBrowserIds] = useState<string[]>([]);
   const [showUserFilter, setShowUserFilter] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
+  const [showBrowserFilter, setShowBrowserFilter] = useState(false);
   const userFilterRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const browserFilterRef = useRef<HTMLDivElement>(null);
 
   // Helper to get relative time
   const getRelativeTime = (date: Date): string => {
@@ -184,10 +187,31 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
       if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
         setShowModelMenu(false);
       }
+      if (browserFilterRef.current && !browserFilterRef.current.contains(e.target as Node)) {
+        setShowBrowserFilter(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Get available browsers for filter (based on user role)
+  const availableBrowsers = useMemo(() => {
+    if (user?.role === 'dev') {
+      return profiles;
+    }
+    // For admin/basic users, only show their own browsers
+    return profiles.filter(p => p.userId === user?.id);
+  }, [profiles, user]);
+
+  // Toggle browser selection
+  const toggleBrowserSelection = (browserId: string) => {
+    setSelectedBrowserIds(prev =>
+      prev.includes(browserId)
+        ? prev.filter(id => id !== browserId)
+        : [...prev, browserId]
+    );
+  };
 
   // Get profiles for selected models
   const modelProfiles = useMemo(() => {
@@ -262,7 +286,7 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
     return users.find(u => u.id === profile.userId);
   };
 
-  // Get posts for a specific day (with model and user filters)
+  // Get posts for a specific day (with model, user, and browser filters)
   const getPostsForDay = (date: Date): RedditPost[] => {
     const dayStart = new Date(date);
     dayStart.setHours(0, 0, 0, 0);
@@ -278,6 +302,16 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
       // Apply model filter
       if (selectedModelIds.length > 0) {
         if (!profile?.modelId || !selectedModelIds.includes(profile.modelId)) return false;
+      }
+
+      // Apply browser filter
+      if (selectedBrowserIds.length > 0) {
+        if (!selectedBrowserIds.includes(post.profileId)) return false;
+      }
+
+      // For admin/basic users: only show their own posts
+      if (user?.role !== 'dev') {
+        if (!profile?.userId || profile.userId !== user?.id) return false;
       }
 
       // Apply user filter for dev users
@@ -492,6 +526,57 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
           </div>
         )}
 
+        {/* Browser Filter (All users) */}
+        {availableBrowsers.length > 0 && (
+          <div className="relative" ref={browserFilterRef}>
+            <button
+              onClick={() => setShowBrowserFilter(!showBrowserFilter)}
+              className="h-8 px-3 flex items-center gap-1.5 text-sm font-medium"
+              style={{
+                background: 'var(--chip-bg)',
+                color: 'var(--text-primary)',
+                borderRadius: '100px',
+              }}
+            >
+              <Globe size={14} weight="bold" />
+              <span>{selectedBrowserIds.length === 0 ? t('posts.allBrowsers') : selectedBrowserIds.length === 1 ? availableBrowsers.find(b => b.id === selectedBrowserIds[0])?.name : `${selectedBrowserIds.length}`}</span>
+              <CaretDown size={10} weight="bold" />
+            </button>
+
+            {showBrowserFilter && (
+              <div
+                className="absolute z-50 mt-1 py-1 min-w-[200px] max-h-[300px] overflow-y-auto"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+                }}
+              >
+                {availableBrowsers.map(browser => (
+                  <button
+                    key={browser.id}
+                    onClick={() => toggleBrowserSelection(browser.id)}
+                    className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <div
+                      className="w-4 h-4 rounded flex items-center justify-center text-xs"
+                      style={{
+                        background: selectedBrowserIds.includes(browser.id) ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                        color: selectedBrowserIds.includes(browser.id) ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                      }}
+                    >
+                      {selectedBrowserIds.includes(browser.id) && <Check size={10} weight="bold" />}
+                    </div>
+                    <Globe size={14} weight="bold" />
+                    <span className="truncate">{browser.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="ml-auto flex items-center gap-2">
           {/* Sync Button */}
           {modelProfiles.length > 0 && (
@@ -597,18 +682,15 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
                     {dayPosts.slice(0, hasMultiple ? 4 : 5).map(post => {
                       const isBanned = isProfileBanned(post.profileId, post.isBanned);
                       const profileName = getProfileName(post.profileId, post.accountName);
-                      const postUser = getUserForProfile(post.profileId);
+                      // For dev users, get the post owner; for others, use current user (they only see their own posts)
+                      const postUser = user?.role === 'dev' ? getUserForProfile(post.profileId) : user;
                       const userColor = getUserColor(postUser?.username);
                       return (
                         <button
                           key={post.id}
                           onClick={() => {
                             if (isBanned) return;
-                            if (onLaunchBrowser) {
-                              onLaunchBrowser(post.profileId, `https://reddit.com${post.permalink}`);
-                            } else {
-                              handleOpenPost(post);
-                            }
+                            handleOpenPost(post);
                           }}
                           className="w-full py-1 px-2.5 text-left truncate transition-opacity"
                           style={{
@@ -620,26 +702,12 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
                           }}
                         >
                           <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5">
-                              {user?.role === 'dev' && postUser && (
-                                <div
-                                  className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
-                                  style={{
-                                    background: isBanned ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)',
-                                    color: isBanned ? '#fff' : '#000',
-                                  }}
-                                >
-                                  {postUser.username.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <span className="font-semibold">{profileName}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <ArrowUp size={10} weight="bold" className="flex-shrink-0" />
-                              <span>{formatScore(post.score)}</span>
-                              <span className="opacity-50">·</span>
-                              <ChatCircle size={10} weight="bold" className="flex-shrink-0" />
-                              <span>{post.numComments}</span>
+                            <span className="font-semibold truncate">r/{post.subreddit}</span>
+                            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                              <ArrowUp size={10} weight="bold" />
+                              <span className="font-semibold">{formatScore(post.score)}</span>
+                              <ChatCircle size={10} weight="bold" />
+                              <span className="font-semibold">{post.numComments}</span>
                             </div>
                           </div>
                         </button>
@@ -696,7 +764,8 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
               {getPostsForDay(expandedDay).map(post => {
                 const isBanned = isProfileBanned(post.profileId, post.isBanned);
                 const profileName = getProfileName(post.profileId, post.accountName);
-                const postUser = getUserForProfile(post.profileId);
+                // For dev users, get the post owner; for others, use current user (they only see their own posts)
+                const postUser = user?.role === 'dev' ? getUserForProfile(post.profileId) : user;
                 const userColor = getUserColor(postUser?.username);
                 return (
                   <button
@@ -704,11 +773,7 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
                     onClick={() => {
                       if (isBanned) return;
                       setExpandedDay(null);
-                      if (onLaunchBrowser) {
-                        onLaunchBrowser(post.profileId, `https://reddit.com${post.permalink}`);
-                      } else {
-                        handleOpenPost(post);
-                      }
+                      handleOpenPost(post);
                     }}
                     className="w-full py-1 px-2.5 text-left truncate transition-opacity"
                     style={{
@@ -720,26 +785,12 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
                     }}
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        {user?.role === 'dev' && postUser && (
-                          <div
-                            className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
-                            style={{
-                              background: isBanned ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)',
-                              color: isBanned ? '#fff' : '#000',
-                            }}
-                          >
-                            {postUser.username.charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <span className="font-semibold">{profileName}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <ArrowUp size={10} weight="bold" className="flex-shrink-0" />
-                        <span>{formatScore(post.score)}</span>
-                        <span className="opacity-50">·</span>
-                        <ChatCircle size={10} weight="bold" className="flex-shrink-0" />
-                        <span>{post.numComments}</span>
+                      <span className="font-semibold truncate">r/{post.subreddit}</span>
+                      <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                        <ArrowUp size={10} weight="bold" />
+                        <span className="font-semibold">{formatScore(post.score)}</span>
+                        <ChatCircle size={10} weight="bold" />
+                        <span className="font-semibold">{post.numComments}</span>
                       </div>
                     </div>
                   </button>

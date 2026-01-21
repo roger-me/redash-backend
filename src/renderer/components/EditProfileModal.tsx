@@ -80,6 +80,8 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
     }
     return '';
   });
+  const [redgifsUsername, setRedgifsUsername] = useState(profile.redgifsUsername || '');
+  const [redgifsPassword, setRedgifsPassword] = useState(profile.redgifsPassword || '');
   const [showCountryMenu, setShowCountryMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [showEmailMenu, setShowEmailMenu] = useState(false);
@@ -104,6 +106,8 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
           if (data.purchaseDate && !purchaseDate) setPurchaseDate(data.purchaseDate);
           if (data.orderNumber && !orderNumber) setOrderNumber(data.orderNumber);
           if (data.subEmailId && !subEmailId) setSubEmailId(data.subEmailId);
+          if (data.redgifsUsername && !redgifsUsername) setRedgifsUsername(data.redgifsUsername);
+          if (data.redgifsPassword && !redgifsPassword) setRedgifsPassword(data.redgifsPassword);
         }
       } catch (err) {
         console.error('Failed to load full profile:', err);
@@ -175,16 +179,6 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
       return;
     }
 
-    if (!orderNumber.trim()) {
-      alert(t('validation.enterOrderNumber'));
-      return;
-    }
-
-    if (!proxyString.trim()) {
-      alert(t('validation.enterProxy'));
-      return;
-    }
-
     // Parse proxy string
     let proxy = undefined;
     if (proxyString.trim()) {
@@ -213,6 +207,8 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
       isEnabled: !!expiresAt,
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
       subEmailId: subEmailId || undefined,
+      redgifsUsername: redgifsUsername.trim() || undefined,
+      redgifsPassword: redgifsPassword.trim() || undefined,
     };
 
     // Include proxy: use parsed proxy if available, otherwise keep existing profile proxy
@@ -544,6 +540,7 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                 {t('profile.orderNumber')}
+                <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> {t('profile.optional')}</span>
               </label>
               <input
                 type="text"
@@ -567,6 +564,7 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
           <div>
             <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
               {t('profile.proxy')}
+              <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> {t('profile.optional')}</span>
             </label>
             <input
               type="text"
@@ -584,6 +582,46 @@ function EditProfileModal({ profile, models, takenSubEmailIds = [], onClose, onS
                 fontSize: '12px',
               }}
             />
+          </div>
+
+          {/* RedGifs */}
+          <div>
+            <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+              {t('profile.redgifs')}
+              <span style={{ color: 'var(--text-tertiary)', fontWeight: 'normal' }}> {t('profile.optional')}</span>
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={redgifsUsername}
+                onChange={(e) => setRedgifsUsername(e.target.value)}
+                placeholder={t('profile.redgifsUsername')}
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                }}
+              />
+              <input
+                type="text"
+                value={redgifsPassword}
+                onChange={(e) => setRedgifsPassword(e.target.value)}
+                placeholder={t('profile.redgifsPassword')}
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  border: 'none',
+                  borderRadius: '34px',
+                  color: 'var(--text-primary)',
+                  padding: '12px 16px',
+                  width: '100%',
+                  fontSize: '14px',
+                }}
+              />
+            </div>
           </div>
 
           {/* Actions */}

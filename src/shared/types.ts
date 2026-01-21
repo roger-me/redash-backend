@@ -52,6 +52,8 @@ export interface Profile {
   expiresAt?: string;
   subEmailId?: string;
   fingerprint?: Record<string, any>;
+  redgifsUsername?: string;
+  redgifsPassword?: string;
 }
 
 export type UserRole = 'dev' | 'admin' | 'basic';

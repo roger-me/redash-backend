@@ -80,6 +80,9 @@ export const translations = {
     'profile.launch': 'Launch',
     'profile.stop': 'Stop',
     'profile.selectEmail': 'Select email',
+    'profile.redgifs': 'RedGifs',
+    'profile.redgifsUsername': 'RedGifs Username',
+    'profile.redgifsPassword': 'RedGifs Password',
     'common.copied': 'Copied!',
 
     // Validation
@@ -308,6 +311,7 @@ export const translations = {
     'posts.more': 'more',
     'posts.caption': 'Caption',
     'posts.browser': 'Browser',
+    'posts.allBrowsers': 'All Browsers',
     'posts.postedOn': 'Posted on',
     'posts.openOnReddit': 'Open on Reddit',
     'posts.driveLink': 'Google Drive Link',
@@ -393,6 +397,9 @@ export const translations = {
     'profile.launch': 'Abrir',
     'profile.stop': 'Cerrar',
     'profile.selectEmail': 'Seleccionar correo',
+    'profile.redgifs': 'RedGifs',
+    'profile.redgifsUsername': 'Usuario RedGifs',
+    'profile.redgifsPassword': 'Contraseña RedGifs',
     'common.copied': 'Copiado!',
 
     // Validation
@@ -621,6 +628,7 @@ export const translations = {
     'posts.more': 'más',
     'posts.caption': 'Descripción',
     'posts.browser': 'Navegador',
+    'posts.allBrowsers': 'Todos',
     'posts.postedOn': 'Publicado el',
     'posts.openOnReddit': 'Abrir en Reddit',
     'posts.driveLink': 'Enlace de Google Drive',
