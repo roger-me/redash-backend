@@ -1,6 +1,6 @@
 {
   "name": "redash",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Browser & Mobile Simulator Manager with Proxy Support",
   "main": "dist/main/main/index.js",
   "scripts": {
@@ -65,7 +65,8 @@
     "publish": {
       "provider": "github",
       "owner": "roger-me",
-      "repo": "redash-backend"
+      "repo": "redash-backend",
+      "releaseType": "release"
     },
     "mac": {
       "target": [
