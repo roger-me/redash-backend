@@ -81,6 +81,7 @@ interface AdminPageProps {
   onCreateBrowser: (userId?: string) => void;
   onEditProfile: (profileId: string) => void;
   onSyncKarma: () => Promise<void>;
+  onProfilesChanged?: () => void;
   refreshTrigger?: number;
 }
 
@@ -119,6 +120,7 @@ export default function AdminPage({
   onCreateBrowser,
   onEditProfile,
   onSyncKarma,
+  onProfilesChanged,
   refreshTrigger
 }: AdminPageProps) {
   const canDelete = currentUserRole === 'dev';
@@ -512,6 +514,9 @@ export default function AdminPage({
 
       setOpenMenuId(null);
       setShowMoveSubmenu(null);
+
+      // Notify parent to refresh its profiles
+      onProfilesChanged?.();
     } catch (err) {
       console.error('Failed to move profile:', err);
     }

@@ -464,7 +464,9 @@ function AppContent() {
     }
   };
 
-  const desktopProfiles = profiles.filter(p => !p.type || p.type === 'desktop');
+  // Filter profiles: only show current user's profiles on main Accounts page
+  const myProfiles = profiles.filter(p => p.userId === user?.id);
+  const desktopProfiles = myProfiles.filter(p => !p.type || p.type === 'desktop');
 
   // Loading state
   if (isAuthenticated === null) {
@@ -705,6 +707,7 @@ function AppContent() {
               if (profile) setEditingProfile(profile);
             }}
             onSyncKarma={() => syncRedditKarma(false)}
+            onProfilesChanged={loadProfiles}
             refreshTrigger={statsRefreshTrigger}
           />
         )}
