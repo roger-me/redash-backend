@@ -362,7 +362,7 @@ function AppContent() {
     }
   };
 
-  const handleLaunchBrowser = async (profileId: string) => {
+  const handleLaunchBrowser = async (profileId: string, navigateUrl?: string) => {
     try {
       const profile = profiles.find(p => p.id === profileId);
       if (!profile) return;
@@ -371,6 +371,14 @@ function AppContent() {
       // Only add to activeBrowsers if not already there
       setActiveBrowsers(prev => prev.includes(profileId) ? prev : [...prev, profileId]);
       setActiveBrowserProfile(profile);
+
+      // Navigate to URL if provided
+      if (navigateUrl) {
+        // Small delay to ensure browser is ready
+        setTimeout(() => {
+          window.electronAPI?.browserNavigate(navigateUrl);
+        }, 500);
+      }
     } catch (err) {
       console.error('Failed to launch browser:', err);
       alert('Failed to launch browser: ' + (err as Error).message);
@@ -691,7 +699,7 @@ function AppContent() {
           </main>
         )}
         {currentPage === 'flipper' && <FlipperPage />}
-        {currentPage === 'posts' && <PostsPage models={availableModels} profiles={profiles} user={user} />}
+        {currentPage === 'posts' && <PostsPage models={availableModels} profiles={profiles} user={user} onLaunchBrowser={handleLaunchBrowser} />}
         {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onChangeTheme={setTheme} />}
         {currentPage === 'admin' && (user?.role === 'admin' || user?.role === 'dev') && (
           <AdminPage

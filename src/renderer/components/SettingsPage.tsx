@@ -33,6 +33,30 @@ const THEMES = [
   { id: 'cyberpunk', name: 'Cyberpunk', accent: '#F5E946' },
 ];
 
+// Pastel colors with distinct hues (no similar colors next to each other)
+const avatarColors = [
+  '#FFB347', // Pastel orange
+  '#87CEEB', // Sky blue
+  '#DDA0DD', // Plum
+  '#98D8AA', // Pastel green
+  '#F0E68C', // Khaki/yellow
+  '#B19CD9', // Light purple
+  '#FFB6C1', // Light pink
+  '#20B2AA', // Light sea green
+  '#F4A460', // Sandy brown
+  '#87CEFA', // Light sky blue
+];
+
+const getAvatarColor = (name: string): string => {
+  if (!name) return '#808080';
+  // Better hash using prime multiplier for more spread
+  let hash = 7;
+  for (let i = 0; i < name.length; i++) {
+    hash = hash * 31 + name.charCodeAt(i);
+  }
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+};
+
 export default function SettingsPage({ user, onSignOut, theme, onChangeTheme }: SettingsPageProps) {
   const { t, language, setLanguage } = useLanguage();
   const [appVersion, setAppVersion] = useState<string>('');
@@ -163,7 +187,7 @@ export default function SettingsPage({ user, onSignOut, theme, onChangeTheme }: 
           <div className="flex items-center gap-4">
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold"
-              style={{ background: 'var(--accent-blue)', color: 'white' }}
+              style={{ background: getAvatarColor(user?.username || ''), color: '#000' }}
             >
               {(user?.username || 'U').charAt(0).toUpperCase()}
             </div>

@@ -55,16 +55,26 @@ const countryFlagImages: Record<string, string> = {
   'AE': flagAE, 'IL': flagIL, 'ZA': flagZA, 'EG': flagEG,
 };
 
+// Pastel colors with distinct hues (no similar colors next to each other)
 const avatarColors = [
-  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
-  '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9',
-  '#F8B500', '#FF8C00', '#00CED1', '#9370DB', '#3CB371',
+  '#FFB347', // Pastel orange
+  '#87CEEB', // Sky blue
+  '#DDA0DD', // Plum
+  '#98D8AA', // Pastel green
+  '#F0E68C', // Khaki/yellow
+  '#B19CD9', // Light purple
+  '#FFB6C1', // Light pink
+  '#20B2AA', // Light sea green
+  '#F4A460', // Sandy brown
+  '#87CEFA', // Light sky blue
 ];
 
 const getAvatarColor = (name: string): string => {
-  let hash = 0;
+  if (!name) return '#808080';
+  // Better hash using prime multiplier for more spread
+  let hash = 7;
   for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    hash = hash * 31 + name.charCodeAt(i);
   }
   return avatarColors[Math.abs(hash) % avatarColors.length];
 };
@@ -1183,8 +1193,8 @@ export default function AdminPage({
               <div key={user.id} style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
                 <div className="flex items-center gap-3 p-4">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
-                    style={{ background: getAvatarColor(user.username) }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg"
+                    style={{ background: getAvatarColor(user.username), color: '#000' }}
                   >
                     {user.username.charAt(0).toUpperCase()}
                   </div>
@@ -1482,7 +1492,7 @@ export default function AdminPage({
             users.map(user => (
               <div key={user.id} className="p-4" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg" style={{ background: getAvatarColor(user.username) }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg" style={{ background: getAvatarColor(user.username), color: '#000' }}>
                     {user.username.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1">

@@ -31,9 +31,10 @@ interface PostsPageProps {
   models: Model[];
   profiles: Profile[];
   user: AppUser | null;
+  onLaunchBrowser?: (profileId: string, navigateUrl?: string) => Promise<void>;
 }
 
-function PostsPage({ models, profiles, user }: PostsPageProps) {
+function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) {
   const { t } = useLanguage();
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>(() => {
     // Load from localStorage or default to all models
@@ -323,21 +324,29 @@ function PostsPage({ models, profiles, user }: PostsPageProps) {
     return score.toString();
   };
 
-  // Generate consistent pastel color for a profile
-  const getProfileColor = (profileId: string): { bg: string; text: string } => {
-    // Hash the profileId to get a consistent number
-    let hash = 0;
-    for (let i = 0; i < profileId.length; i++) {
-      hash = profileId.charCodeAt(i) + ((hash << 5) - hash);
+  // Pastel colors with distinct hues (no similar colors next to each other)
+  const avatarColors = [
+    '#FFB347', // Pastel orange
+    '#87CEEB', // Sky blue
+    '#DDA0DD', // Plum
+    '#98D8AA', // Pastel green
+    '#F0E68C', // Khaki/yellow
+    '#B19CD9', // Light purple
+    '#FFB6C1', // Light pink
+    '#20B2AA', // Light sea green
+    '#F4A460', // Sandy brown
+    '#87CEFA', // Light sky blue
+  ];
+
+  // Get user avatar color (same algorithm as AdminPage)
+  const getUserColor = (username: string | undefined): string => {
+    if (!username) return '#808080';
+    // Better hash using prime multiplier for more spread
+    let hash = 7;
+    for (let i = 0; i < username.length; i++) {
+      hash = hash * 31 + username.charCodeAt(i);
     }
-
-    // Generate pastel hue (0-360)
-    const hue = Math.abs(hash) % 360;
-
-    return {
-      bg: `hsl(${hue}, 70%, 80%)`,
-      text: `hsl(${hue}, 70%, 25%)`,
-    };
+    return avatarColors[Math.abs(hash) % avatarColors.length];
   };
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -468,8 +477,8 @@ function PostsPage({ models, profiles, user }: PostsPageProps) {
                     <div
                       className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
                       style={{
-                        background: `hsl(${Math.abs(u.id.charCodeAt(0) * 50) % 360}, 70%, 80%)`,
-                        color: `hsl(${Math.abs(u.id.charCodeAt(0) * 50) % 360}, 70%, 25%)`,
+                        background: getUserColor(u.username),
+                        color: '#000',
                       }}
                     >
                       {u.username.charAt(0).toUpperCase()}
@@ -588,27 +597,36 @@ function PostsPage({ models, profiles, user }: PostsPageProps) {
                     {dayPosts.slice(0, hasMultiple ? 4 : 5).map(post => {
                       const isBanned = isProfileBanned(post.profileId, post.isBanned);
                       const profileName = getProfileName(post.profileId, post.accountName);
-                      const profileColor = getProfileColor(post.profileId);
-                      const postUser = user?.role === 'dev' ? getUserForProfile(post.profileId) : undefined;
+                      const postUser = getUserForProfile(post.profileId);
+                      const userColor = getUserColor(postUser?.username);
                       return (
                         <button
                           key={post.id}
-                          onClick={() => handleOpenPost(post)}
-                          className="w-full py-1 px-2.5 text-left truncate transition-opacity hover:opacity-80"
+                          onClick={() => {
+                            if (isBanned) return;
+                            if (onLaunchBrowser) {
+                              onLaunchBrowser(post.profileId, `https://reddit.com${post.permalink}`);
+                            } else {
+                              handleOpenPost(post);
+                            }
+                          }}
+                          className="w-full py-1 px-2.5 text-left truncate transition-opacity"
                           style={{
-                            background: isBanned ? 'var(--accent-red)' : profileColor.bg,
-                            color: isBanned ? '#fff' : profileColor.text,
+                            background: isBanned ? 'var(--accent-red)' : userColor,
+                            color: isBanned ? '#fff' : '#000',
                             borderRadius: '100px',
+                            opacity: isBanned ? 0.5 : 1,
+                            cursor: isBanned ? 'not-allowed' : 'pointer',
                           }}
                         >
                           <div className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-1.5">
-                              {postUser && (
+                              {user?.role === 'dev' && postUser && (
                                 <div
                                   className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
                                   style={{
                                     background: isBanned ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)',
-                                    color: isBanned ? '#fff' : profileColor.text,
+                                    color: isBanned ? '#fff' : '#000',
                                   }}
                                 >
                                   {postUser.username.charAt(0).toUpperCase()}
@@ -678,30 +696,37 @@ function PostsPage({ models, profiles, user }: PostsPageProps) {
               {getPostsForDay(expandedDay).map(post => {
                 const isBanned = isProfileBanned(post.profileId, post.isBanned);
                 const profileName = getProfileName(post.profileId, post.accountName);
-                const profileColor = getProfileColor(post.profileId);
-                const postUser = user?.role === 'dev' ? getUserForProfile(post.profileId) : undefined;
+                const postUser = getUserForProfile(post.profileId);
+                const userColor = getUserColor(postUser?.username);
                 return (
                   <button
                     key={post.id}
                     onClick={() => {
+                      if (isBanned) return;
                       setExpandedDay(null);
-                      handleOpenPost(post);
+                      if (onLaunchBrowser) {
+                        onLaunchBrowser(post.profileId, `https://reddit.com${post.permalink}`);
+                      } else {
+                        handleOpenPost(post);
+                      }
                     }}
-                    className="w-full py-1 px-2.5 text-left truncate transition-opacity hover:opacity-80"
+                    className="w-full py-1 px-2.5 text-left truncate transition-opacity"
                     style={{
-                      background: isBanned ? 'var(--accent-red)' : profileColor.bg,
-                      color: isBanned ? '#fff' : profileColor.text,
+                      background: isBanned ? 'var(--accent-red)' : userColor,
+                      color: isBanned ? '#fff' : '#000',
                       borderRadius: '100px',
+                      opacity: isBanned ? 0.5 : 1,
+                      cursor: isBanned ? 'not-allowed' : 'pointer',
                     }}
                   >
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5">
-                        {postUser && (
+                        {user?.role === 'dev' && postUser && (
                           <div
                             className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0"
                             style={{
                               background: isBanned ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.15)',
-                              color: isBanned ? '#fff' : profileColor.text,
+                              color: isBanned ? '#fff' : '#000',
                             }}
                           >
                             {postUser.username.charAt(0).toUpperCase()}

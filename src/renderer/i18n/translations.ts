@@ -1,7 +1,7 @@
 export const translations = {
   en: {
     // Navigation
-    'nav.accounts': 'Accounts',
+    'nav.accounts': 'Reddit',
     'nav.flipper': 'Flipper',
     'nav.ai': 'AI',
     'nav.admin': 'Admin',
@@ -314,7 +314,7 @@ export const translations = {
   },
   es: {
     // Navigation
-    'nav.accounts': 'Cuentas',
+    'nav.accounts': 'Reddit',
     'nav.flipper': 'Flipper',
     'nav.ai': 'IA',
     'nav.admin': 'Admin',
