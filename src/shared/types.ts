@@ -278,6 +278,8 @@ export interface ElectronAPI {
   adminGetAllProfilesForStats: () => Promise<ProfileForStats[]>;
   adminGetAllModels: () => Promise<Model[]>;
   adminGetAllProfiles: () => Promise<Profile[]>;
+  adminGetModelOnlyfansLinks: (modelId: string) => Promise<{userId: string, url: string}[]>;
+  adminSetModelOnlyfansLinks: (modelId: string, links: {userId: string, url: string}[]) => Promise<boolean>;
 
   // Emails
   listMainEmails: () => Promise<MainEmail[]>;

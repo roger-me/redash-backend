@@ -304,6 +304,53 @@ export async function getAllProfiles(): Promise<any[]> {
   }));
 }
 
+// Get OnlyFans links for a model (per-user)
+export async function getModelOnlyfansLinks(modelId: string): Promise<{userId: string, url: string}[]> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from('model_onlyfans_links')
+    .select('user_id, onlyfans_url')
+    .eq('model_id', modelId);
+
+  if (error) throw new Error(error.message);
+  return (data || []).map((d: any) => ({
+    userId: d.user_id,
+    url: d.onlyfans_url,
+  }));
+}
+
+// Set OnlyFans links for a model (replaces existing)
+export async function setModelOnlyfansLinks(
+  modelId: string,
+  links: {userId: string, url: string}[]
+): Promise<boolean> {
+  const supabase = getSupabaseClient();
+
+  // Delete existing links for this model
+  await supabase
+    .from('model_onlyfans_links')
+    .delete()
+    .eq('model_id', modelId);
+
+  // Insert new links (only non-empty URLs)
+  const nonEmptyLinks = links.filter(l => l.url && l.url.trim());
+  if (nonEmptyLinks.length > 0) {
+    const insertData = nonEmptyLinks.map(l => ({
+      model_id: modelId,
+      user_id: l.userId,
+      onlyfans_url: l.url.trim(),
+    }));
+
+    const { error } = await supabase
+      .from('model_onlyfans_links')
+      .insert(insertData);
+
+    if (error) throw new Error(error.message);
+  }
+
+  return true;
+}
+
 // Get all profiles including archived (for Google Sheets sync)
 export async function getAllProfilesForSync(): Promise<any[]> {
   const supabase = getSupabaseClient();

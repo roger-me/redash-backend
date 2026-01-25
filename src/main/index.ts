@@ -1037,6 +1037,24 @@ ipcMain.handle('admin:getAllProfiles', async () => {
   }
 });
 
+ipcMain.handle('admin:getModelOnlyfansLinks', async (_, modelId: string) => {
+  try {
+    return await admin.getModelOnlyfansLinks(modelId);
+  } catch (error) {
+    console.error('Failed to get model OnlyFans links:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('admin:setModelOnlyfansLinks', async (_, modelId: string, links: {userId: string, url: string}[]) => {
+  try {
+    return await admin.setModelOnlyfansLinks(modelId, links);
+  } catch (error) {
+    console.error('Failed to set model OnlyFans links:', error);
+    throw error;
+  }
+});
+
 // Email management
 ipcMain.handle('emails:listMain', async () => {
   return emails.listMainEmails();

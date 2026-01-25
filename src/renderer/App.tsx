@@ -440,7 +440,7 @@ function AppContent() {
 
   // Admin page model handlers (simpler interface)
   const handleAdminCreateModel = async (name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => {
-    await window.electronAPI?.createModel({
+    const newModel = await window.electronAPI?.createModel({
       name,
       isExpanded: true,
       profilePicture: profilePicture || null,
@@ -448,6 +448,7 @@ function AppContent() {
       contentFolder: contentFolder || null,
     });
     await loadModels();
+    return newModel;
   };
 
   const handleAdminUpdateModel = async (id: string, name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => {

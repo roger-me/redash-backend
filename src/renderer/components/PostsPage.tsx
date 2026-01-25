@@ -170,9 +170,9 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
       try {
         const usersList = await window.electronAPI?.adminListUsers();
         setUsers(usersList || []);
-        // Default: select current user
-        if (user && usersList) {
-          setSelectedUserIds([user.id]);
+        // Default: select all users for dev accounts
+        if (usersList && usersList.length > 0) {
+          setSelectedUserIds(usersList.map((u: AppUser) => u.id));
         }
       } catch (err) {
         console.error('Failed to load users:', err);
@@ -241,6 +241,7 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
         endDate.toISOString()
       );
       setPosts(data || []);
+      setLastSyncTime(new Date());
     } catch (err) {
       console.error('Failed to load posts:', err);
     }
@@ -529,26 +530,25 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
 
         <div className="ml-auto flex items-center gap-2">
           {/* Sync Button */}
-          {modelProfiles.length > 0 && (
-            <button
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="h-8 px-3 flex items-center gap-2 transition-colors"
-              style={{
-                background: 'var(--chip-bg)',
-                color: 'var(--text-primary)',
-                borderRadius: '100px',
-                opacity: isSyncing ? 0.5 : 1,
-              }}
-            >
-              <ArrowsClockwise
-                size={14}
-                weight="bold"
-                style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }}
-              />
-              {lastSyncLabel && <span className="text-sm font-medium">{lastSyncLabel}</span>}
-            </button>
-          )}
+          <button
+            onClick={handleSync}
+            disabled={isSyncing || modelProfiles.length === 0}
+            className="h-9 px-3 flex items-center gap-2 transition-colors"
+            style={{
+              background: 'var(--chip-bg)',
+              color: 'var(--text-primary)',
+              borderRadius: '100px',
+              opacity: (isSyncing || modelProfiles.length === 0) ? 0.5 : 1,
+            }}
+            title="Sync Reddit posts"
+          >
+            <ArrowsClockwise
+              size={16}
+              weight="bold"
+              style={{ animation: isSyncing ? 'spin 1s linear infinite' : 'none' }}
+            />
+            {lastSyncLabel && <span className="text-sm font-medium">{lastSyncLabel}</span>}
+          </button>
 
           {/* Month Navigation */}
           <button

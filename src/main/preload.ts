@@ -56,6 +56,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   adminGetAllProfilesForStats: () => ipcRenderer.invoke('admin:getAllProfilesForStats'),
   adminGetAllModels: () => ipcRenderer.invoke('admin:getAllModels'),
   adminGetAllProfiles: () => ipcRenderer.invoke('admin:getAllProfiles'),
+  adminGetModelOnlyfansLinks: (modelId: string) => ipcRenderer.invoke('admin:getModelOnlyfansLinks', modelId),
+  adminSetModelOnlyfansLinks: (modelId: string, links: {userId: string, url: string}[]) =>
+    ipcRenderer.invoke('admin:setModelOnlyfansLinks', modelId, links),
 
   // Emails
   listMainEmails: () => ipcRenderer.invoke('emails:listMain'),

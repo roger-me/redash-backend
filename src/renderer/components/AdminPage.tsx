@@ -76,7 +76,7 @@ interface AdminPageProps {
   models: Model[];
   currentUserId: string;
   currentUserRole: UserRole;
-  onCreateModel: (name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
+  onCreateModel: (name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => Promise<Model | undefined>;
   onUpdateModel: (id: string, name: string, profilePicture?: string, onlyfans?: string, contentFolder?: string) => Promise<void>;
   onDeleteModel: (id: string) => Promise<void>;
   onCreateBrowser: (userId?: string) => void;
@@ -149,6 +149,7 @@ export default function AdminPage({
   const [modelProfilePicture, setModelProfilePicture] = useState('');
   const [modelOnlyfans, setModelOnlyfans] = useState('');
   const [modelContentFolder, setModelContentFolder] = useState('');
+  const [modelOnlyfansLinks, setModelOnlyfansLinks] = useState<Record<string, string>>({});
   const [modelError, setModelError] = useState('');
   const modelFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -193,6 +194,8 @@ export default function AdminPage({
   const [subredditFilterRepeated, setSubredditFilterRepeated] = useState(() => {
     return localStorage.getItem('subreddit_filter_repeated') === 'true';
   });
+  const [subredditLastRefreshTime, setSubredditLastRefreshTime] = useState<Date | null>(null);
+  const [subredditLastRefreshLabel, setSubredditLastRefreshLabel] = useState<string>('');
 
   // Email management state
   const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
@@ -279,6 +282,14 @@ export default function AdminPage({
     const interval = setInterval(updateLabel, 10000);
     return () => clearInterval(interval);
   }, [lastRefreshTime]);
+
+  useEffect(() => {
+    if (!subredditLastRefreshTime) return;
+    const updateLabel = () => setSubredditLastRefreshLabel(getRelativeTime(subredditLastRefreshTime));
+    updateLabel();
+    const interval = setInterval(updateLabel, 10000);
+    return () => clearInterval(interval);
+  }, [subredditLastRefreshTime]);
 
   useEffect(() => {
     loadData();
@@ -745,12 +756,20 @@ export default function AdminPage({
       return;
     }
     try {
-      await onCreateModel(newModelName.trim(), modelProfilePicture || undefined, modelOnlyfans || undefined, modelContentFolder || undefined);
+      const newModel = await onCreateModel(newModelName.trim(), modelProfilePicture || undefined, modelOnlyfans || undefined, modelContentFolder || undefined);
+      // Save per-user OnlyFans links if any
+      const links = Object.entries(modelOnlyfansLinks)
+        .filter(([_, url]) => url && url.trim())
+        .map(([userId, url]) => ({ userId, url }));
+      if (links.length > 0 && newModel?.id) {
+        await window.electronAPI?.adminSetModelOnlyfansLinks(newModel.id, links);
+      }
       setShowModelModal(false);
       setNewModelName('');
       setModelProfilePicture('');
       setModelOnlyfans('');
       setModelContentFolder('');
+      setModelOnlyfansLinks({});
       setModelError('');
     } catch (err: any) {
       setModelError(err.message || 'Failed to create model');
@@ -765,11 +784,17 @@ export default function AdminPage({
     }
     try {
       await onUpdateModel(editingModel.id, newModelName.trim(), modelProfilePicture, modelOnlyfans, modelContentFolder);
+      // Save per-user OnlyFans links
+      const links = Object.entries(modelOnlyfansLinks)
+        .filter(([_, url]) => url && url.trim())
+        .map(([userId, url]) => ({ userId, url }));
+      await window.electronAPI?.adminSetModelOnlyfansLinks(editingModel.id, links);
       setEditingModel(null);
       setNewModelName('');
       setModelProfilePicture('');
       setModelOnlyfans('');
       setModelContentFolder('');
+      setModelOnlyfansLinks({});
       setModelError('');
     } catch (err: any) {
       setModelError(err.message || 'Failed to update model');
@@ -785,13 +810,25 @@ export default function AdminPage({
     }
   };
 
-  const openModelEditModal = (model: Model) => {
+  const openModelEditModal = async (model: Model) => {
     setEditingModel(model);
     setNewModelName(model.name);
     setModelProfilePicture(model.profilePicture || '');
     setModelOnlyfans(model.onlyfans || '');
     setModelContentFolder(model.contentFolder || '');
     setModelError('');
+    // Load per-user OnlyFans links
+    try {
+      const links = await window.electronAPI?.adminGetModelOnlyfansLinks(model.id);
+      const linksMap: Record<string, string> = {};
+      (links || []).forEach((l: {userId: string, url: string}) => {
+        linksMap[l.userId] = l.url;
+      });
+      setModelOnlyfansLinks(linksMap);
+    } catch (err) {
+      console.error('Failed to load OnlyFans links:', err);
+      setModelOnlyfansLinks({});
+    }
   };
 
   // Email handlers
@@ -855,6 +892,7 @@ export default function AdminPage({
       const stats = await window.electronAPI?.getSubredditStats();
       console.log('Subreddit stats loaded:', stats);
       setSubredditStats(stats || []);
+      setSubredditLastRefreshTime(new Date());
     } catch (err) {
       console.error('Failed to load subreddit stats:', err);
     } finally {
@@ -1335,14 +1373,26 @@ export default function AdminPage({
             </button>
           )}
           {activeTab === 'subreddits' && (
-            <button
-              onClick={() => { setShowAddSubredditModal(true); setNewSubredditName(''); setNewSubredditUserId(''); setNewSubredditProfileId(''); setSubredditError(''); }}
-              className="h-9 px-4 flex items-center gap-2 text-sm font-medium transition-colors"
-              style={{ background: 'var(--btn-primary-bg)', borderRadius: '100px', color: 'var(--btn-primary-color)' }}
-            >
-              <Plus size={14} weight="bold" />
-              Add Subreddit
-            </button>
+            <>
+              <button
+                onClick={loadSubredditStats}
+                disabled={subredditLoading}
+                className="h-9 px-3 flex items-center gap-2 transition-colors"
+                style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-primary)', opacity: subredditLoading ? 0.5 : 1 }}
+                title="Refresh subreddit stats"
+              >
+                <ArrowsClockwise size={16} weight="bold" style={{ animation: subredditLoading ? 'spin 1s linear infinite' : 'none' }} />
+                {subredditLastRefreshLabel && <span className="text-sm font-medium">{subredditLastRefreshLabel}</span>}
+              </button>
+              <button
+                onClick={() => { setShowAddSubredditModal(true); setNewSubredditName(''); setNewSubredditUserId(''); setNewSubredditProfileId(''); setSubredditError(''); }}
+                className="h-9 px-4 flex items-center gap-2 text-sm font-medium transition-colors"
+                style={{ background: 'var(--btn-primary-bg)', borderRadius: '100px', color: 'var(--btn-primary-color)' }}
+              >
+                <Plus size={14} weight="bold" />
+                Add Subreddit
+              </button>
+            </>
           )}
           {activeTab === 'emails' && (
             <button
@@ -1406,7 +1456,7 @@ export default function AdminPage({
                     <div style={{ background: 'rgba(128, 128, 128, 0.06)', borderRadius: '20px', overflow: 'hidden' }}>
                       <div
                         className="grid text-xs font-medium py-4 px-5"
-                        style={{ gridTemplateColumns: '1fr repeat(7, 80px) 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
+                        style={{ gridTemplateColumns: '1fr 60px 75px 70px 90px 90px 70px 60px 50px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
                       >
                         <div>{t('admin.model')}</div>
                         <div className="text-center">{t('admin.posts')}</div>
@@ -1448,7 +1498,7 @@ export default function AdminPage({
                           <div key={stat.modelId || 'no-model'}>
                             <div
                               className="grid py-4 px-5 items-center cursor-pointer hover:bg-white/5 transition-colors"
-                              style={{ gridTemplateColumns: '1fr repeat(7, 80px) 50px', borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}
+                              style={{ gridTemplateColumns: '1fr 60px 75px 70px 90px 90px 70px 60px 50px', borderBottom: !isExpanded && index < modelStats.length - 1 ? '1px solid var(--border)' : 'none' }}
                               onClick={() => toggleModelExpand(modelKey)}
                             >
                               <div className="flex items-center gap-2">
@@ -1489,7 +1539,7 @@ export default function AdminPage({
                                     <div
                                       key={profile.id}
                                       className="grid py-3 px-5 pl-12 items-center"
-                                      style={{ gridTemplateColumns: '1fr repeat(7, 80px) 50px', borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none' }}
+                                      style={{ gridTemplateColumns: '1fr 60px 75px 70px 90px 90px 70px 60px 50px', borderBottom: pIndex < modelProfiles.length - 1 ? '1px solid rgba(128, 128, 128, 0.1)' : 'none' }}
                                     >
                                       <div className="flex items-center gap-2">
                                         {profile.country && countryFlagImages[profile.country] && (
@@ -2236,10 +2286,10 @@ export default function AdminPage({
       {/* Create/Edit Model Modal */}
       {(showModelModal || editingModel) && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+          <div className="w-full max-w-md p-6 max-h-[90vh] overflow-y-auto" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>{editingModel ? t('model.edit') : t('model.create')}</h2>
-              <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelOnlyfans(''); setModelContentFolder(''); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+              <button onClick={() => { setShowModelModal(false); setEditingModel(null); setNewModelName(''); setModelProfilePicture(''); setModelOnlyfans(''); setModelContentFolder(''); setModelOnlyfansLinks({}); setModelError(''); }} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-4 cursor-pointer" onClick={() => modelFileInputRef.current?.click()}>
@@ -2258,12 +2308,30 @@ export default function AdminPage({
                 <input type="text" value={newModelName} onChange={(e) => setNewModelName(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder={t('admin.enterModelName')} autoFocus />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.onlyfans')}</label>
-                <input type="url" value={modelOnlyfans} onChange={(e) => setModelOnlyfans(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="https://onlyfans.com/username" />
-              </div>
-              <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{t('model.contentFolder')}</label>
                 <input type="url" value={modelContentFolder} onChange={(e) => setModelContentFolder(e.target.value)} className="w-full h-10 px-3 text-sm" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }} placeholder="https://drive.google.com/..." />
+              </div>
+              {/* Per-user OnlyFans Links */}
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>{t('model.onlyfans')} (per user)</label>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {users.map(user => (
+                    <div key={user.id} className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: getAvatarColor(user.id), color: '#1a1a2e' }}>
+                        {user.username.slice(0, 2).toUpperCase()}
+                      </div>
+                      <span className="text-xs w-16 truncate flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>{user.username}</span>
+                      <input
+                        type="url"
+                        value={modelOnlyfansLinks[user.id] || ''}
+                        onChange={(e) => setModelOnlyfansLinks(prev => ({ ...prev, [user.id]: e.target.value }))}
+                        className="flex-1 h-8 px-3 text-xs"
+                        style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
+                        placeholder="https://onlyfans.com/..."
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
               {modelError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{modelError}</p>}
               <button onClick={editingModel ? handleUpdateModel : handleCreateModel} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', borderRadius: '100px' }}>{editingModel ? t('admin.saveChanges') : t('model.create')}</button>
