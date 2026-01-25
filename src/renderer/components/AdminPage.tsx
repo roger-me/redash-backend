@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretUp, CaretRight, CaretLeft, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive, UserSwitch, Hash, MagnifyingGlass } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretUp, CaretRight, CaretLeft, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive, UserSwitch, Hash, MagnifyingGlass, Export } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole, SubredditStats } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -196,6 +196,8 @@ export default function AdminPage({
   const [subredditError, setSubredditError] = useState('');
   const [savingSubreddit, setSavingSubreddit] = useState(false);
   const [driveModalSubreddit, setDriveModalSubreddit] = useState<SubredditStats | null>(null);
+  const [subredditFilterUser, setSubredditFilterUser] = useState<string>('');
+  const [subredditFilterRepeated, setSubredditFilterRepeated] = useState(false);
 
   // Email management state
   const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
@@ -853,9 +855,21 @@ export default function AdminPage({
   };
 
   const getSortedSubreddits = () => {
-    const filtered = subredditStats.filter(stat =>
+    let filtered = subredditStats.filter(stat =>
       stat.subreddit.toLowerCase().includes(subredditSearch.toLowerCase())
     );
+
+    // Filter by user
+    if (subredditFilterUser) {
+      filtered = filtered.filter(stat =>
+        stat.users.some(u => u.id === subredditFilterUser)
+      );
+    }
+
+    // Filter by repeated (2+ browsers)
+    if (subredditFilterRepeated) {
+      filtered = filtered.filter(stat => stat.profiles.length >= 2);
+    }
 
     return filtered.sort((a, b) => {
       let comparison = 0;
@@ -879,6 +893,30 @@ export default function AdminPage({
       }
       return subredditSortDir === 'asc' ? comparison : -comparison;
     });
+  };
+
+  const exportSubredditsToCSV = () => {
+    const data = getSortedSubreddits();
+    const headers = ['Subreddit', 'Posts', 'Users', 'Browsers'];
+    const rows = data.map(stat => [
+      stat.subreddit,
+      stat.postCount.toString(),
+      stat.users.map(u => u.username).join('; '),
+      stat.profiles.map(p => p.name).join('; ')
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `subreddits_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleCreateSubredditUsage = async () => {
@@ -1679,22 +1717,63 @@ export default function AdminPage({
       {/* Subreddits Tab */}
       {activeTab === 'subreddits' && (
         <div className="space-y-4">
-          {/* Search bar */}
-          <div className="relative">
-            <MagnifyingGlass
-              size={18}
-              weight="bold"
-              className="absolute left-4 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--text-tertiary)' }}
-            />
-            <input
-              type="text"
-              value={subredditSearch}
-              onChange={(e) => setSubredditSearch(e.target.value)}
-              placeholder="Search subreddits..."
-              className="w-full h-10 pl-11 pr-4 text-sm"
-              style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
-            />
+          {/* Search bar and filters */}
+          <div className="flex items-center gap-3 min-w-0">
+            {/* User filter */}
+            <select
+              value={subredditFilterUser}
+              onChange={(e) => setSubredditFilterUser(e.target.value)}
+              className="h-10 px-4 text-sm"
+              style={{ background: 'var(--bg-secondary)', color: subredditFilterUser ? 'var(--text-primary)' : 'var(--text-tertiary)', border: 'none', borderRadius: '100px', width: 'auto', maxWidth: '150px' }}
+            >
+              <option value="">All Users</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>{user.username}</option>
+              ))}
+            </select>
+            {/* Repeated filter */}
+            <button
+              onClick={() => setSubredditFilterRepeated(!subredditFilterRepeated)}
+              className="h-10 px-4 text-sm font-medium flex items-center gap-2 whitespace-nowrap"
+              style={{
+                background: subredditFilterRepeated ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-secondary)',
+                color: subredditFilterRepeated ? '#3B82F6' : 'var(--text-tertiary)',
+                borderRadius: '100px'
+              }}
+            >
+              <Users size={16} weight="bold" />
+              Repeated
+            </button>
+            {/* Export button */}
+            <button
+              onClick={exportSubredditsToCSV}
+              className="h-10 px-4 text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:opacity-80 transition-opacity"
+              style={{
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-tertiary)',
+                borderRadius: '100px'
+              }}
+            >
+              <Export size={16} weight="bold" />
+              Export
+            </button>
+            {/* Search input */}
+            <div className="relative flex-1 min-w-0">
+              <MagnifyingGlass
+                size={18}
+                weight="bold"
+                className="absolute left-4 top-1/2 -translate-y-1/2"
+                style={{ color: 'var(--text-tertiary)' }}
+              />
+              <input
+                type="text"
+                value={subredditSearch}
+                onChange={(e) => setSubredditSearch(e.target.value)}
+                placeholder="Search subreddits..."
+                className="w-full h-10 pl-11 pr-4 text-sm"
+                style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
+              />
+            </div>
           </div>
 
           {subredditLoading ? (
