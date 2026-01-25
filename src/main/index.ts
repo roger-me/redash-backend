@@ -1141,6 +1141,28 @@ ipcMain.handle('reddit:updatePost', async (_, id: string, updates: Record<string
   return posts.updateRedditPost(id, updates);
 });
 
+ipcMain.handle('reddit:getSubredditStats', async () => {
+  console.log('reddit:getSubredditStats called');
+  try {
+    const result = await posts.getSubredditStats();
+    console.log('reddit:getSubredditStats result count:', result?.length);
+    return result;
+  } catch (err) {
+    console.error('reddit:getSubredditStats error:', err);
+    throw err;
+  }
+});
+
+ipcMain.handle('reddit:createSubredditUsage', async (_, subreddit: string, userId?: string, profileId?: string) => {
+  console.log('reddit:createSubredditUsage called:', { subreddit, userId, profileId });
+  try {
+    return await posts.createSubredditUsage(subreddit, userId, profileId);
+  } catch (err) {
+    console.error('reddit:createSubredditUsage error:', err);
+    throw err;
+  }
+});
+
 // Activity Logs
 ipcMain.handle('logs:getAll', async (_, limit?: number) => {
   console.log('logs:getAll called with limit:', limit);

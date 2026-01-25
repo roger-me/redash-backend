@@ -188,6 +188,15 @@ export interface DeletedItem {
   data: Record<string, any>;
 }
 
+export interface SubredditStats {
+  subreddit: string;
+  postCount: number;
+  hasGoogleDrive: boolean;
+  driveLinks: string[];
+  users: { id: string; username: string }[];
+  profiles: { id: string; name: string; status: string }[];
+}
+
 export interface RestoreOptions {
   profiles: boolean;
   models: boolean;
@@ -306,6 +315,8 @@ export interface ElectronAPI {
   listRedditPosts: (modelId: string, startDate?: string, endDate?: string) => Promise<RedditPost[]>;
   getRedditPost: (id: string) => Promise<RedditPost>;
   updateRedditPost: (id: string, updates: { driveLink?: string }) => Promise<RedditPost>;
+  getSubredditStats: () => Promise<SubredditStats[]>;
+  createSubredditUsage: (subreddit: string, userId?: string, profileId?: string) => Promise<any>;
 
   // Backups
   createBackup: (name: string, description?: string) => Promise<Backup>;

@@ -355,3 +355,123 @@ export async function updateRedditPost(id: string, updates: Record<string, any>)
   if (error) throw new Error(error.message);
   return toCamelCase(data);
 }
+
+// ============ SUBREDDIT STATS (for Admin page) ============
+
+interface SubredditStats {
+  subreddit: string;
+  postCount: number;
+  hasGoogleDrive: boolean;
+  driveLinks: string[];
+  users: { id: string; username: string }[];
+  profiles: { id: string; name: string; status: string }[];
+}
+
+// Get aggregated subreddit stats from reddit_posts
+export async function getSubredditStats(): Promise<SubredditStats[]> {
+  const supabase = getSupabaseClient();
+
+  // Get all reddit posts with their profile info
+  const { data: posts, error: postsError } = await supabase
+    .from('reddit_posts')
+    .select('subreddit, profile_id, drive_link');
+
+  if (postsError) throw new Error(postsError.message);
+  if (!posts || posts.length === 0) return [];
+
+  // Get all profiles with their user assignments
+  const profileIds = [...new Set(posts.map(p => p.profile_id))];
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, name, status, user_id')
+    .in('id', profileIds);
+
+  if (profilesError) throw new Error(profilesError.message);
+
+  // Get all users
+  const userIds = [...new Set((profiles || []).map(p => p.user_id).filter(Boolean))];
+  let usersMap: Record<string, string> = {};
+  if (userIds.length > 0) {
+    const { data: users, error: usersError } = await supabase
+      .from('app_users')
+      .select('id, username')
+      .in('id', userIds);
+    if (!usersError && users) {
+      usersMap = Object.fromEntries(users.map(u => [u.id, u.username]));
+    }
+  }
+
+  // Create profile map
+  const profileMap: Record<string, { name: string; status: string; userId: string | null }> = {};
+  (profiles || []).forEach(p => {
+    profileMap[p.id] = { name: p.name, status: p.status || 'unknown', userId: p.user_id };
+  });
+
+  // Aggregate by subreddit
+  const subredditMap: Record<string, {
+    postCount: number;
+    hasGoogleDrive: boolean;
+    driveLinks: Set<string>;
+    profileIds: Set<string>;
+    userIds: Set<string>;
+  }> = {};
+
+  posts.forEach(post => {
+    const sub = post.subreddit;
+    if (!subredditMap[sub]) {
+      subredditMap[sub] = {
+        postCount: 0,
+        hasGoogleDrive: false,
+        driveLinks: new Set(),
+        profileIds: new Set(),
+        userIds: new Set(),
+      };
+    }
+    subredditMap[sub].postCount++;
+    if (post.drive_link) {
+      subredditMap[sub].hasGoogleDrive = true;
+      subredditMap[sub].driveLinks.add(post.drive_link);
+    }
+    subredditMap[sub].profileIds.add(post.profile_id);
+    const profile = profileMap[post.profile_id];
+    if (profile?.userId) {
+      subredditMap[sub].userIds.add(profile.userId);
+    }
+  });
+
+  // Convert to array format
+  const result: SubredditStats[] = Object.entries(subredditMap).map(([subreddit, data]) => ({
+    subreddit,
+    postCount: data.postCount,
+    hasGoogleDrive: data.hasGoogleDrive,
+    driveLinks: [...data.driveLinks],
+    users: [...data.userIds].map(id => ({ id, username: usersMap[id] || 'Unknown' })),
+    profiles: [...data.profileIds].map(id => {
+      const p = profileMap[id];
+      return { id, name: p?.name || 'Unknown', status: p?.status || 'unknown' };
+    }),
+  }));
+
+  // Sort by post count descending
+  result.sort((a, b) => b.postCount - a.postCount);
+
+  return result;
+}
+
+// Create a manual subreddit usage entry
+export async function createSubredditUsage(subreddit: string, userId?: string, profileId?: string) {
+  const supabase = getSupabaseClient();
+
+  const { data, error } = await supabase
+    .from('subreddit_usage')
+    .insert({
+      subreddit,
+      user_id: userId || null,
+      profile_id: profileId || null,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return toCamelCase(data);
+}

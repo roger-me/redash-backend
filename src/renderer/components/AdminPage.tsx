@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, CaretLeft, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive, UserSwitch } from '@phosphor-icons/react';
-import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole } from '../../shared/types';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, CaretLeft, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive, UserSwitch, Hash, MagnifyingGlass } from '@phosphor-icons/react';
+import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole, SubredditStats } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
 // Flag PNG imports
@@ -79,7 +79,7 @@ const getAvatarColor = (name: string): string => {
   return avatarColors[Math.abs(hash) % avatarColors.length];
 };
 
-type AdminTab = 'accounts' | 'users' | 'models' | 'emails';
+type AdminTab = 'accounts' | 'users' | 'models' | 'subreddits' | 'emails';
 
 interface AdminPageProps {
   models: Model[];
@@ -182,6 +182,17 @@ export default function AdminPage({
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [syncing, setSyncing] = useState(false);
   const [showMoveSubmenu, setShowMoveSubmenu] = useState<string | null>(null);
+
+  // Subreddit stats state
+  const [subredditStats, setSubredditStats] = useState<SubredditStats[]>([]);
+  const [subredditSearch, setSubredditSearch] = useState('');
+  const [subredditLoading, setSubredditLoading] = useState(false);
+  const [showAddSubredditModal, setShowAddSubredditModal] = useState(false);
+  const [newSubredditName, setNewSubredditName] = useState('');
+  const [newSubredditUserId, setNewSubredditUserId] = useState('');
+  const [newSubredditProfileId, setNewSubredditProfileId] = useState('');
+  const [subredditError, setSubredditError] = useState('');
+  const [savingSubreddit, setSavingSubreddit] = useState(false);
 
   // Email management state
   const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
@@ -810,7 +821,49 @@ export default function AdminPage({
       loadArchivedProfiles();
       loadDeletedProfiles();
     }
+    if (activeTab === 'subreddits') {
+      loadSubredditStats();
+    }
   }, [activeTab]);
+
+  const loadSubredditStats = async () => {
+    setSubredditLoading(true);
+    try {
+      const stats = await window.electronAPI?.getSubredditStats();
+      console.log('Subreddit stats loaded:', stats);
+      setSubredditStats(stats || []);
+    } catch (err) {
+      console.error('Failed to load subreddit stats:', err);
+    } finally {
+      setSubredditLoading(false);
+    }
+  };
+
+  const handleCreateSubredditUsage = async () => {
+    if (savingSubreddit) return;
+    if (!newSubredditName.trim()) {
+      setSubredditError('Subreddit name is required');
+      return;
+    }
+    setSavingSubreddit(true);
+    try {
+      await window.electronAPI?.createSubredditUsage(
+        newSubredditName.trim(),
+        newSubredditUserId || undefined,
+        newSubredditProfileId || undefined
+      );
+      await loadSubredditStats();
+      setShowAddSubredditModal(false);
+      setNewSubredditName('');
+      setNewSubredditUserId('');
+      setNewSubredditProfileId('');
+      setSubredditError('');
+    } catch (err: any) {
+      setSubredditError(err.message || 'Failed to add subreddit');
+    } finally {
+      setSavingSubreddit(false);
+    }
+  };
 
   const handleCreateMainEmail = async () => {
     if (savingEmail) return;
@@ -1090,6 +1143,18 @@ export default function AdminPage({
             {t('admin.models')}
           </button>
           <button
+            onClick={() => setActiveTab('subreddits')}
+            className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
+            style={{
+              borderRadius: '100px',
+              background: activeTab === 'subreddits' ? 'var(--accent-primary)' : 'transparent',
+              color: activeTab === 'subreddits' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+            }}
+          >
+            <Hash size={16} weight="bold" />
+            Subreddits
+          </button>
+          <button
             onClick={() => setActiveTab('emails')}
             className="px-4 py-2 text-sm font-medium flex items-center gap-2 transition-colors"
             style={{
@@ -1165,6 +1230,16 @@ export default function AdminPage({
             >
               <Plus size={14} weight="bold" />
               {t('admin.newModel')}
+            </button>
+          )}
+          {activeTab === 'subreddits' && (
+            <button
+              onClick={() => { setShowAddSubredditModal(true); setNewSubredditName(''); setNewSubredditUserId(''); setNewSubredditProfileId(''); setSubredditError(''); }}
+              className="h-9 px-4 flex items-center gap-2 text-sm font-medium transition-colors"
+              style={{ background: 'var(--btn-primary-bg)', borderRadius: '100px', color: 'var(--btn-primary-color)' }}
+            >
+              <Plus size={14} weight="bold" />
+              Add Subreddit
             </button>
           )}
           {activeTab === 'emails' && (
@@ -1555,6 +1630,114 @@ export default function AdminPage({
                 </div>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {/* Subreddits Tab */}
+      {activeTab === 'subreddits' && (
+        <div className="space-y-4">
+          {/* Search bar */}
+          <div className="relative">
+            <MagnifyingGlass
+              size={18}
+              weight="bold"
+              className="absolute left-4 top-1/2 -translate-y-1/2"
+              style={{ color: 'var(--text-tertiary)' }}
+            />
+            <input
+              type="text"
+              value={subredditSearch}
+              onChange={(e) => setSubredditSearch(e.target.value)}
+              placeholder="Search subreddits..."
+              className="w-full h-10 pl-11 pr-4 text-sm"
+              style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
+            />
+          </div>
+
+          {subredditLoading ? (
+            <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+              <p style={{ color: 'var(--text-tertiary)' }}>Loading...</p>
+            </div>
+          ) : subredditStats.length === 0 ? (
+            <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+              <Hash size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
+              <p style={{ color: 'var(--text-tertiary)' }}>No subreddits yet</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>Post activity will show subreddits here</p>
+            </div>
+          ) : (
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: '28px', overflow: 'hidden' }}>
+              {/* Table header */}
+              <div
+                className="grid text-xs font-medium py-4 px-5"
+                style={{ gridTemplateColumns: '1fr 80px 1fr 1fr', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
+              >
+                <div>Subreddit</div>
+                <div className="text-center">Posts</div>
+                <div>Users</div>
+                <div>Browsers</div>
+              </div>
+
+              {/* Table rows */}
+              {subredditStats
+                .filter(stat => stat.subreddit.toLowerCase().includes(subredditSearch.toLowerCase()))
+                .map((stat, index, arr) => (
+                  <div
+                    key={stat.subreddit}
+                    className="grid py-3 px-5 items-center hover:bg-white/5 transition-colors"
+                    style={{
+                      gridTemplateColumns: '1fr 80px 1fr 1fr',
+                      borderBottom: index < arr.length - 1 ? '1px solid var(--border)' : 'none'
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                        r/{stat.subreddit}
+                      </span>
+                      {stat.hasGoogleDrive && stat.driveLinks.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.electronAPI?.openExternal(stat.driveLinks[0]);
+                          }}
+                          className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer"
+                          style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3B82F6' }}
+                        >
+                          Google Drive
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-center text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                      {stat.postCount}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {stat.users.map(user => (
+                        <span
+                          key={user.id}
+                          className="text-xs px-2 py-0.5 rounded-full"
+                          style={{ background: `${getAvatarColor(user.username)}25`, color: getAvatarColor(user.username) }}
+                        >
+                          {user.username}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {stat.profiles.map(profile => (
+                        <span
+                          key={profile.id}
+                          className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                          style={{
+                            background: profile.status === 'banned' ? 'rgba(255, 107, 107, 0.2)' : 'rgba(33, 150, 243, 0.15)',
+                            color: profile.status === 'banned' ? '#FF8A8A' : '#2196F3'
+                          }}
+                        >
+                          {profile.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
           )}
         </div>
       )}
@@ -2041,6 +2224,71 @@ export default function AdminPage({
               )}
               {emailError && <p className="text-sm whitespace-pre-wrap" style={{ color: 'var(--accent-red)' }}>{emailError}</p>}
               <button onClick={editingSubEmail ? handleUpdateSubEmail : handleCreateSubEmail} disabled={savingEmail} className="w-full h-10 text-sm font-medium" style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: savingEmail ? 0.5 : 1, borderRadius: '100px' }}>{savingEmail ? t('admin.saving') : (editingSubEmail ? t('admin.saveChanges') : t('admin.addSubEmails'))}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Subreddit Modal */}
+      {showAddSubredditModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="w-full max-w-md p-6" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Add Subreddit</h2>
+              <button onClick={() => setShowAddSubredditModal(false)} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Subreddit Name</label>
+                <input
+                  type="text"
+                  value={newSubredditName}
+                  onChange={(e) => setNewSubredditName(e.target.value)}
+                  placeholder="e.g., AskReddit"
+                  className="w-full h-10 px-3 text-sm"
+                  style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>User (optional)</label>
+                <select
+                  value={newSubredditUserId}
+                  onChange={(e) => { setNewSubredditUserId(e.target.value); setNewSubredditProfileId(''); }}
+                  className="w-full h-10 px-3 text-sm"
+                  style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
+                >
+                  <option value="">Select user...</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>{user.username}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Browser (optional)</label>
+                <select
+                  value={newSubredditProfileId}
+                  onChange={(e) => setNewSubredditProfileId(e.target.value)}
+                  className="w-full h-10 px-3 text-sm"
+                  style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
+                  disabled={!newSubredditUserId}
+                >
+                  <option value="">Select browser...</option>
+                  {profiles
+                    .filter(p => !newSubredditUserId || p.userId === newSubredditUserId)
+                    .map(profile => (
+                      <option key={profile.id} value={profile.id}>{profile.name}</option>
+                    ))}
+                </select>
+              </div>
+              {subredditError && <p className="text-sm" style={{ color: 'var(--accent-red)' }}>{subredditError}</p>}
+              <button
+                onClick={handleCreateSubredditUsage}
+                disabled={savingSubreddit || !newSubredditName.trim()}
+                className="w-full h-10 text-sm font-medium"
+                style={{ background: 'var(--btn-primary-bg)', color: 'var(--btn-primary-color)', opacity: (savingSubreddit || !newSubredditName.trim()) ? 0.5 : 1, borderRadius: '100px' }}
+              >
+                {savingSubreddit ? 'Saving...' : 'Add Subreddit'}
+              </button>
             </div>
           </div>
         </div>

@@ -175,6 +175,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   listRedditPosts: (modelId: string, startDate?: string, endDate?: string) => ipcRenderer.invoke('reddit:listPosts', modelId, startDate, endDate),
   getRedditPost: (id: string) => ipcRenderer.invoke('reddit:getPost', id),
   updateRedditPost: (id: string, updates: { driveLink?: string }) => ipcRenderer.invoke('reddit:updatePost', id, updates),
+  getSubredditStats: () => ipcRenderer.invoke('reddit:getSubredditStats'),
+  createSubredditUsage: (subreddit: string, userId?: string, profileId?: string) =>
+    ipcRenderer.invoke('reddit:createSubredditUsage', subreddit, userId, profileId),
 
   // Backups
   createBackup: (name: string, description?: string) => ipcRenderer.invoke('backups:create', name, description),
