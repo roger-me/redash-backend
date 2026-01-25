@@ -284,7 +284,7 @@ function LogsPage() {
                 style={{
                   background: 'var(--accent-blue)',
                   borderRadius: '100px',
-                  color: 'white'
+                  color: 'var(--accent-text)'
                 }}
               >
                 {t('logs.redoAction')}

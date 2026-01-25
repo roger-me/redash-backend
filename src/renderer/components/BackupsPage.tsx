@@ -392,7 +392,7 @@ function BackupsPage() {
             className="h-9 px-4 flex items-center gap-2 text-sm font-medium"
             style={{
               background: 'var(--accent-blue)',
-              color: 'white',
+              color: 'var(--accent-text)',
               borderRadius: '100px',
             }}
           >
@@ -500,7 +500,7 @@ function BackupsPage() {
                         style={{
                           background: 'var(--accent-green)',
                           borderRadius: '100px',
-                          color: 'white',
+                          color: 'var(--accent-text)',
                         }}
                       >
                         <ArrowCounterClockwise size={14} weight="bold" />
@@ -604,7 +604,7 @@ function BackupsPage() {
                         style={{
                           background: 'var(--accent-green)',
                           borderRadius: '100px',
-                          color: 'white',
+                          color: 'var(--accent-text)',
                         }}
                       >
                         <ArrowCounterClockwise size={14} weight="bold" />
