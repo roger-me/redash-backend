@@ -12,11 +12,11 @@ import LogsPage from './components/LogsPage';
 import PostsPage from './components/PostsPage';
 import BackupsPage from './components/BackupsPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Desktop, Users, Swap, Gear, ShieldCheck, ClockCounterClockwise, CalendarBlank, Archive } from '@phosphor-icons/react';
+import { ArrowsClockwise, Desktop, House, Swap, Gear, ShieldCheck, ClockCounterClockwise, CalendarBlank, Archive, Plus } from '@phosphor-icons/react';
 import SettingsPage from './components/SettingsPage';
 import { LanguageProvider, useLanguage } from './i18n';
 
-type Page = 'accounts' | 'flipper' | 'settings' | 'admin' | 'logs' | 'posts' | 'backups';
+type Page = 'homepage' | 'flipper' | 'settings' | 'admin' | 'logs' | 'posts' | 'backups';
 
 interface AuthUser {
   id: string;
@@ -30,7 +30,7 @@ function AppContent() {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = loading
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [currentPage, setCurrentPage] = useState<Page>('accounts');
+  const [currentPage, setCurrentPage] = useState<Page>('homepage');
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [archivedProfiles, setArchivedProfiles] = useState<Profile[]>([]);
   const [deletedProfiles, setDeletedProfiles] = useState<Profile[]>([]);
@@ -475,7 +475,8 @@ function AppContent() {
   };
 
   // Filter profiles: only show current user's profiles on main Accounts page
-  const myProfiles = profiles.filter(p => p.userId === user?.id);
+  // Exclude archived profiles (they appear in Admin page)
+  const myProfiles = profiles.filter(p => p.userId === user?.id && !p.archivedAt);
   const desktopProfiles = myProfiles.filter(p => !p.type || p.type === 'desktop');
 
   // Loading state
@@ -523,16 +524,16 @@ function AppContent() {
         >
           {/* Navigation */}
           <button
-            onClick={() => setCurrentPage('accounts')}
+            onClick={() => setCurrentPage('homepage')}
             className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
             style={{
-              background: currentPage === 'accounts' ? 'var(--accent-primary)' : 'transparent',
-              color: currentPage === 'accounts' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+              background: currentPage === 'homepage' ? 'var(--accent-primary)' : 'transparent',
+              color: currentPage === 'homepage' ? 'var(--accent-text)' : 'var(--text-tertiary)',
               borderRadius: '34px',
             }}
           >
-            <Users size={20} weight={currentPage === 'accounts' ? 'fill' : 'regular'} />
-            <span className="text-sm font-medium">{t('nav.accounts')}</span>
+            <House size={20} weight={currentPage === 'homepage' ? 'fill' : 'regular'} />
+            <span className="text-sm font-medium">{t('nav.homepage')}</span>
           </button>
 
           <button
@@ -644,12 +645,12 @@ function AppContent() {
         )}
 
         {/* Page Content */}
-        {currentPage === 'accounts' && (
+        {currentPage === 'homepage' && (
           <main className={`pl-4 pb-6 flex-1 ${activeBrowserProfile ? 'pr-4' : 'pr-6'}`}>
             {/* Toolbar */}
             <div className="flex items-center gap-3 mb-5 mt-2 px-1">
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                {t('nav.accounts')}
+                {t('nav.homepage')}
               </h1>
               {/* Toolbar buttons */}
               <div className="ml-auto flex items-center gap-2">
@@ -677,6 +678,21 @@ function AppContent() {
                     <span className="text-sm font-medium">{lastSyncLabel}</span>
                   )}
                 </button>
+                {/* New Browser button - admin/dev only */}
+                {(user?.role === 'admin' || user?.role === 'dev') && (
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="h-9 px-4 flex items-center gap-2 transition-colors"
+                    style={{
+                      background: 'var(--accent-primary)',
+                      borderRadius: '100px',
+                      color: 'var(--accent-text)',
+                    }}
+                  >
+                    <Plus size={16} weight="bold" />
+                    <span className="text-sm font-medium">{t('accounts.newBrowser')}</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -700,17 +716,22 @@ function AppContent() {
                 profiles={desktopProfiles}
                 models={availableModels}
                 activeBrowsers={activeBrowsers}
+                userRole={user?.role}
                 onLaunch={handleLaunchBrowser}
                 onClose={handleCloseBrowser}
-                onDelete={handleDeleteProfile}
-                onEdit={setEditingProfile}
-                onRenameModel={setEditingModel}
-                onDeleteModel={handleDeleteModel}
-                onToggleModelExpand={handleToggleModelExpand}
-                onCreateAccountInModel={(modelId) => {
-                  setCreateInModelId(modelId);
-                  setShowCreateModal(true);
+                onArchive={async (id) => {
+                  try {
+                    if (activeBrowsers.includes(id)) {
+                      await window.electronAPI?.closeBrowser(id);
+                    }
+                    await window.electronAPI?.archiveProfile(id);
+                    await loadProfiles();
+                    setActiveBrowsers(prev => prev.filter(bid => bid !== id));
+                  } catch (err) {
+                    console.error('Failed to archive profile:', err);
+                  }
                 }}
+                onCreateBrowser={() => setShowCreateModal(true)}
               />
             )}
           </main>

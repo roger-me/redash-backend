@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Profile, Model } from '../../shared/types';
-import { CaretRight, User, Copy, EnvelopeSimple, Key, VideoCamera, Star, Calendar, RedditLogo } from '@phosphor-icons/react';
+import { useState, useEffect, useRef } from 'react';
+import { Profile, Model, UserRole } from '../../shared/types';
+import { User, Copy, EnvelopeSimple, Key, VideoCamera, Star, Calendar, RedditLogo, DotsThree, Play, Archive, Stop } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 
 // Flag PNG imports
@@ -48,14 +48,11 @@ interface ProfileListProps {
   profiles: Profile[];
   models: Model[];
   activeBrowsers: string[];
+  userRole?: UserRole;
   onLaunch: (id: string) => void;
   onClose: (id: string) => void;
-  onDelete: (id: string) => void;
-  onEdit: (profile: Profile) => void;
-  onRenameModel: (model: Model) => void;
-  onDeleteModel: (modelId: string) => void;
-  onToggleModelExpand: (modelId: string) => void;
-  onCreateAccountInModel: (modelId: string) => void;
+  onArchive: (id: string) => void;
+  onCreateBrowser: () => void;
 }
 
 // PNG flag images (fallback to emoji for missing)
@@ -101,33 +98,37 @@ function ProfileList({
   profiles,
   models,
   activeBrowsers,
+  userRole,
   onLaunch,
   onClose,
-  onDelete,
-  onEdit,
-  onRenameModel,
-  onDeleteModel,
-  onToggleModelExpand,
-  onCreateAccountInModel,
+  onArchive,
 }: ProfileListProps) {
   const { t } = useLanguage();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [openKarmaId, setOpenKarmaId] = useState<string | null>(null);
   const [openRedditId, setOpenRedditId] = useState<string | null>(null);
   const [openRedgifsId, setOpenRedgifsId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const isAdminOrDev = userRole === 'admin' || userRole === 'dev';
 
   // Close popups when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
       setOpenKarmaId(null);
       setOpenRedditId(null);
       setOpenRedgifsId(null);
     };
-    if (openKarmaId || openRedditId || openRedgifsId) {
+    if (openKarmaId || openRedditId || openRedgifsId || openMenuId) {
       document.addEventListener('click', handleClickOutside);
       return () => document.removeEventListener('click', handleClickOutside);
     }
-  }, [openKarmaId, openRedditId, openRedgifsId]);
+  }, [openKarmaId, openRedditId, openRedgifsId, openMenuId]);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -135,58 +136,168 @@ function ProfileList({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Group profiles by model
-  // Sort order: working (0) -> error (1) -> banned (2)
-  const getStatusOrder = (status?: string) => {
-    if (status === 'banned') return 2;
-    if (status === 'error') return 1;
-    return 0;
-  };
+  // Sort profiles by createdAt descending (most recent first)
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+    return dateB - dateA;
+  });
 
-  const unassignedProfiles = profiles
-    .filter(p => !p.modelId)
-    .sort((a, b) => getStatusOrder(a.status) - getStatusOrder(b.status));
+  // Get model for a profile
+  const getModel = (modelId?: string) => models.find(m => m.id === modelId);
 
-  const renderProfileRow = (profile: Profile, isLast: boolean) => {
+  const renderCard = (profile: Profile) => {
     const isActive = activeBrowsers.includes(profile.id);
+    const model = getModel(profile.modelId);
+    const ageDays = getAccountAgeDays(profile.purchaseDate);
 
     return (
       <div
         key={profile.id}
-        className="px-6 py-4 flex items-center gap-3"
+        className="flex flex-col overflow-hidden"
         style={{
-          borderBottom: isLast ? 'none' : '1px solid var(--border-light)',
+          background: 'var(--bg-secondary)',
+          borderRadius: '24px',
         }}
       >
-        {/* Main content */}
-        <div className="flex-1 min-w-0">
-          {/* Username · Karma · Age */}
-          <div className="flex items-center gap-2">
+        {/* Top Section - Profile Picture + Browser Name */}
+        <div
+          className="flex items-center gap-3"
+          style={{ padding: '20px 20px 12px 20px' }}
+        >
+          {/* Model profile picture */}
+          <div
+            className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden"
+            style={{ background: 'var(--bg-tertiary)' }}
+          >
+            {model?.profilePicture && model.profilePicture.startsWith('data:image') ? (
+              <img
+                src={model.profilePicture}
+                alt={model?.name}
+                className="w-full h-full object-cover"
+                onError={(e) => (e.currentTarget.style.display = 'none')}
+              />
+            ) : (
+              <User size={18} weight="bold" color="var(--text-tertiary)" />
+            )}
+          </div>
+
+          {/* Browser username */}
+          <span className="font-semibold text-base truncate" style={{ color: 'var(--text-primary)' }}>
+            {profile.name}
+          </span>
+
+          <div className="flex-1" />
+
+          {/* Ellipsis menu for admin/dev */}
+          {isAdminOrDev && (
+            <div className="relative" ref={openMenuId === profile.id ? menuRef : null}>
+              <button
+                onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === profile.id ? null : profile.id); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                style={{ background: 'var(--bg-tertiary)' }}
+              >
+                <DotsThree size={20} weight="bold" color="var(--text-secondary)" />
+              </button>
+              {openMenuId === profile.id && (
+                <div
+                  className="absolute top-full right-0 mt-1 py-1 z-50 min-w-[140px]"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                  }}
+                >
+                  {/* Launch/Stop */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isActive) {
+                        onClose(profile.id);
+                      } else {
+                        onLaunch(profile.id);
+                      }
+                      setOpenMenuId(null);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {isActive ? (
+                      <>
+                        <Stop size={14} weight="bold" color="var(--accent-red)" />
+                        <span>{t('profile.stop')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play size={14} weight="bold" color="var(--accent-green)" />
+                        <span>{t('profile.launch')}</span>
+                      </>
+                    )}
+                  </button>
+                  {/* Archive */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenMenuId(null);
+                      setArchiveConfirmId(profile.id);
+                    }}
+                    className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-white/5"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <Archive size={14} weight="bold" color="var(--text-tertiary)" />
+                    <span>{t('profile.archive')}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Section - Browser Info */}
+        <div className="flex flex-col gap-4" style={{ padding: '12px 20px 20px 20px' }}>
+          {/* Country flag, status badge, karma and account age */}
+          <div className="flex items-center gap-3">
             {profile.country && (countryFlagImages[profile.country] || countryFlagsEmoji[profile.country]) && (
               countryFlagImages[profile.country] ? (
                 <img
                   src={countryFlagImages[profile.country]}
                   alt={countryNames[profile.country]}
                   title={countryNames[profile.country]}
-                  className="w-4 h-4 object-contain rounded-sm"
+                  className="w-5 h-5 object-contain rounded-sm"
                 />
               ) : (
-                <span className="text-sm" title={countryNames[profile.country]}>
+                <span className="text-base" title={countryNames[profile.country]}>
                   {countryFlagsEmoji[profile.country]}
                 </span>
               )
             )}
-            <span className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-              {profile.name}
-            </span>
-            <span style={{ color: 'var(--text-tertiary)' }}>·</span>
+            <div
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full"
+              style={{
+                background: profile.status === 'banned' ? 'rgba(255, 69, 58, 0.15)'
+                  : profile.status === 'error' ? 'rgba(255, 159, 10, 0.15)'
+                  : 'rgba(48, 209, 88, 0.15)',
+              }}
+            >
+              <span
+                className="text-xs font-medium"
+                style={{
+                  color: profile.status === 'banned' ? 'var(--accent-red)'
+                    : profile.status === 'error' ? 'var(--accent-orange)'
+                    : 'var(--accent-green)',
+                }}
+              >
+                {profile.status === 'banned' ? t('profile.banned') : profile.status === 'error' ? t('profile.error') : t('profile.working')}
+              </span>
+            </div>
+            {/* Karma */}
             <div className="relative">
               <button
                 onClick={(e) => { e.stopPropagation(); setOpenKarmaId(openKarmaId === profile.id ? null : profile.id); }}
-                className="flex items-center gap-1 text-sm hover:opacity-70 transition-opacity"
-                style={{ color: 'var(--text-secondary)' }}
+                className="flex items-center gap-1 text-sm font-medium hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--text-primary)' }}
               >
-                <Star size={12} weight="fill" color="var(--text-tertiary)" />
+                <Star size={14} weight="fill" color="var(--text-tertiary)" />
                 {(profile.commentKarma || 0) + (profile.postKarma || 0)}
               </button>
               {openKarmaId === profile.id && (
@@ -211,43 +322,30 @@ function ProfileList({
                 </div>
               )}
             </div>
-            {(() => {
-              const ageDays = getAccountAgeDays(profile.purchaseDate);
-              if (ageDays === null) return null;
-              return (
-                <>
-                  <span style={{ color: 'var(--text-tertiary)' }}>·</span>
-                  <span className="flex items-center gap-1 text-sm" style={{ color: 'var(--text-secondary)' }} title={`Account age: ${ageDays} days`}>
-                    <Calendar size={12} weight="bold" color="var(--text-tertiary)" />
-                    {ageDays}d
-                  </span>
-                </>
-              );
-            })()}
+            {/* Account age */}
+            {ageDays !== null && (
+              <span className="flex items-center gap-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }} title={`Account age: ${ageDays} days`}>
+                <Calendar size={14} weight="bold" color="var(--text-tertiary)" />
+                {ageDays}d
+              </span>
+            )}
           </div>
 
-          {/* Status, Email, Password, RedGifs - all on same line */}
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            {/* Status pill */}
-            <div
-              className="flex items-center gap-1 px-2.5 py-1 rounded-full"
-              style={{
-                background: profile.status === 'banned' ? 'rgba(255, 69, 58, 0.15)'
-                  : profile.status === 'error' ? 'rgba(255, 159, 10, 0.15)'
-                  : 'rgba(48, 209, 88, 0.15)',
-              }}
-            >
-              <span
-                className="text-xs font-medium"
-                style={{
-                  color: profile.status === 'banned' ? 'var(--accent-red)'
-                    : profile.status === 'error' ? 'var(--accent-orange)'
-                    : 'var(--accent-green)',
-                }}
+          {/* Credential buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* OnlyFans badge */}
+            {model?.onlyfans && (
+              <button
+                onClick={(e) => { e.stopPropagation(); copyToClipboard(model.onlyfans!, `of-${model.id}-${profile.id}`); }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full hover:opacity-80 transition-opacity"
+                style={{ background: 'rgba(142, 142, 147, 0.12)' }}
+                title={model.onlyfans}
               >
-                {profile.status === 'banned' ? t('profile.banned') : profile.status === 'error' ? t('profile.error') : t('profile.working')}
-              </span>
-            </div>
+                <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+                  {copiedId === `of-${model.id}-${profile.id}` ? <span style={{ color: 'var(--accent-green)' }}>{t('common.copied')}</span> : 'OF'}
+                </span>
+              </button>
+            )}
             {/* Reddit credentials */}
             {(profile.credentials?.email || profile.credentials?.password) && (
               <div className="relative">
@@ -309,7 +407,7 @@ function ProfileList({
                 </button>
                 {openRedgifsId === profile.id && (
                   <div
-                    className="absolute top-full right-0 mt-1 py-1 z-50 min-w-[140px]"
+                    className="absolute top-full left-0 mt-1 py-1 z-50 min-w-[140px]"
                     style={{
                       background: 'var(--bg-tertiary)',
                       borderRadius: '12px',
@@ -339,37 +437,37 @@ function ProfileList({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Launch/Stop button */}
-          {isActive ? (
-            <button
-              onClick={() => onClose(profile.id)}
-              className="h-9 px-5 text-sm font-medium transition-colors"
-              style={{
-                background: 'rgba(255, 69, 58, 0.15)',
-                color: 'var(--accent-red)',
-                borderRadius: '100px',
-              }}
-            >
-              {t('profile.stop')}
-            </button>
-          ) : (
-            <button
-              onClick={() => onLaunch(profile.id)}
-              className="h-9 px-5 text-sm font-medium transition-colors"
-              style={{
-                background: 'var(--chip-bg)',
-                color: 'var(--text-primary)',
-                borderRadius: '100px',
-              }}
-            >
-              {t('profile.launch')}
-            </button>
+          {/* Launch button for non-admin users */}
+          {!isAdminOrDev && (
+            <div className="mt-2">
+              {isActive ? (
+                <button
+                  onClick={() => onClose(profile.id)}
+                  className="w-full h-9 text-sm font-medium transition-colors"
+                  style={{
+                    background: 'rgba(255, 69, 58, 0.15)',
+                    color: 'var(--accent-red)',
+                    borderRadius: '100px',
+                  }}
+                >
+                  {t('profile.stop')}
+                </button>
+              ) : (
+                <button
+                  onClick={() => onLaunch(profile.id)}
+                  className="w-full h-9 text-sm font-medium transition-colors"
+                  style={{
+                    background: 'var(--chip-bg)',
+                    color: 'var(--text-primary)',
+                    borderRadius: '100px',
+                  }}
+                >
+                  {t('profile.launch')}
+                </button>
+              )}
+            </div>
           )}
-
         </div>
       </div>
     );
@@ -377,93 +475,68 @@ function ProfileList({
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Models with their profiles */}
-        {models.map(model => {
-          const modelProfiles = profiles
-            .filter(p => p.modelId === model.id)
-            .sort((a, b) => getStatusOrder(a.status) - getStatusOrder(b.status));
-          const isExpanded = model.isExpanded !== false;
+      {/* Grid layout */}
+      <div
+        className="gap-5"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+        }}
+      >
+        {sortedProfiles.map(profile => renderCard(profile))}
+      </div>
 
-          return (
-            <div
-              key={model.id}
-              style={{
-                background: 'var(--bg-secondary)',
-                borderRadius: '34px',
-              }}
-            >
-              {/* Model header */}
-              <div
-                className="px-6 py-4 flex items-center gap-3 cursor-pointer hover:bg-white/5 transition-colors"
-                style={{
-                  borderBottom: isExpanded && modelProfiles.length > 0 ? '1px solid var(--border-light)' : 'none',
-                  borderRadius: isExpanded && modelProfiles.length > 0 ? '34px 34px 0 0' : '34px',
-                }}
-                onClick={() => onToggleModelExpand(model.id)}
-              >
-                <div
-                  className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden"
-                  style={{ background: 'var(--bg-tertiary)' }}
-                >
-                  {model.profilePicture && model.profilePicture.startsWith('data:image') ? (
-                    <img
-                      src={model.profilePicture}
-                      alt={model.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => (e.currentTarget.style.display = 'none')}
-                    />
-                  ) : (
-                    <User size={16} weight="bold" color="var(--text-tertiary)" />
-                  )}
-                </div>
-                <span className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
-                  {model.name}
-                </span>
-                {model.onlyfans && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); copyToClipboard(model.onlyfans!, `of-${model.id}`); }}
-                    className="h-7 px-2.5 flex items-center gap-1.5 text-xs font-medium"
-                    style={{ background: 'var(--chip-bg)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
-                    title={model.onlyfans}
-                  >
-                    {copiedId === `of-${model.id}` ? <span style={{ color: 'var(--accent-green)' }}>{t('common.copied')}</span> : <><span>OnlyFans</span><Copy size={12} /></>}
-                  </button>
-                )}
-                <div className="flex-1" />
-                <CaretRight
-                  size={16}
-                  weight="bold"
-                  color="var(--text-tertiary)"
-                  style={{
-                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s',
-                  }}
-                />
-              </div>
-
-              {/* Model profiles */}
-              {isExpanded && modelProfiles.map((profile, index) =>
-                renderProfileRow(profile, index === modelProfiles.length - 1)
-              )}
-            </div>
-          );
-        })}
-
-        {/* Unassigned profiles */}
-        {unassignedProfiles.length > 0 && (
+      {/* Archive confirmation modal */}
+      {archiveConfirmId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => setArchiveConfirmId(null)}
+        >
           <div
+            className="p-6 max-w-sm w-full mx-4"
             style={{
               background: 'var(--bg-secondary)',
-              borderRadius: '34px',
+              borderRadius: '24px',
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {unassignedProfiles.map((profile, index) =>
-              renderProfileRow(profile, index === unassignedProfiles.length - 1)
-            )}
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+              {t('profile.archiveConfirm')}
+            </h3>
+            <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+              {t('profile.archiveConfirmMessage')}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setArchiveConfirmId(null)}
+                className="flex-1 h-10 text-sm font-medium"
+                style={{
+                  background: 'var(--chip-bg)',
+                  color: 'var(--text-primary)',
+                  borderRadius: '100px',
+                }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={() => {
+                  onArchive(archiveConfirmId);
+                  setArchiveConfirmId(null);
+                }}
+                className="flex-1 h-10 text-sm font-medium"
+                style={{
+                  background: 'var(--accent-primary)',
+                  color: 'var(--accent-text)',
+                  borderRadius: '100px',
+                }}
+              >
+                {t('profile.archive')}
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 }

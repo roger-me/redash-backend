@@ -1,6 +1,7 @@
 export const translations = {
   en: {
     // Navigation
+    'nav.homepage': 'Homepage',
     'nav.accounts': 'Reddit',
     'nav.flipper': 'Flipper',
     'nav.ai': 'AI',
@@ -50,6 +51,7 @@ export const translations = {
     'accounts.noBrowsers': 'No browsers yet',
     'accounts.createFirst': 'Create your first browser',
     'accounts.refreshKarma': 'Refresh karma from Reddit',
+    'accounts.newBrowser': 'New Browser',
 
     // Profile/Browser
     'profile.newBrowser': 'New Browser',
@@ -84,7 +86,11 @@ export const translations = {
     'profile.redgifs': 'RedGifs',
     'profile.redgifsUsername': 'RedGifs Username',
     'profile.redgifsPassword': 'RedGifs Password',
+    'profile.archive': 'Archive',
+    'profile.archiveConfirm': 'Archive Browser?',
+    'profile.archiveConfirmMessage': 'This browser will be moved to archived. You can unarchive it later from the Admin page.',
     'common.copied': 'Copied!',
+    'common.cancel': 'Cancel',
 
     // Validation
     'validation.enterUsername': 'Please enter a username',
@@ -365,6 +371,7 @@ export const translations = {
   },
   es: {
     // Navigation
+    'nav.homepage': 'Inicio',
     'nav.accounts': 'Reddit',
     'nav.flipper': 'Flipper',
     'nav.ai': 'IA',
@@ -414,6 +421,7 @@ export const translations = {
     'accounts.noBrowsers': 'Sin navegadores',
     'accounts.createFirst': 'Crea tu primer navegador',
     'accounts.refreshKarma': 'Actualizar karma de Reddit',
+    'accounts.newBrowser': 'Nuevo Navegador',
 
     // Profile/Browser
     'profile.newBrowser': 'Nuevo Navegador',
@@ -448,7 +456,11 @@ export const translations = {
     'profile.redgifs': 'RedGifs',
     'profile.redgifsUsername': 'Usuario RedGifs',
     'profile.redgifsPassword': 'Contraseña RedGifs',
+    'profile.archive': 'Archivar',
+    'profile.archiveConfirm': '¿Archivar Navegador?',
+    'profile.archiveConfirmMessage': 'Este navegador será movido a archivados. Puedes desarchivarlo más tarde desde la página de Admin.',
     'common.copied': 'Copiado!',
+    'common.cancel': 'Cancelar',
 
     // Validation
     'validation.enterUsername': 'Por favor ingresa un nombre de usuario',
