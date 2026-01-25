@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretRight, CaretLeft, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive, UserSwitch, Hash, MagnifyingGlass } from '@phosphor-icons/react';
+import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretUp, CaretRight, CaretLeft, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive, UserSwitch, Hash, MagnifyingGlass } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole, SubredditStats } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
@@ -187,6 +187,8 @@ export default function AdminPage({
   const [subredditStats, setSubredditStats] = useState<SubredditStats[]>([]);
   const [subredditSearch, setSubredditSearch] = useState('');
   const [subredditLoading, setSubredditLoading] = useState(false);
+  const [subredditSortBy, setSubredditSortBy] = useState<'subreddit' | 'posts' | 'users' | 'browsers'>('posts');
+  const [subredditSortDir, setSubredditSortDir] = useState<'asc' | 'desc'>('desc');
   const [showAddSubredditModal, setShowAddSubredditModal] = useState(false);
   const [newSubredditName, setNewSubredditName] = useState('');
   const [newSubredditUserId, setNewSubredditUserId] = useState('');
@@ -837,6 +839,45 @@ export default function AdminPage({
     } finally {
       setSubredditLoading(false);
     }
+  };
+
+  const toggleSubredditSort = (column: 'subreddit' | 'posts' | 'users' | 'browsers') => {
+    if (subredditSortBy === column) {
+      setSubredditSortDir(subredditSortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSubredditSortBy(column);
+      // Posts defaults to desc (most first), others default to asc (A-Z)
+      setSubredditSortDir(column === 'posts' ? 'desc' : 'asc');
+    }
+  };
+
+  const getSortedSubreddits = () => {
+    const filtered = subredditStats.filter(stat =>
+      stat.subreddit.toLowerCase().includes(subredditSearch.toLowerCase())
+    );
+
+    return filtered.sort((a, b) => {
+      let comparison = 0;
+      switch (subredditSortBy) {
+        case 'subreddit':
+          comparison = a.subreddit.localeCompare(b.subreddit);
+          break;
+        case 'posts':
+          comparison = a.postCount - b.postCount;
+          break;
+        case 'users':
+          const userA = a.users[0]?.username || '';
+          const userB = b.users[0]?.username || '';
+          comparison = userA.localeCompare(userB);
+          break;
+        case 'browsers':
+          const browserA = a.profiles[0]?.name || '';
+          const browserB = b.profiles[0]?.name || '';
+          comparison = browserA.localeCompare(browserB);
+          break;
+      }
+      return subredditSortDir === 'asc' ? comparison : -comparison;
+    });
   };
 
   const handleCreateSubredditUsage = async () => {
@@ -1672,16 +1713,50 @@ export default function AdminPage({
                 className="grid text-xs font-medium py-4 px-5"
                 style={{ gridTemplateColumns: '1fr 80px 1fr 1fr', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}
               >
-                <div>Subreddit</div>
-                <div className="text-center">Posts</div>
-                <div>Users</div>
-                <div>Browsers</div>
+                <button
+                  onClick={() => toggleSubredditSort('subreddit')}
+                  className="flex items-center gap-1 hover:text-white transition-colors text-left"
+                  style={{ color: subredditSortBy === 'subreddit' ? 'var(--text-primary)' : 'var(--text-tertiary)' }}
+                >
+                  Subreddit
+                  <span style={{ opacity: subredditSortBy === 'subreddit' ? 1 : 0.4 }}>
+                    {subredditSortBy === 'subreddit' && subredditSortDir === 'asc' ? <CaretUp size={12} weight="bold" /> : <CaretDown size={12} weight="bold" />}
+                  </span>
+                </button>
+                <button
+                  onClick={() => toggleSubredditSort('posts')}
+                  className="flex items-center justify-center gap-1 hover:text-white transition-colors"
+                  style={{ color: subredditSortBy === 'posts' ? 'var(--text-primary)' : 'var(--text-tertiary)' }}
+                >
+                  Posts
+                  <span style={{ opacity: subredditSortBy === 'posts' ? 1 : 0.4 }}>
+                    {subredditSortBy === 'posts' && subredditSortDir === 'asc' ? <CaretUp size={12} weight="bold" /> : <CaretDown size={12} weight="bold" />}
+                  </span>
+                </button>
+                <button
+                  onClick={() => toggleSubredditSort('users')}
+                  className="flex items-center gap-1 hover:text-white transition-colors text-left"
+                  style={{ color: subredditSortBy === 'users' ? 'var(--text-primary)' : 'var(--text-tertiary)' }}
+                >
+                  Users
+                  <span style={{ opacity: subredditSortBy === 'users' ? 1 : 0.4 }}>
+                    {subredditSortBy === 'users' && subredditSortDir === 'asc' ? <CaretUp size={12} weight="bold" /> : <CaretDown size={12} weight="bold" />}
+                  </span>
+                </button>
+                <button
+                  onClick={() => toggleSubredditSort('browsers')}
+                  className="flex items-center gap-1 hover:text-white transition-colors text-left"
+                  style={{ color: subredditSortBy === 'browsers' ? 'var(--text-primary)' : 'var(--text-tertiary)' }}
+                >
+                  Browsers
+                  <span style={{ opacity: subredditSortBy === 'browsers' ? 1 : 0.4 }}>
+                    {subredditSortBy === 'browsers' && subredditSortDir === 'asc' ? <CaretUp size={12} weight="bold" /> : <CaretDown size={12} weight="bold" />}
+                  </span>
+                </button>
               </div>
 
               {/* Table rows */}
-              {subredditStats
-                .filter(stat => stat.subreddit.toLowerCase().includes(subredditSearch.toLowerCase()))
-                .map((stat, index, arr) => (
+              {getSortedSubreddits().map((stat, index, arr) => (
                   <div
                     key={stat.subreddit}
                     className="grid py-3 px-5 items-center hover:bg-white/5 transition-colors"
