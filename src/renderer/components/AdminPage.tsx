@@ -914,7 +914,11 @@ export default function AdminPage({
   };
 
   const exportSubredditsToCSV = () => {
-    const data = getSortedSubreddits();
+    const data = getSortedSubreddits().sort((a, b) => {
+      const userA = a.users[0]?.username || '';
+      const userB = b.users[0]?.username || '';
+      return userA.localeCompare(userB);
+    });
     const headers = ['Subreddit', 'Posts', 'Users', 'Browsers'];
     const rows = data.map(stat => [
       stat.subreddit,
@@ -1762,19 +1766,6 @@ export default function AdminPage({
               <Users size={16} weight="bold" />
               Repeated
             </button>
-            {/* Export button */}
-            <button
-              onClick={exportSubredditsToCSV}
-              className="h-10 px-4 text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:opacity-80 transition-opacity"
-              style={{
-                background: 'var(--bg-secondary)',
-                color: 'var(--text-tertiary)',
-                borderRadius: '100px'
-              }}
-            >
-              <Export size={16} weight="bold" />
-              Export
-            </button>
             {/* Search input */}
             <div className="relative flex-1 min-w-0">
               <MagnifyingGlass
@@ -1792,6 +1783,19 @@ export default function AdminPage({
                 style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: 'none', borderRadius: '100px' }}
               />
             </div>
+            {/* Export button */}
+            <button
+              onClick={exportSubredditsToCSV}
+              className="h-10 px-4 text-sm font-medium flex items-center gap-2 whitespace-nowrap hover:opacity-80 transition-opacity"
+              style={{
+                background: 'var(--bg-secondary)',
+                color: 'var(--text-tertiary)',
+                borderRadius: '100px'
+              }}
+            >
+              <Export size={16} weight="bold" />
+              Export
+            </button>
           </div>
 
           {/* Active filters chips */}
