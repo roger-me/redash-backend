@@ -66,6 +66,9 @@ function BackupsPage() {
     models: false,
     users: false,
     emails: false,
+    posts: false,
+    subreddits: false,
+    subredditUsage: false,
   });
   const [selectedItems, setSelectedItems] = useState<Record<string, Set<string>>>({
     profiles: new Set(),
@@ -73,6 +76,9 @@ function BackupsPage() {
     users: new Set(),
     mainEmails: new Set(),
     subEmails: new Set(),
+    redditPosts: new Set(),
+    subreddits: new Set(),
+    subredditUsage: new Set(),
   });
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -129,10 +135,14 @@ function BackupsPage() {
     const parts: string[] = [];
     if (counts.profiles) parts.push(`${counts.profiles} profiles`);
     if (counts.models) parts.push(`${counts.models} models`);
-    if (counts.app_users) parts.push(`${counts.app_users} users`);
-    if (counts.main_emails || counts.sub_emails) {
-      const total = (counts.main_emails || 0) + (counts.sub_emails || 0);
+    if (counts.appUsers) parts.push(`${counts.appUsers} users`);
+    if (counts.mainEmails || counts.subEmails) {
+      const total = (counts.mainEmails || 0) + (counts.subEmails || 0);
       parts.push(`${total} emails`);
+    }
+    if (counts.redditPosts || counts.subreddits || counts.subredditUsage) {
+      const total = (counts.redditPosts || 0);
+      if (total > 0) parts.push(`${total} posts`);
     }
     return parts.join(', ') || 'No records';
   };
@@ -230,6 +240,9 @@ function BackupsPage() {
         userIds: Array.from(selectedItems.users),
         mainEmailIds: Array.from(selectedItems.mainEmails),
         subEmailIds: Array.from(selectedItems.subEmails),
+        redditPostIds: Array.from(selectedItems.redditPosts),
+        subredditIds: Array.from(selectedItems.subreddits),
+        subredditUsageIds: Array.from(selectedItems.subredditUsage),
         overwriteExisting,
       });
       if (result) {
@@ -282,12 +295,18 @@ function BackupsPage() {
       users: new Set(),
       mainEmails: new Set(),
       subEmails: new Set(),
+      redditPosts: new Set(),
+      subreddits: new Set(),
+      subredditUsage: new Set(),
     });
     setExpandedSections({
       profiles: true,
       models: false,
       users: false,
       emails: false,
+      posts: false,
+      subreddits: false,
+      subredditUsage: false,
     });
     setOverwriteExisting(false);
 
@@ -302,6 +321,9 @@ function BackupsPage() {
           users: new Set(fullBackup.data.appUsers?.map((u: any) => u.id) || []),
           mainEmails: new Set(fullBackup.data.mainEmails?.map((e: any) => e.id) || []),
           subEmails: new Set(fullBackup.data.subEmails?.map((e: any) => e.id) || []),
+          redditPosts: new Set(fullBackup.data.redditPosts?.map((p: any) => p.id) || []),
+          subreddits: new Set(fullBackup.data.subreddits?.map((s: any) => s.id) || []),
+          subredditUsage: new Set(fullBackup.data.subredditUsage?.map((s: any) => s.id) || []),
         });
       }
     } catch (err) {
@@ -934,6 +956,141 @@ function BackupsPage() {
                     )}
                   </div>
                 )}
+
+                {/* Reddit Posts Section */}
+                {backupData.redditPosts?.length > 0 && (
+                  <div style={{ background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+                    <button
+                      onClick={() => toggleSection('posts')}
+                      className="w-full flex items-center gap-3 px-4 py-3"
+                    >
+                      {expandedSections.posts ? <CaretDown size={16} /> : <CaretRight size={16} />}
+                      <Article size={18} style={{ color: 'var(--accent-red)' }} />
+                      <span className="text-sm font-medium flex-1 text-left" style={{ color: 'var(--text-primary)' }}>
+                        Reddit Posts ({selectedItems.redditPosts.size}/{backupData.redditPosts.length})
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleAllInCategory('redditPosts', backupData.redditPosts); }}
+                        className="text-xs px-2 py-1 hover:opacity-80"
+                        style={{ background: 'var(--bg-secondary)', borderRadius: '100px', color: 'var(--text-secondary)' }}
+                      >
+                        {backupData.redditPosts.every((p: any) => selectedItems.redditPosts.has(p.id)) ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </button>
+                    {expandedSections.posts && (
+                      <div className="px-4 pb-3 space-y-1 max-h-48 overflow-auto">
+                        {backupData.redditPosts.map((post: any) => (
+                          <button
+                            key={post.id}
+                            onClick={() => toggleItem('redditPosts', post.id)}
+                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-colors"
+                            style={{ borderRadius: '8px' }}
+                          >
+                            {selectedItems.redditPosts.has(post.id) ? (
+                              <CheckSquare size={18} weight="fill" style={{ color: 'var(--accent-blue)' }} />
+                            ) : (
+                              <Square size={18} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
+                            )}
+                            <span className="text-sm text-left flex-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                              {post.title || post.subreddit || 'Untitled'}
+                            </span>
+                            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                              r/{post.subreddit}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Subreddits Section */}
+                {backupData.subreddits?.length > 0 && (
+                  <div style={{ background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+                    <button
+                      onClick={() => toggleSection('subreddits')}
+                      className="w-full flex items-center gap-3 px-4 py-3"
+                    >
+                      {expandedSections.subreddits ? <CaretDown size={16} /> : <CaretRight size={16} />}
+                      <Article size={18} style={{ color: 'var(--accent-purple, #a78bfa)' }} />
+                      <span className="text-sm font-medium flex-1 text-left" style={{ color: 'var(--text-primary)' }}>
+                        Subreddits ({selectedItems.subreddits.size}/{backupData.subreddits.length})
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleAllInCategory('subreddits', backupData.subreddits); }}
+                        className="text-xs px-2 py-1 hover:opacity-80"
+                        style={{ background: 'var(--bg-secondary)', borderRadius: '100px', color: 'var(--text-secondary)' }}
+                      >
+                        {backupData.subreddits.every((s: any) => selectedItems.subreddits.has(s.id)) ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </button>
+                    {expandedSections.subreddits && (
+                      <div className="px-4 pb-3 space-y-1">
+                        {backupData.subreddits.map((sub: any) => (
+                          <button
+                            key={sub.id}
+                            onClick={() => toggleItem('subreddits', sub.id)}
+                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-colors"
+                            style={{ borderRadius: '8px' }}
+                          >
+                            {selectedItems.subreddits.has(sub.id) ? (
+                              <CheckSquare size={18} weight="fill" style={{ color: 'var(--accent-blue)' }} />
+                            ) : (
+                              <Square size={18} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
+                            )}
+                            <span className="text-sm text-left flex-1" style={{ color: 'var(--text-primary)' }}>
+                              r/{sub.name || sub.subreddit}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Subreddit Usage Section */}
+                {backupData.subredditUsage?.length > 0 && (
+                  <div style={{ background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+                    <button
+                      onClick={() => toggleSection('subredditUsage')}
+                      className="w-full flex items-center gap-3 px-4 py-3"
+                    >
+                      {expandedSections.subredditUsage ? <CaretDown size={16} /> : <CaretRight size={16} />}
+                      <Article size={18} style={{ color: 'var(--accent-green)' }} />
+                      <span className="text-sm font-medium flex-1 text-left" style={{ color: 'var(--text-primary)' }}>
+                        Subreddit Usage ({selectedItems.subredditUsage.size}/{backupData.subredditUsage.length})
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleAllInCategory('subredditUsage', backupData.subredditUsage); }}
+                        className="text-xs px-2 py-1 hover:opacity-80"
+                        style={{ background: 'var(--bg-secondary)', borderRadius: '100px', color: 'var(--text-secondary)' }}
+                      >
+                        {backupData.subredditUsage.every((s: any) => selectedItems.subredditUsage.has(s.id)) ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </button>
+                    {expandedSections.subredditUsage && (
+                      <div className="px-4 pb-3 space-y-1">
+                        {backupData.subredditUsage.map((usage: any) => (
+                          <button
+                            key={usage.id}
+                            onClick={() => toggleItem('subredditUsage', usage.id)}
+                            className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-colors"
+                            style={{ borderRadius: '8px' }}
+                          >
+                            {selectedItems.subredditUsage.has(usage.id) ? (
+                              <CheckSquare size={18} weight="fill" style={{ color: 'var(--accent-blue)' }} />
+                            ) : (
+                              <Square size={18} weight="regular" style={{ color: 'var(--text-tertiary)' }} />
+                            )}
+                            <span className="text-sm text-left flex-1" style={{ color: 'var(--text-primary)' }}>
+                              r/{usage.subreddit}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center py-8">
@@ -984,7 +1141,10 @@ function BackupsPage() {
                   selectedItems.models.size === 0 &&
                   selectedItems.users.size === 0 &&
                   selectedItems.mainEmails.size === 0 &&
-                  selectedItems.subEmails.size === 0
+                  selectedItems.subEmails.size === 0 &&
+                  selectedItems.redditPosts.size === 0 &&
+                  selectedItems.subreddits.size === 0 &&
+                  selectedItems.subredditUsage.size === 0
                 )}
                 className="h-10 px-5 text-sm font-medium flex items-center gap-2"
                 style={{

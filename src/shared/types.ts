@@ -212,6 +212,9 @@ export interface SelectiveRestoreOptions {
   userIds: string[];
   mainEmailIds: string[];
   subEmailIds: string[];
+  redditPostIds: string[];
+  subredditIds: string[];
+  subredditUsageIds: string[];
   overwriteExisting: boolean;
 }
 

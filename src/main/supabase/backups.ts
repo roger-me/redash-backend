@@ -49,6 +49,7 @@ export interface BackupData {
   scheduledPosts: any[];
   redditPosts: any[];
   subreddits: any[];
+  subredditUsage: any[];
 }
 
 export interface Backup {
@@ -105,6 +106,7 @@ export async function getAllDataForBackup(): Promise<BackupData> {
     scheduledPostsResult,
     redditPostsResult,
     subredditsResult,
+    subredditUsageResult,
   ] = await Promise.all([
     supabase.from('app_users').select('*'),
     supabase.from('user_model_assignments').select('*'),
@@ -115,6 +117,7 @@ export async function getAllDataForBackup(): Promise<BackupData> {
     supabase.from('scheduled_posts').select('*'),
     supabase.from('reddit_posts').select('*'),
     supabase.from('subreddits').select('*'),
+    supabase.from('subreddit_usage').select('*'),
   ]);
 
   // Check for errors
@@ -127,6 +130,7 @@ export async function getAllDataForBackup(): Promise<BackupData> {
   if (scheduledPostsResult.error) throw new Error(`Failed to fetch scheduled_posts: ${scheduledPostsResult.error.message}`);
   if (redditPostsResult.error) throw new Error(`Failed to fetch reddit_posts: ${redditPostsResult.error.message}`);
   if (subredditsResult.error) throw new Error(`Failed to fetch subreddits: ${subredditsResult.error.message}`);
+  if (subredditUsageResult.error) throw new Error(`Failed to fetch subreddit_usage: ${subredditUsageResult.error.message}`);
 
   return {
     appUsers: (appUsersResult.data || []).map(toCamelCase),
@@ -138,6 +142,7 @@ export async function getAllDataForBackup(): Promise<BackupData> {
     scheduledPosts: (scheduledPostsResult.data || []).map(toCamelCase),
     redditPosts: (redditPostsResult.data || []).map(toCamelCase),
     subreddits: (subredditsResult.data || []).map(toCamelCase),
+    subredditUsage: (subredditUsageResult.data || []).map(toCamelCase),
   };
 }
 
@@ -167,6 +172,7 @@ export async function createBackup(
     scheduledPosts: data.scheduledPosts.length,
     redditPosts: data.redditPosts.length,
     subreddits: data.subreddits.length,
+    subredditUsage: data.subredditUsage.length,
   };
 
   // Tables included
@@ -180,6 +186,7 @@ export async function createBackup(
     'scheduled_posts',
     'reddit_posts',
     'subreddits',
+    'subreddit_usage',
   ];
 
   // Calculate file size (approximate)
@@ -413,14 +420,16 @@ export async function restoreFromBackup(
     restored.subEmails = subEmailsRestored;
   }
 
-  // Restore Posts (scheduled_posts, reddit_posts, subreddits)
+  // Restore Posts (scheduled_posts, reddit_posts, subreddits, subreddit_usage)
   if (options.posts) {
     const subredditsRestored = await upsertRecords('subreddits', data.subreddits, 'posts');
     const scheduledPostsRestored = await upsertRecords('scheduled_posts', data.scheduledPosts, 'posts');
     const redditPostsRestored = await upsertRecords('reddit_posts', data.redditPosts, 'posts');
+    const subredditUsageRestored = await upsertRecords('subreddit_usage', data.subredditUsage || [], 'posts');
     restored.subreddits = subredditsRestored;
     restored.scheduledPosts = scheduledPostsRestored;
     restored.redditPosts = redditPostsRestored;
+    restored.subredditUsage = subredditUsageRestored;
   }
 
   return { restored, errors };
@@ -432,6 +441,9 @@ export interface SelectiveRestoreOptions {
   userIds: string[];
   mainEmailIds: string[];
   subEmailIds: string[];
+  redditPostIds: string[];
+  subredditIds: string[];
+  subredditUsageIds: string[];
   overwriteExisting: boolean;
 }
 
@@ -529,6 +541,21 @@ export async function restoreSelectedItems(
   // Restore selected sub emails
   if (options.subEmailIds.length > 0) {
     restored.subEmails = await upsertRecords('sub_emails', data.subEmails, options.subEmailIds, 'sub_emails');
+  }
+
+  // Restore selected reddit posts
+  if (options.redditPostIds?.length > 0) {
+    restored.redditPosts = await upsertRecords('reddit_posts', data.redditPosts, options.redditPostIds, 'reddit_posts');
+  }
+
+  // Restore selected subreddits
+  if (options.subredditIds?.length > 0) {
+    restored.subreddits = await upsertRecords('subreddits', data.subreddits, options.subredditIds, 'subreddits');
+  }
+
+  // Restore selected subreddit usage
+  if (options.subredditUsageIds?.length > 0) {
+    restored.subredditUsage = await upsertRecords('subreddit_usage', data.subredditUsage || [], options.subredditUsageIds, 'subreddit_usage');
   }
 
   return { restored, errors };
@@ -692,6 +719,7 @@ export async function importBackupFromFile(
     scheduledPosts: data.scheduledPosts?.length || 0,
     redditPosts: data.redditPosts?.length || 0,
     subreddits: data.subreddits?.length || 0,
+    subredditUsage: data.subredditUsage?.length || 0,
   };
 
   const tablesIncluded = Object.keys(recordCounts).filter(k => recordCounts[k] > 0);
