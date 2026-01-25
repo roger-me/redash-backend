@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Plus, Trash, PencilSimple, Shield, X, Check, CaretDown, CaretUp, CaretRight, CaretLeft, FolderSimple, Camera, User, ArrowsClockwise, DotsThree, ArrowCounterClockwise, ChartBar, Users, Smiley, EnvelopeSimple, Copy, UserList, Code, Table, Shuffle, Lock, Archive, UserSwitch, Hash, MagnifyingGlass, Export } from '@phosphor-icons/react';
 import { Model, AppUser, ProfileForStats, Profile, MainEmail, SubEmail, UserRole, SubredditStats } from '../../shared/types';
 import { useLanguage } from '../i18n';
@@ -69,15 +69,6 @@ const avatarColors = [
   '#87CEFA', // Light sky blue
 ];
 
-const getAvatarColor = (name: string): string => {
-  if (!name) return '#808080';
-  // Better hash using prime multiplier for more spread
-  let hash = 7;
-  for (let i = 0; i < name.length; i++) {
-    hash = hash * 31 + name.charCodeAt(i);
-  }
-  return avatarColors[Math.abs(hash) % avatarColors.length];
-};
 
 type AdminTab = 'accounts' | 'users' | 'models' | 'subreddits' | 'emails';
 
@@ -196,8 +187,12 @@ export default function AdminPage({
   const [subredditError, setSubredditError] = useState('');
   const [savingSubreddit, setSavingSubreddit] = useState(false);
   const [driveModalSubreddit, setDriveModalSubreddit] = useState<SubredditStats | null>(null);
-  const [subredditFilterUser, setSubredditFilterUser] = useState<string>('');
-  const [subredditFilterRepeated, setSubredditFilterRepeated] = useState(false);
+  const [subredditFilterUser, setSubredditFilterUser] = useState<string>(() => {
+    return localStorage.getItem('subreddit_filter_user') || '';
+  });
+  const [subredditFilterRepeated, setSubredditFilterRepeated] = useState(() => {
+    return localStorage.getItem('subreddit_filter_repeated') === 'true';
+  });
 
   // Email management state
   const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
@@ -217,6 +212,20 @@ export default function AdminPage({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [emailMenuOpen, setEmailMenuOpen] = useState<string | null>(null);
 
+  // Create color map for users - each user gets a unique color based on their order
+  const userColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach((user, index) => {
+      map[user.id] = avatarColors[index % avatarColors.length];
+      map[user.username] = avatarColors[index % avatarColors.length];
+    });
+    return map;
+  }, [users]);
+
+  const getAvatarColor = useCallback((userIdOrName: string): string => {
+    return userColorMap[userIdOrName] || avatarColors[0];
+  }, [userColorMap]);
+
   // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -229,6 +238,15 @@ export default function AdminPage({
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [openMenuId, emailMenuOpen, showMoveSubmenu]);
+
+  // Save subreddit filters to localStorage
+  useEffect(() => {
+    localStorage.setItem('subreddit_filter_user', subredditFilterUser);
+  }, [subredditFilterUser]);
+
+  useEffect(() => {
+    localStorage.setItem('subreddit_filter_repeated', subredditFilterRepeated.toString());
+  }, [subredditFilterRepeated]);
 
   const getRelativeTime = (date: Date): string => {
     const now = new Date();
@@ -1775,6 +1793,41 @@ export default function AdminPage({
               />
             </div>
           </div>
+
+          {/* Active filters chips */}
+          {(subredditFilterUser || subredditFilterRepeated) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {subredditFilterUser && (() => {
+                const selectedUser = users.find(u => u.id === subredditFilterUser);
+                if (!selectedUser) return null;
+                return (
+                  <button
+                    onClick={() => setSubredditFilterUser('')}
+                    className="h-8 px-3 text-sm font-medium flex items-center gap-2 hover:opacity-80 transition-opacity"
+                    style={{ background: 'var(--bg-secondary)', borderRadius: '100px' }}
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ background: getAvatarColor(selectedUser.username) }}
+                    />
+                    <span style={{ color: 'var(--text-primary)' }}>{selectedUser.username}</span>
+                    <X size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
+                  </button>
+                );
+              })()}
+              {subredditFilterRepeated && (
+                <button
+                  onClick={() => setSubredditFilterRepeated(false)}
+                  className="h-8 px-3 text-sm font-medium flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  style={{ background: 'rgba(59, 130, 246, 0.15)', borderRadius: '100px', color: '#3B82F6' }}
+                >
+                  <Users size={14} weight="bold" />
+                  Repeated (2+ browsers)
+                  <X size={14} weight="bold" />
+                </button>
+              )}
+            </div>
+          )}
 
           {subredditLoading ? (
             <div className="p-12 text-center" style={{ background: 'var(--bg-secondary)', borderRadius: '28px' }}>

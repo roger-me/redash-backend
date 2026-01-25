@@ -109,13 +109,16 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
   const calendarDays = useMemo(() => {
     const days: { date: Date; isCurrentMonth: boolean }[] = [];
 
-    // Start from Sunday of the week containing the 1st
+    // Start from Monday of the week containing the 1st
+    // getDay() returns 0=Sun, 1=Mon... we need Mon=0, so: (day + 6) % 7
     const startDay = new Date(monthStart);
-    startDay.setDate(startDay.getDate() - startDay.getDay());
+    const startDayOfWeek = (startDay.getDay() + 6) % 7; // Monday = 0
+    startDay.setDate(startDay.getDate() - startDayOfWeek);
 
-    // End on Saturday of the week containing the last day
+    // End on Sunday of the week containing the last day
     const endDay = new Date(monthEnd);
-    endDay.setDate(endDay.getDate() + (6 - endDay.getDay()));
+    const endDayOfWeek = (endDay.getDay() + 6) % 7; // Monday = 0
+    endDay.setDate(endDay.getDate() + (6 - endDayOfWeek));
 
     const current = new Date(startDay);
     while (current <= endDay) {
@@ -266,12 +269,14 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
     }
   };
 
-  const handlePrevMonth = () => {
+  const handlePrevMonth = async () => {
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+    await loadPosts();
   };
 
-  const handleNextMonth = () => {
+  const handleNextMonth = async () => {
     setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+    await loadPosts();
   };
 
   // Get profile for a post (including archived profiles)
@@ -372,18 +377,23 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
     '#87CEFA', // Light sky blue
   ];
 
-  // Get user avatar color (same algorithm as AdminPage)
-  const getUserColor = (username: string | undefined): string => {
-    if (!username) return '#808080';
-    // Better hash using prime multiplier for more spread
-    let hash = 7;
-    for (let i = 0; i < username.length; i++) {
-      hash = hash * 31 + username.charCodeAt(i);
-    }
-    return avatarColors[Math.abs(hash) % avatarColors.length];
+  // Create color map for users - each user gets a unique color based on their order (same as AdminPage)
+  const userColorMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach((user, index) => {
+      map[user.id] = avatarColors[index % avatarColors.length];
+      map[user.username] = avatarColors[index % avatarColors.length];
+    });
+    return map;
+  }, [users]);
+
+  // Get user avatar color (same as AdminPage - index-based, no duplicates)
+  const getUserColor = (userIdOrName: string | undefined): string => {
+    if (!userIdOrName) return '#808080';
+    return userColorMap[userIdOrName] || avatarColors[0];
   };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   // Handle saving drive link
   const handleSaveDriveLink = async () => {
@@ -465,66 +475,6 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
             </div>
           )}
         </div>
-
-        {/* User Filter (Dev only) */}
-        {user?.role === 'dev' && users.length > 0 && (
-          <div className="relative" ref={userFilterRef}>
-            <button
-              onClick={() => setShowUserFilter(!showUserFilter)}
-              className="h-8 px-3 flex items-center gap-1.5 text-sm font-medium"
-              style={{
-                background: 'var(--chip-bg)',
-                color: 'var(--text-primary)',
-                borderRadius: '100px',
-              }}
-            >
-              <Users size={14} weight="bold" />
-              <span>{selectedUserIds.length === 0 ? 'All' : selectedUserIds.length === 1 ? users.find(u => u.id === selectedUserIds[0])?.username : `${selectedUserIds.length}`}</span>
-              <CaretDown size={10} weight="bold" />
-            </button>
-
-            {showUserFilter && (
-              <div
-                className="absolute z-50 mt-1 py-1 min-w-[160px]"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  borderRadius: '12px',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-                }}
-              >
-                {users.map(u => (
-                  <button
-                    key={u.id}
-                    onClick={() => toggleUserSelection(u.id)}
-                    className="w-full px-3 py-1.5 text-left text-sm flex items-center gap-2 hover:bg-white/5"
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    <div
-                      className="w-4 h-4 rounded flex items-center justify-center text-xs"
-                      style={{
-                        background: selectedUserIds.includes(u.id) ? 'var(--accent-primary)' : 'var(--bg-secondary)',
-                        color: selectedUserIds.includes(u.id) ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                      }}
-                    >
-                      {selectedUserIds.includes(u.id) && <Check size={10} weight="bold" />}
-                    </div>
-                    <div
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                      style={{
-                        background: getUserColor(u.username),
-                        color: '#000',
-                      }}
-                    >
-                      {u.username.charAt(0).toUpperCase()}
-                    </div>
-                    <span>{u.username}</span>
-                    {u.id === user.id && <span className="ml-auto text-xs" style={{ color: 'var(--text-tertiary)' }}>(me)</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Browser Filter (All users) */}
         {availableBrowsers.length > 0 && (
@@ -622,6 +572,55 @@ function PostsPage({ models, profiles, user, onLaunchBrowser }: PostsPageProps) 
           </button>
         </div>
       </div>
+
+      {/* User Filter Chips (Dev only) */}
+      {user?.role === 'dev' && users.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap mb-3 px-1">
+          {users.map(u => {
+            const isSelected = selectedUserIds.includes(u.id);
+            return (
+              <button
+                key={u.id}
+                onClick={() => toggleUserSelection(u.id)}
+                className="h-8 px-3 flex items-center gap-1.5 text-sm font-medium hover:opacity-80 transition-opacity"
+                style={{
+                  background: isSelected ? `${getUserColor(u.username)}25` : 'var(--chip-bg)',
+                  color: 'var(--text-primary)',
+                  borderRadius: '100px',
+                }}
+              >
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style={{ background: getUserColor(u.username) }}
+                />
+                <span>{u.username}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Active browser filters chips */}
+      {selectedBrowserIds.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap mb-3">
+          {selectedBrowserIds.map(browserId => {
+            const browser = profiles.find(p => p.id === browserId);
+            if (!browser) return null;
+            return (
+              <button
+                key={browserId}
+                onClick={() => setSelectedBrowserIds(prev => prev.filter(id => id !== browserId))}
+                className="h-8 px-3 text-sm font-medium flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+                style={{ background: 'var(--chip-bg)', borderRadius: '100px' }}
+              >
+                <Globe size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
+                <span style={{ color: 'var(--text-primary)' }}>{browser.name}</span>
+                <X size={14} weight="bold" style={{ color: 'var(--text-tertiary)' }} />
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Spin animation */}
       <style>{`
