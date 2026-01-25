@@ -195,6 +195,7 @@ export default function AdminPage({
   const [newSubredditProfileId, setNewSubredditProfileId] = useState('');
   const [subredditError, setSubredditError] = useState('');
   const [savingSubreddit, setSavingSubreddit] = useState(false);
+  const [driveModalSubreddit, setDriveModalSubreddit] = useState<SubredditStats | null>(null);
 
   // Email management state
   const [mainEmails, setMainEmails] = useState<MainEmail[]>([]);
@@ -1773,7 +1774,7 @@ export default function AdminPage({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            window.electronAPI?.openExternal(stat.driveLinks[0]);
+                            setDriveModalSubreddit(stat);
                           }}
                           className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer"
                           style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3B82F6' }}
@@ -2364,6 +2365,78 @@ export default function AdminPage({
               >
                 {savingSubreddit ? 'Saving...' : 'Add Subreddit'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Drive Modal for Subreddit */}
+      {driveModalSubreddit && (
+        <div
+          className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+          onClick={(e) => e.target === e.currentTarget && setDriveModalSubreddit(null)}
+        >
+          <div
+            className="w-full max-w-md max-h-[80vh] flex flex-col"
+            style={{ background: 'var(--bg-secondary)', borderRadius: '28px', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)' }}
+          >
+            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: 'var(--border)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(59, 130, 246, 0.15)' }}>
+                  <FolderSimple size={20} weight="bold" color="#3B82F6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold" style={{ color: 'var(--text-primary)' }}>r/{driveModalSubreddit.subreddit}</h3>
+                  <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>Google Drive Assets</p>
+                </div>
+              </div>
+              <button onClick={() => setDriveModalSubreddit(null)} style={{ color: 'var(--text-tertiary)' }}><X size={24} /></button>
+            </div>
+            <div className="flex-1 overflow-auto p-5">
+              {/* Header row */}
+              <div className="grid grid-cols-2 gap-3 mb-2 px-3">
+                <p className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>BROWSER</p>
+                <p className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>GOOGLE DRIVE</p>
+              </div>
+              {/* Data rows */}
+              <div className="space-y-2">
+                {driveModalSubreddit.driveLinks.map((link, index) => {
+                  const profile = driveModalSubreddit.profiles[index];
+                  return (
+                    <div
+                      key={index}
+                      className="grid grid-cols-2 gap-3 items-center p-1.5"
+                      style={{ background: 'var(--bg-tertiary)', borderRadius: '100px' }}
+                    >
+                      {/* Browser */}
+                      <div className="flex items-center gap-2 pl-2">
+                        {profile ? (
+                          <>
+                            <div
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ background: profile.status === 'banned' ? '#FF6B6B' : profile.status === 'error' ? '#FFA726' : '#4CAF50' }}
+                            />
+                            <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{profile.name}</span>
+                          </>
+                        ) : (
+                          <span className="text-sm" style={{ color: 'var(--text-tertiary)' }}>—</span>
+                        )}
+                      </div>
+                      {/* Google Drive */}
+                      <button
+                        onClick={() => window.electronAPI?.openExternal(link)}
+                        className="flex items-center gap-2 p-2 text-left hover:opacity-70 transition-opacity"
+                      >
+                        <FolderSimple size={16} weight="bold" color="#3B82F6" className="flex-shrink-0" />
+                        <span className="text-sm font-medium truncate" style={{ color: '#3B82F6' }}>
+                          Asset {index + 1}
+                        </span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
