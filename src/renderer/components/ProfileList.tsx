@@ -154,7 +154,7 @@ function ProfileList({
     return (
       <div
         key={profile.id}
-        className="flex flex-col overflow-hidden"
+        className="flex flex-col"
         style={{
           background: 'var(--bg-secondary)',
           borderRadius: '24px',
@@ -361,7 +361,7 @@ function ProfileList({
                 </button>
                 {openRedditId === profile.id && (
                   <div
-                    className="absolute top-full left-0 mt-1 py-1 z-50 min-w-[140px]"
+                    className="absolute bottom-full left-0 mb-1 py-1 z-50 min-w-[140px]"
                     style={{
                       background: 'var(--bg-tertiary)',
                       borderRadius: '12px',
@@ -407,7 +407,7 @@ function ProfileList({
                 </button>
                 {openRedgifsId === profile.id && (
                   <div
-                    className="absolute top-full left-0 mt-1 py-1 z-50 min-w-[140px]"
+                    className="absolute bottom-full left-0 mb-1 py-1 z-50 min-w-[140px]"
                     style={{
                       background: 'var(--bg-tertiary)',
                       borderRadius: '12px',

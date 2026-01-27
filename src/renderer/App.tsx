@@ -11,12 +11,13 @@ import AdminPage from './components/AdminPage';
 import LogsPage from './components/LogsPage';
 import PostsPage from './components/PostsPage';
 import BackupsPage from './components/BackupsPage';
+import AnalyticsPage from './components/AnalyticsPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Desktop, House, Swap, Gear, ShieldCheck, ClockCounterClockwise, CalendarBlank, Archive, Plus } from '@phosphor-icons/react';
+import { ArrowsClockwise, Desktop, House, Swap, Gear, ShieldCheck, ClockCounterClockwise, CalendarBlank, Archive, Plus, ChartLine } from '@phosphor-icons/react';
 import SettingsPage from './components/SettingsPage';
 import { LanguageProvider, useLanguage } from './i18n';
 
-type Page = 'homepage' | 'flipper' | 'settings' | 'admin' | 'logs' | 'posts' | 'backups';
+type Page = 'homepage' | 'flipper' | 'settings' | 'admin' | 'logs' | 'posts' | 'backups' | 'analytics';
 
 interface AuthUser {
   id: string;
@@ -549,6 +550,21 @@ function AppContent() {
             <span className="text-sm font-medium">{t('nav.posts')}</span>
           </button>
 
+          {user?.role === 'dev' && (
+            <button
+              onClick={() => setCurrentPage('analytics')}
+              className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
+              style={{
+                background: currentPage === 'analytics' ? 'var(--accent-primary)' : 'transparent',
+                color: currentPage === 'analytics' ? 'var(--accent-text)' : 'var(--text-tertiary)',
+                borderRadius: '34px',
+              }}
+            >
+              <ChartLine size={20} weight={currentPage === 'analytics' ? 'fill' : 'regular'} />
+              <span className="text-sm font-medium">{t('nav.analytics')}</span>
+            </button>
+          )}
+
           {(user?.role === 'admin' || user?.role === 'dev') && (
             <button
               onClick={() => setCurrentPage('flipper')}
@@ -759,6 +775,9 @@ function AppContent() {
         )}
         {currentPage === 'logs' && user?.role === 'dev' && <LogsPage />}
         {currentPage === 'backups' && user?.role === 'dev' && <BackupsPage />}
+        {currentPage === 'analytics' && user?.role === 'dev' && (
+          <AnalyticsPage models={models} profiles={profiles} user={user} />
+        )}
       </div>
 
       {/* Browser Panel - Right side */}
