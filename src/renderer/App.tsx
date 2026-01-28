@@ -8,16 +8,15 @@ import FlipperPage from './components/FlipperPage';
 import BrowserPanel from './components/BrowserPanel';
 import LoginPage from './components/auth/LoginPage';
 import AdminPage from './components/AdminPage';
-import LogsPage from './components/LogsPage';
 import PostsPage from './components/PostsPage';
 import BackupsPage from './components/BackupsPage';
 import AnalyticsPage from './components/AnalyticsPage';
 import appIcon from './assets/icon.png';
-import { ArrowsClockwise, Desktop, House, Swap, Gear, ShieldCheck, ClockCounterClockwise, CalendarBlank, Archive, Plus, ChartLine } from '@phosphor-icons/react';
+import { ArrowsClockwise, Desktop, House, Swap, Gear, ShieldCheck, CalendarBlank, Archive, Plus, ChartLine, ArrowLeft } from '@phosphor-icons/react';
 import SettingsPage from './components/SettingsPage';
 import { LanguageProvider, useLanguage } from './i18n';
 
-type Page = 'homepage' | 'flipper' | 'settings' | 'admin' | 'logs' | 'posts' | 'backups' | 'analytics';
+type Page = 'homepage' | 'settings' | 'admin' | 'posts' | 'backups' | 'analytics';
 
 interface AuthUser {
   id: string;
@@ -49,6 +48,7 @@ function AppContent() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [lastSyncLabel, setLastSyncLabel] = useState<string>('');
   const [statsRefreshTrigger, setStatsRefreshTrigger] = useState(0);
+  const [showFlipper, setShowFlipper] = useState(false);
   const [theme, setTheme] = useState<string>(() => {
     const saved = localStorage.getItem('theme');
     // Convert old values to new theme names
@@ -565,20 +565,6 @@ function AppContent() {
             </button>
           )}
 
-          {(user?.role === 'admin' || user?.role === 'dev') && (
-            <button
-              onClick={() => setCurrentPage('flipper')}
-              className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
-              style={{
-                background: currentPage === 'flipper' ? 'var(--accent-primary)' : 'transparent',
-                color: currentPage === 'flipper' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                borderRadius: '34px',
-              }}
-            >
-              <Swap size={20} weight={currentPage === 'flipper' ? 'fill' : 'regular'} />
-              <span className="text-sm font-medium">{t('nav.flipper')}</span>
-            </button>
-          )}
 
           {(user?.role === 'admin' || user?.role === 'dev') && (
             <button
@@ -595,20 +581,6 @@ function AppContent() {
             </button>
           )}
 
-          {user?.role === 'dev' && (
-            <button
-              onClick={() => setCurrentPage('logs')}
-              className="w-full h-10 flex items-center gap-3 px-3 transition-colors"
-              style={{
-                background: currentPage === 'logs' ? 'var(--accent-primary)' : 'transparent',
-                color: currentPage === 'logs' ? 'var(--accent-text)' : 'var(--text-tertiary)',
-                borderRadius: '34px',
-              }}
-            >
-              <ClockCounterClockwise size={20} weight={currentPage === 'logs' ? 'fill' : 'regular'} />
-              <span className="text-sm font-medium">{t('nav.logs')}</span>
-            </button>
-          )}
 
           {user?.role === 'dev' && (
             <button
@@ -663,96 +635,134 @@ function AppContent() {
         {/* Page Content */}
         {currentPage === 'homepage' && (
           <main className={`pl-4 pb-6 flex-1 ${activeBrowserProfile ? 'pr-4' : 'pr-6'}`}>
-            {/* Toolbar */}
-            <div className="flex items-center gap-3 mb-5 mt-2 px-1">
-              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                {t('nav.homepage')}
-              </h1>
-              {/* Toolbar buttons */}
-              <div className="ml-auto flex items-center gap-2">
-                {/* Refresh button */}
-                <button
-                  onClick={() => syncRedditKarma(true)}
-                  disabled={isSyncing}
-                  className="h-9 px-3 flex items-center gap-2 transition-colors"
-                  style={{
-                    background: 'var(--chip-bg)',
-                    borderRadius: '100px',
-                    color: 'var(--text-primary)',
-                    opacity: isSyncing ? 0.5 : 1,
-                  }}
-                  title={t('accounts.refreshKarma')}
-                >
-                  <ArrowsClockwise
-                    size={16}
-                    weight="bold"
-                    style={{
-                      animation: isSyncing ? 'spin 1s linear infinite' : 'none',
-                    }}
-                  />
-                  {lastSyncLabel && (
-                    <span className="text-sm font-medium">{lastSyncLabel}</span>
-                  )}
-                </button>
-                {/* New Browser button - admin/dev only */}
-                {(user?.role === 'admin' || user?.role === 'dev') && (
+            {showFlipper ? (
+              /* Flipper View */
+              <>
+                <div className="flex items-center gap-3 mb-5 mt-2 px-1">
                   <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="h-9 px-4 flex items-center gap-2 transition-colors"
+                    onClick={() => setShowFlipper(false)}
+                    className="h-9 px-3 flex items-center gap-2 transition-colors"
                     style={{
-                      background: 'var(--accent-primary)',
+                      background: 'var(--chip-bg)',
                       borderRadius: '100px',
-                      color: 'var(--accent-text)',
+                      color: 'var(--text-primary)',
                     }}
                   >
-                    <Plus size={16} weight="bold" />
-                    <span className="text-sm font-medium">{t('accounts.newBrowser')}</span>
+                    <ArrowLeft size={16} weight="bold" />
+                    <span className="text-sm font-medium">{t('nav.homepage')}</span>
                   </button>
-                )}
-              </div>
-            </div>
-
-            {/* Browsers Section */}
-            {desktopProfiles.length === 0 && models.length === 0 ? (
-              <div className="rounded-xl p-12 text-center" style={{
-                background: 'var(--bg-secondary)',
-                border: '1px dashed var(--border-light)'
-              }}>
-                <Desktop size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
-                <p style={{ color: 'var(--text-tertiary)' }}>{t('accounts.noBrowsers')}</p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="btn btn-ghost mt-3"
-                >
-                  {t('accounts.createFirst')}
-                </button>
-              </div>
+                </div>
+                <FlipperPage />
+              </>
             ) : (
-              <ProfileList
-                profiles={desktopProfiles}
-                models={availableModels}
-                activeBrowsers={activeBrowsers}
-                userRole={user?.role}
-                onLaunch={handleLaunchBrowser}
-                onClose={handleCloseBrowser}
-                onArchive={async (id) => {
-                  try {
-                    if (activeBrowsers.includes(id)) {
-                      await window.electronAPI?.closeBrowser(id);
-                    }
-                    await window.electronAPI?.archiveProfile(id);
-                    await loadProfiles();
-                    setActiveBrowsers(prev => prev.filter(bid => bid !== id));
-                  } catch (err) {
-                    console.error('Failed to archive profile:', err);
-                  }
-                }}
-                onCreateBrowser={() => setShowCreateModal(true)}
-              />
+              /* Homepage View */
+              <>
+                {/* Toolbar */}
+                <div className="flex items-center gap-3 mb-5 mt-2 px-1">
+                  <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                    {t('nav.homepage')}
+                  </h1>
+                  {/* Toolbar buttons */}
+                  <div className="ml-auto flex items-center gap-2">
+                    {/* Refresh button */}
+                    <button
+                      onClick={() => syncRedditKarma(true)}
+                      disabled={isSyncing}
+                      className="h-9 px-3 flex items-center gap-2 transition-colors"
+                      style={{
+                        background: 'var(--chip-bg)',
+                        borderRadius: '100px',
+                        color: 'var(--text-primary)',
+                        opacity: isSyncing ? 0.5 : 1,
+                      }}
+                      title={t('accounts.refreshKarma')}
+                    >
+                      <ArrowsClockwise
+                        size={16}
+                        weight="bold"
+                        style={{
+                          animation: isSyncing ? 'spin 1s linear infinite' : 'none',
+                        }}
+                      />
+                      {lastSyncLabel && (
+                        <span className="text-sm font-medium">{lastSyncLabel}</span>
+                      )}
+                    </button>
+                    {/* Flipper button - admin/dev only */}
+                    {(user?.role === 'admin' || user?.role === 'dev') && (
+                      <button
+                        onClick={() => setShowFlipper(true)}
+                        className="h-9 px-3 flex items-center gap-2 transition-colors"
+                        style={{
+                          background: 'var(--chip-bg)',
+                          borderRadius: '100px',
+                          color: 'var(--text-primary)',
+                        }}
+                        title={t('nav.flipper')}
+                      >
+                        <Swap size={16} weight="bold" />
+                      </button>
+                    )}
+                    {/* New Browser button - admin/dev only */}
+                    {(user?.role === 'admin' || user?.role === 'dev') && (
+                      <button
+                        onClick={() => setShowCreateModal(true)}
+                        className="h-9 px-4 flex items-center gap-2 transition-colors"
+                        style={{
+                          background: 'var(--accent-primary)',
+                          borderRadius: '100px',
+                          color: 'var(--accent-text)',
+                        }}
+                      >
+                        <Plus size={16} weight="bold" />
+                        <span className="text-sm font-medium">{t('accounts.newBrowser')}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Browsers Section */}
+                {desktopProfiles.length === 0 && models.length === 0 ? (
+                  <div className="rounded-xl p-12 text-center" style={{
+                    background: 'var(--bg-secondary)',
+                    border: '1px dashed var(--border-light)'
+                  }}>
+                    <Desktop size={32} weight="light" color="var(--text-tertiary)" className="mx-auto mb-3" />
+                    <p style={{ color: 'var(--text-tertiary)' }}>{t('accounts.noBrowsers')}</p>
+                    <button
+                      onClick={() => setShowCreateModal(true)}
+                      className="btn btn-ghost mt-3"
+                    >
+                      {t('accounts.createFirst')}
+                    </button>
+                  </div>
+                ) : (
+                  <ProfileList
+                    profiles={desktopProfiles}
+                    models={availableModels}
+                    activeBrowsers={activeBrowsers}
+                    userRole={user?.role}
+                    onLaunch={handleLaunchBrowser}
+                    onClose={handleCloseBrowser}
+                    onArchive={async (id) => {
+                      try {
+                        if (activeBrowsers.includes(id)) {
+                          await window.electronAPI?.closeBrowser(id);
+                        }
+                        await window.electronAPI?.archiveProfile(id);
+                        await loadProfiles();
+                        setActiveBrowsers(prev => prev.filter(bid => bid !== id));
+                      } catch (err) {
+                        console.error('Failed to archive profile:', err);
+                      }
+                    }}
+                    onCreateBrowser={() => setShowCreateModal(true)}
+                  />
+                )}
+              </>
             )}
           </main>
         )}
-        {currentPage === 'flipper' && <FlipperPage />}
         {currentPage === 'posts' && <PostsPage models={availableModels} profiles={profiles} user={user} onLaunchBrowser={handleLaunchBrowser} />}
         {currentPage === 'settings' && <SettingsPage user={user} onSignOut={handleSignOut} theme={theme} onChangeTheme={setTheme} />}
         {currentPage === 'admin' && (user?.role === 'admin' || user?.role === 'dev') && (
@@ -773,7 +783,6 @@ function AppContent() {
             refreshTrigger={statsRefreshTrigger}
           />
         )}
-        {currentPage === 'logs' && user?.role === 'dev' && <LogsPage />}
         {currentPage === 'backups' && user?.role === 'dev' && <BackupsPage />}
         {currentPage === 'analytics' && user?.role === 'dev' && (
           <AnalyticsPage models={models} profiles={profiles} user={user} />

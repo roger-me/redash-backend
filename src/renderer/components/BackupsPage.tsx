@@ -18,12 +18,30 @@ import {
   Envelope,
   Folders,
   Article,
+  FolderSimple,
+  EnvelopeSimple,
+  PencilSimple,
+  SignOut,
+  ClockCounterClockwise,
 } from '@phosphor-icons/react';
 import { Backup, BackupWithData, BackupData, DeletedItem } from '../../shared/types';
 import { useLanguage } from '../i18n';
 
-type BackupsTab = 'backups' | 'deleted';
+type BackupsTab = 'backups' | 'deleted' | 'logs';
 type DeletedFilter = 'all' | 'profile';
+type LogsFilter = 'all' | 'profile' | 'model' | 'user' | 'email';
+
+interface ActivityLog {
+  id: string;
+  userId: string | null;
+  username: string;
+  action: string;
+  entityType?: string;
+  entityId?: string;
+  entityName?: string;
+  details?: Record<string, any>;
+  createdAt: string;
+}
 
 function BackupsPage() {
   const { t } = useLanguage();
@@ -34,6 +52,12 @@ function BackupsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<BackupsTab>('backups');
   const [filter, setFilter] = useState<DeletedFilter>('all');
+
+  // Logs state
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsFilter, setLogsFilter] = useState<LogsFilter>('all');
+  const [redoModal, setRedoModal] = useState<ActivityLog | null>(null);
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -102,6 +126,63 @@ function BackupsPage() {
       setLoading(false);
     }
   };
+
+  const loadLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const data = await window.electronAPI?.getActivityLogs(200);
+      setLogs(data || []);
+    } catch (err) {
+      console.error('Failed to load logs:', err);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  // Load logs when switching to logs tab
+  useEffect(() => {
+    if (activeTab === 'logs' && logs.length === 0) {
+      loadLogs();
+    }
+  }, [activeTab]);
+
+  // Logs helper functions
+  const getActionIcon = (action: string, entityType?: string) => {
+    if (action.includes('delete') || action.includes('archive')) return <Trash size={16} weight="bold" />;
+    if (action.includes('create') || action.includes('add')) return <Plus size={16} weight="bold" />;
+    if (action.includes('update') || action.includes('edit')) return <PencilSimple size={16} weight="bold" />;
+    if (action.includes('restore')) return <ArrowCounterClockwise size={16} weight="bold" />;
+    if (action.includes('login')) return <User size={16} weight="bold" />;
+    if (action.includes('logout')) return <SignOut size={16} weight="bold" />;
+
+    switch (entityType) {
+      case 'profile': return <Browser size={16} weight="bold" />;
+      case 'model': return <FolderSimple size={16} weight="bold" />;
+      case 'user': return <User size={16} weight="bold" />;
+      case 'email': return <EnvelopeSimple size={16} weight="bold" />;
+      default: return <ArrowsClockwise size={16} weight="bold" />;
+    }
+  };
+
+  const getActionColor = (action: string) => {
+    if (action.includes('delete') || action.includes('archive')) return 'var(--accent-red)';
+    if (action.includes('create') || action.includes('add')) return 'var(--accent-green)';
+    if (action.includes('update') || action.includes('edit')) return 'var(--accent-blue)';
+    if (action.includes('restore')) return 'var(--accent-green)';
+    if (action.includes('login')) return 'var(--accent-blue)';
+    if (action.includes('logout')) return 'var(--text-tertiary)';
+    return 'var(--text-secondary)';
+  };
+
+  const formatAction = (log: ActivityLog) => {
+    return (
+      <span style={{ color: getActionColor(log.action) }}>{log.action}</span>
+    );
+  };
+
+  const filteredLogs = logsFilter === 'all'
+    ? logs
+    : logs.filter(log => log.entityType === logsFilter || log.action.includes(logsFilter));
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -438,6 +519,17 @@ function BackupsPage() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('logs')}
+          className="h-9 px-4 text-sm font-medium transition-colors"
+          style={{
+            background: activeTab === 'logs' ? 'var(--bg-tertiary)' : 'transparent',
+            color: activeTab === 'logs' ? 'var(--text-primary)' : 'var(--text-secondary)',
+            borderRadius: '100px',
+          }}
+        >
+          {t('logs.title')}
+        </button>
       </div>
 
       {/* Content */}
@@ -535,7 +627,7 @@ function BackupsPage() {
               ))}
             </div>
           )
-        ) : (
+        ) : activeTab === 'deleted' ? (
           /* Recently Deleted Tab */
           <>
             {/* Filter */}
@@ -625,6 +717,136 @@ function BackupsPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </>
+        ) : (
+          /* Logs Tab */
+          <>
+            {/* Filter and Refresh */}
+            <div className="flex items-center gap-2 mb-4 px-1">
+              <select
+                value={logsFilter}
+                onChange={(e) => setLogsFilter(e.target.value as LogsFilter)}
+                className="h-9 px-3 text-sm"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  border: 'none',
+                  borderRadius: '100px',
+                }}
+              >
+                <option value="all">{t('logs.filterAll')}</option>
+                <option value="profile">{t('logs.filterProfiles')}</option>
+                <option value="model">{t('logs.filterModels')}</option>
+                <option value="user">{t('logs.filterUsers')}</option>
+                <option value="email">{t('logs.filterEmails')}</option>
+              </select>
+              <button
+                onClick={loadLogs}
+                disabled={logsLoading}
+                className="h-9 px-4 flex items-center gap-2 text-sm font-medium"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  color: 'var(--text-primary)',
+                  borderRadius: '100px',
+                }}
+              >
+                <ArrowsClockwise size={16} weight="bold" className={logsLoading ? 'animate-spin' : ''} />
+                {t('logs.refresh')}
+              </button>
+            </div>
+
+            {logsLoading && logs.length === 0 ? (
+              <div className="flex items-center justify-center h-[calc(100%-60px)]">
+                <ArrowsClockwise size={32} weight="bold" className="animate-spin" style={{ color: 'var(--text-tertiary)' }} />
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[calc(100%-60px)] gap-2">
+                <ClockCounterClockwise size={48} weight="light" style={{ color: 'var(--text-tertiary)' }} />
+                <p style={{ color: 'var(--text-tertiary)' }}>{t('logs.empty')}</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredLogs.map((log, index) => {
+                  const prevLog = filteredLogs[index - 1];
+                  const currentDate = new Date(log.createdAt).toDateString();
+                  const prevDate = prevLog ? new Date(prevLog.createdAt).toDateString() : null;
+                  const showDateHeader = currentDate !== prevDate;
+
+                  return (
+                    <div key={log.id}>
+                      {showDateHeader && (
+                        <div className="py-2 px-2 mt-4 first:mt-0">
+                          <span className="text-xs" style={{ color: 'var(--text-tertiary)', opacity: 0.6 }}>
+                            {new Date(log.createdAt).toLocaleDateString(undefined, {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      )}
+                      <div
+                        className="flex items-center gap-4 px-5 py-3"
+                        style={{ background: 'var(--bg-secondary)', borderRadius: '34px' }}
+                      >
+                        {/* Icon */}
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ background: 'var(--bg-tertiary)', color: getActionColor(log.action) }}
+                        >
+                          {getActionIcon(log.action, log.entityType)}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                              {log.username}
+                            </span>
+                            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                              {formatAction(log)}
+                            </span>
+                            {log.entityName && (
+                              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                "{log.entityName}"
+                              </span>
+                            )}
+                            {log.entityType && (
+                              <span
+                                className="text-xs px-2 py-0.5"
+                                style={{ background: 'var(--bg-tertiary)', borderRadius: '100px', color: 'var(--text-tertiary)' }}
+                              >
+                                {log.entityType}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Time */}
+                        <div className="text-xs flex-shrink-0 mr-2" style={{ color: 'var(--text-tertiary)' }}>
+                          {formatTime(log.createdAt)}
+                        </div>
+
+                        {/* Redo button */}
+                        <button
+                          onClick={() => setRedoModal(log)}
+                          className="h-7 px-3 flex items-center gap-1.5 text-xs font-medium hover:bg-white/10 transition-colors"
+                          style={{
+                            background: 'var(--bg-tertiary)',
+                            borderRadius: '100px',
+                            color: 'var(--text-secondary)'
+                          }}
+                        >
+                          <ArrowCounterClockwise size={14} weight="bold" />
+                          {t('logs.redo')}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>
@@ -1245,6 +1467,68 @@ function BackupsPage() {
                 }}
               >
                 {t('backups.permanentDelete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Redo Confirmation Modal */}
+      {redoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setRedoModal(null)}
+          />
+          <div
+            className="relative w-full max-w-md p-6"
+            style={{ background: 'var(--bg-secondary)', borderRadius: '24px' }}
+          >
+            <button
+              onClick={() => setRedoModal(null)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              <X size={20} weight="bold" />
+            </button>
+
+            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
+              {t('logs.redoTitle')}
+            </h2>
+
+            <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
+              {t('logs.redoConfirm', {
+                action: redoModal.action,
+                entity: redoModal.entityName || redoModal.entityType || ''
+              })}
+            </p>
+
+            <div className="flex items-center gap-3 justify-end">
+              <button
+                onClick={() => setRedoModal(null)}
+                className="h-10 px-5 text-sm font-medium"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  borderRadius: '100px',
+                  color: 'var(--text-primary)'
+                }}
+              >
+                {t('logs.cancel')}
+              </button>
+              <button
+                onClick={() => {
+                  // TODO: Implement redo action
+                  console.log('Redo action:', redoModal);
+                  setRedoModal(null);
+                }}
+                className="h-10 px-5 text-sm font-medium"
+                style={{
+                  background: 'var(--accent-blue)',
+                  borderRadius: '100px',
+                  color: 'var(--accent-text)'
+                }}
+              >
+                {t('logs.redoAction')}
               </button>
             </div>
           </div>

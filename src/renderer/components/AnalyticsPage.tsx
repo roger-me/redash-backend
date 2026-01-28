@@ -27,6 +27,7 @@ import {
   CalendarBlank,
   Timer,
   FolderSimple,
+  ArrowsClockwise,
 } from '@phosphor-icons/react';
 import { useLanguage } from '../i18n';
 import { Model, Profile, RedditPost, AppUser, ProfileForStats, SubredditStats } from '../../shared/types';
@@ -38,6 +39,7 @@ interface AnalyticsPageProps {
 }
 
 type TimePeriod = '7d' | '30d' | '90d' | 'all';
+type ChartMetric = 'posts' | 'karma' | 'upvotes' | 'comments';
 
 // Pastel colors with distinct hues (same as PostsPage)
 const avatarColors = [
@@ -56,6 +58,7 @@ const avatarColors = [
 function AnalyticsPage({ models, profiles, user }: AnalyticsPageProps) {
   const { t } = useLanguage();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('30d');
+  const [chartMetric, setChartMetric] = useState<ChartMetric>('posts');
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [showModelMenu, setShowModelMenu] = useState(false);
@@ -64,31 +67,78 @@ function AnalyticsPage({ models, profiles, user }: AnalyticsPageProps) {
   const [subredditStats, setSubredditStats] = useState<SubredditStats[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [lastRefreshLabel, setLastRefreshLabel] = useState<string>('');
+
+  // Helper to format relative time
+  const getRelativeTime = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 30) return t('time.now');
+    if (diffSec < 60) return t('time.secondsAgo', { seconds: 30 });
+    if (diffMin < 60) return t('time.minutesAgo', { minutes: diffMin });
+    if (diffHour < 24) return t('time.hoursAgo', { hours: diffHour });
+    return t('time.daysAgo', { days: diffDay });
+  };
+
+  // Update relative time label periodically
+  useEffect(() => {
+    if (!lastRefreshTime) return;
+
+    const updateLabel = () => setLastRefreshLabel(getRelativeTime(lastRefreshTime));
+    updateLabel();
+
+    const interval = setInterval(updateLabel, 10000);
+    return () => clearInterval(interval);
+  }, [lastRefreshTime]);
+
+  // Load data function
+  const loadData = async (syncFromReddit = false) => {
+    setIsLoading(true);
+    try {
+      // If syncing from Reddit, first fetch posts for all profiles
+      if (syncFromReddit) {
+        const profilesData = await window.electronAPI?.adminGetAllProfilesForStats();
+        if (profilesData && profilesData.length > 0) {
+          // Sync posts for each profile (with small delay to avoid rate limiting)
+          for (const profile of profilesData) {
+            if (profile.name && profile.status !== 'banned') {
+              await window.electronAPI?.syncRedditPosts(profile.id, profile.name);
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          }
+        }
+      }
+
+      // Now load all data from database
+      const [profilesData, postsData, statsData, usersData] = await Promise.all([
+        window.electronAPI?.adminGetAllProfilesForStats(),
+        window.electronAPI?.listRedditPosts(undefined),
+        window.electronAPI?.getSubredditStats(),
+        user?.role === 'dev' ? window.electronAPI?.adminListUsers() : Promise.resolve([]),
+      ]);
+      setAllProfiles(profilesData || []);
+      setPosts(postsData || []);
+      setSubredditStats(statsData || []);
+      setUsers(usersData || []);
+      if (usersData && usersData.length > 0) {
+        setSelectedUserIds(usersData.map((u: AppUser) => u.id));
+      }
+    } catch (err) {
+      console.error('Failed to load analytics data:', err);
+    } finally {
+      setIsLoading(false);
+      setLastRefreshTime(new Date());
+    }
+  };
 
   // Load data on mount
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const [profilesData, postsData, statsData, usersData] = await Promise.all([
-          window.electronAPI?.adminGetAllProfilesForStats(),
-          window.electronAPI?.listRedditPosts(undefined),
-          window.electronAPI?.getSubredditStats(),
-          user?.role === 'dev' ? window.electronAPI?.adminListUsers() : Promise.resolve([]),
-        ]);
-        setAllProfiles(profilesData || []);
-        setPosts(postsData || []);
-        setSubredditStats(statsData || []);
-        setUsers(usersData || []);
-        if (usersData && usersData.length > 0) {
-          setSelectedUserIds(usersData.map((u: AppUser) => u.id));
-        }
-      } catch (err) {
-        console.error('Failed to load analytics data:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     loadData();
   }, [user]);
 
@@ -233,13 +283,31 @@ function AnalyticsPage({ models, profiles, user }: AnalyticsPageProps) {
       if (profile?.userId) {
         const postUser = users.find(u => u.id === profile.userId);
         if (postUser && selectedUserIds.includes(postUser.id)) {
-          data[key][postUser.username] = (data[key][postUser.username] || 0) + 1;
+          // Add value based on selected metric
+          let valueToAdd = 0;
+          if (chartMetric === 'posts') {
+            valueToAdd = 1;
+          } else if (chartMetric === 'karma') {
+            valueToAdd = post.score;
+          } else if (chartMetric === 'upvotes') {
+            // Calculate upvotes from score and upvote_ratio
+            // Formula: upvotes = ratio * score / (2 * ratio - 1)
+            const ratio = post.upvoteRatio || 0.5;
+            if (ratio > 0.5 && post.score > 0) {
+              valueToAdd = Math.round(ratio * post.score / (2 * ratio - 1));
+            } else {
+              valueToAdd = Math.max(0, post.score); // Fallback to score if ratio unavailable
+            }
+          } else {
+            valueToAdd = post.numComments;
+          }
+          data[key][postUser.username] = (data[key][postUser.username] || 0) + valueToAdd;
         }
       }
     });
 
     return Object.values(data).sort((a, b) => a.dateSort - b.dateSort);
-  }, [filteredPosts, timePeriod, users, selectedUserIds, allProfiles]);
+  }, [filteredPosts, timePeriod, users, selectedUserIds, allProfiles, chartMetric]);
 
   // Get active user names for chart lines
   const activeUsernames = useMemo(() => {
@@ -413,6 +481,31 @@ function AnalyticsPage({ models, profiles, user }: AnalyticsPageProps) {
         <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
           {t('analytics.title')}
         </h1>
+        <div className="ml-auto">
+          <button
+            onClick={() => loadData(true)}
+            disabled={isLoading}
+            className="h-9 px-3 flex items-center gap-2 transition-colors"
+            style={{
+              background: 'var(--chip-bg)',
+              borderRadius: '100px',
+              color: 'var(--text-primary)',
+              opacity: isLoading ? 0.5 : 1,
+            }}
+            title={t('logs.refresh')}
+          >
+            <ArrowsClockwise
+              size={16}
+              weight="bold"
+              style={{
+                animation: isLoading ? 'spin 1s linear infinite' : 'none',
+              }}
+            />
+            {lastRefreshLabel && (
+              <span className="text-sm font-medium">{lastRefreshLabel}</span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -586,6 +679,22 @@ function AnalyticsPage({ models, profiles, user }: AnalyticsPageProps) {
           <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
             {t('analytics.postPerformance')}
           </h2>
+          <div className="ml-auto flex gap-1">
+            {(['posts', 'karma', 'upvotes', 'comments'] as ChartMetric[]).map(metric => (
+              <button
+                key={metric}
+                onClick={() => setChartMetric(metric)}
+                className="h-7 px-3 text-xs font-medium transition-colors"
+                style={{
+                  background: chartMetric === metric ? 'var(--accent-primary)' : 'var(--chip-bg)',
+                  color: chartMetric === metric ? 'var(--accent-text)' : 'var(--text-primary)',
+                  borderRadius: '100px',
+                }}
+              >
+                {t(`analytics.${metric}PerDay`)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Line Chart - Posts per User */}

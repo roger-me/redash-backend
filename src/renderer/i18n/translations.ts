@@ -400,6 +400,10 @@ export const translations = {
     'analytics.allTime': 'All',
     'analytics.allModels': 'All Models',
     'analytics.allUsers': 'All Users',
+    'analytics.postsPerDay': 'Posts',
+    'analytics.karmaPerDay': 'Karma',
+    'analytics.upvotesPerDay': 'Upvotes',
+    'analytics.commentsPerDay': 'Comments',
   },
   es: {
     // Navigation
@@ -802,6 +806,10 @@ export const translations = {
     'analytics.allTime': 'Todo',
     'analytics.allModels': 'Todos los Modelos',
     'analytics.allUsers': 'Todos los Usuarios',
+    'analytics.postsPerDay': 'Posts',
+    'analytics.karmaPerDay': 'Karma',
+    'analytics.upvotesPerDay': 'Upvotes',
+    'analytics.commentsPerDay': 'Comentarios',
   },
 } as const;
 
